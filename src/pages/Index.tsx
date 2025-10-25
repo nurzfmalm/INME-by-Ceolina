@@ -30,9 +30,6 @@ const Index = () => {
   const handleDiagnosticComplete = async (assessmentId: string) => {
     console.log("Diagnostic completed:", assessmentId);
     
-    // Show loading state
-    setDiagnosticComplete(true);
-    
     // Generate learning path with AI
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -56,15 +53,18 @@ const Index = () => {
         console.log("Learning path generated:", data);
         toast.success('✨ Персональная программа готова!');
         
-        // Save to localStorage for guest users
-        if (!userId && data.learningPath) {
+        // Save to localStorage for all users (as backup)
+        if (data.learningPath) {
           localStorage.setItem('learningPath', JSON.stringify(data.learningPath));
+          console.log("Saved learning path to localStorage");
         }
       }
     } catch (error) {
       console.error("Error generating learning path:", error);
       toast.error('Ошибка создания программы');
     }
+    
+    setDiagnosticComplete(true);
   };
 
   const handleNavigate = (section: string) => {
