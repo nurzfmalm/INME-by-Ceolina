@@ -95,10 +95,13 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
             .update({ child_user_id: data.user.id })
             .eq("id", link.id);
 
-          // Update profile with parent link
+          // Update profile with parent link and child name
           await supabase
             .from("profiles")
-            .update({ parent_user_id: link.parent_user_id })
+            .update({ 
+              parent_user_id: link.parent_user_id,
+              child_name: childName
+            })
             .eq("id", data.user.id);
         }
 

@@ -262,6 +262,7 @@ export type Database = {
           child_name: string
           created_at: string | null
           id: string
+          interests: string[] | null
           parent_email: string | null
           parent_user_id: string | null
           updated_at: string | null
@@ -271,6 +272,7 @@ export type Database = {
           child_name: string
           created_at?: string | null
           id: string
+          interests?: string[] | null
           parent_email?: string | null
           parent_user_id?: string | null
           updated_at?: string | null
@@ -280,6 +282,7 @@ export type Database = {
           child_name?: string
           created_at?: string | null
           id?: string
+          interests?: string[] | null
           parent_email?: string | null
           parent_user_id?: string | null
           updated_at?: string | null

@@ -17,7 +17,22 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [childName, setChildName] = useState("");
+  const [childAge, setChildAge] = useState("");
+  const [childInterests, setChildInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const interestOptions = [
+    "Рисование", "Музыка", "Спорт", "Чтение", 
+    "Танцы", "Игры", "Природа", "Животные"
+  ];
+
+  const toggleInterest = (interest: string) => {
+    setChildInterests(prev => 
+      prev.includes(interest) 
+        ? prev.filter(i => i !== interest)
+        : [...prev, interest]
+    );
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +48,16 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
         if (error) throw error;
         toast.success("Вход выполнен!");
       } else {
+        // Validation for registration
+        if (!childName.trim()) {
+          toast.error("Укажите имя ребёнка");
+          return;
+        }
+        if (!childAge || parseInt(childAge) < 3 || parseInt(childAge) > 12) {
+          toast.error("Возраст должен быть от 3 до 12 лет");
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -52,6 +77,17 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
             user_id: data.user.id,
             role: "parent",
           });
+          
+          // Update profile with child data
+          await supabase
+            .from("profiles")
+            .update({ 
+              child_name: childName,
+              child_age: parseInt(childAge),
+              interests: childInterests,
+              parent_email: email
+            })
+            .eq("id", data.user.id);
           
           toast.success("Аккаунт создан! Войдите в систему.");
           setIsLogin(true);
@@ -121,17 +157,51 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
           </div>
 
           {!isLogin && (
-            <div>
-              <Label htmlFor="childName">Имя ребёнка</Label>
-              <Input
-                id="childName"
-                type="text"
-                value={childName}
-                onChange={(e) => setChildName(e.target.value)}
-                required
-                placeholder="Имя вашего ребёнка"
-              />
-            </div>
+            <>
+              <div>
+                <Label htmlFor="childName">Имя ребёнка</Label>
+                <Input
+                  id="childName"
+                  type="text"
+                  value={childName}
+                  onChange={(e) => setChildName(e.target.value)}
+                  required
+                  placeholder="Имя вашего ребёнка"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="childAge">Возраст ребёнка</Label>
+                <Input
+                  id="childAge"
+                  type="number"
+                  min="3"
+                  max="12"
+                  value={childAge}
+                  onChange={(e) => setChildAge(e.target.value)}
+                  required
+                  placeholder="От 3 до 12 лет"
+                />
+              </div>
+
+              <div>
+                <Label>Интересы ребёнка (выберите несколько)</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {interestOptions.map((interest) => (
+                    <Button
+                      key={interest}
+                      type="button"
+                      variant={childInterests.includes(interest) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleInterest(interest)}
+                      className="w-full"
+                    >
+                      {interest}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
