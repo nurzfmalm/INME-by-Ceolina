@@ -1,1 +1,13 @@
 project_id = "lqspgspmympmulorcmsb"
+
+[functions.generate-learning-path]
+verify_jwt = false
+
+[functions.analyze-artworks]
+verify_jwt = false
+
+[functions.analyze-collaboration]
+verify_jwt = false
+
+[functions.analyze-task-drawing]
+verify_jwt = false

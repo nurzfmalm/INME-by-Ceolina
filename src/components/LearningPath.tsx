@@ -60,21 +60,35 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
   const loadLearningPath = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        toast.error("Необходима авторизация");
-        return;
+      
+      if (userData.user) {
+        // Load from database for authenticated users
+        const { data, error } = await supabase
+          .from("learning_paths")
+          .select("*")
+          .eq("user_id", userData.user.id)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error) throw error;
+        setPath(data as any);
+      } else {
+        // Load from localStorage for guest users
+        const localPath = localStorage.getItem('learningPath');
+        if (localPath) {
+          const parsedPath = JSON.parse(localPath);
+          setPath({
+            id: parsedPath.id,
+            current_week: 1,
+            total_weeks: 6,
+            path_data: parsedPath.path_data,
+            completion_percentage: 0,
+          });
+        } else {
+          throw new Error("Программа не найдена");
+        }
       }
-
-      const { data, error } = await supabase
-        .from("learning_paths")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) throw error;
-      setPath(data as any);
     } catch (error: any) {
       console.error("Error:", error);
       toast.error("Ошибка загрузки программы");

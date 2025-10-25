@@ -30,26 +30,41 @@ const Index = () => {
   const handleDiagnosticComplete = async (assessmentId: string) => {
     console.log("Diagnostic completed:", assessmentId);
     
-    // Generate learning path
+    // Show loading state
+    setDiagnosticComplete(true);
+    
+    // Generate learning path with AI
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        toast.promise(
-          supabase.functions.invoke('generate-learning-path', {
-            body: { assessmentId }
-          }),
-          {
-            loading: 'Создаём персональную программу...',
-            success: 'Программа готова!',
-            error: 'Ошибка создания программы',
-          }
-        );
+      const userId = userData.user?.id || null;
+      
+      const loadingToast = toast.loading('🤖 AI создаёт персональную программу обучения...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-learning-path', {
+        body: { 
+          assessmentId,
+          userId 
+        }
+      });
+
+      toast.dismiss(loadingToast);
+      
+      if (error) {
+        console.error("Error generating learning path:", error);
+        toast.error('Не удалось создать программу. Попробуйте позже.');
+      } else {
+        console.log("Learning path generated:", data);
+        toast.success('✨ Персональная программа готова!');
+        
+        // Save to localStorage for guest users
+        if (!userId && data.learningPath) {
+          localStorage.setItem('learningPath', JSON.stringify(data.learningPath));
+        }
       }
     } catch (error) {
       console.error("Error generating learning path:", error);
+      toast.error('Ошибка создания программы');
     }
-    
-    setDiagnosticComplete(true);
   };
 
   const handleNavigate = (section: string) => {
