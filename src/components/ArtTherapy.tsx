@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Palette, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 
 interface ArtTherapyProps {
   onBack: () => void;
@@ -112,10 +113,11 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
     setIsSaving(true);
     
     try {
-      // Get user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Необходимо войти в систему");
+      const userId = await getCurrentUserId();
+      const isAuth = await isUserAuthenticated();
+      
+      if (!userId) {
+        toast.error("Ошибка получения пользователя");
         return;
       }
 
@@ -124,8 +126,36 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
         canvas.toBlob((blob) => resolve(blob!), "image/png");
       });
 
-      // Upload to Supabase Storage
-      const fileName = `${user.id}/${Date.now()}.png`;
+      if (!isAuth) {
+        // Demo mode: save to localStorage
+        const dataUrl = canvas.toDataURL("image/png");
+        const artworks = JSON.parse(localStorage.getItem('ceolinaArtworks') || '[]');
+        
+        const colorsUsed = COLORS
+          .filter((c) => emotionStats[c.emotion])
+          .map((c) => c.color);
+        
+        artworks.push({
+          id: Date.now().toString(),
+          image_url: dataUrl,
+          storage_path: `local-${Date.now()}`,
+          created_at: new Date().toISOString(),
+          emotions_used: emotionStats,
+          colors_used: colorsUsed,
+          metadata: {
+            line_width: lineWidth,
+            session_duration: Math.floor((Date.now() - sessionStart) / 1000),
+          },
+        });
+        
+        localStorage.setItem('ceolinaArtworks', JSON.stringify(artworks));
+        toast.success("Рисунок сохранён в галерею! 🎨");
+        clearCanvas();
+        return;
+      }
+
+      // Authenticated mode: save to Supabase
+      const fileName = `${userId}/${Date.now()}.png`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("artworks")
         .upload(fileName, blob, {
@@ -135,21 +165,18 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("artworks")
         .getPublicUrl(fileName);
 
-      // Get colors used
       const colorsUsed = COLORS
         .filter((c) => emotionStats[c.emotion])
         .map((c) => c.color);
 
-      // Save artwork metadata to database
       const { error: dbError } = await supabase
         .from("artworks")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           image_url: publicUrl,
           storage_path: fileName,
           emotions_used: emotionStats,
@@ -162,9 +189,8 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
 
       if (dbError) throw dbError;
 
-      // Save progress session
       await supabase.from("progress_sessions").insert({
-        user_id: user.id,
+        user_id: userId,
         session_type: "art_therapy",
         duration_seconds: Math.floor((Date.now() - sessionStart) / 1000),
         emotional_analysis: emotionStats,

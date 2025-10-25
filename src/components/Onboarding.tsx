@@ -23,7 +23,6 @@ export interface OnboardingData {
 
 export const Onboarding = ({ onComplete }: OnboardingProps) => {
   const [step, setStep] = useState(0);
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [formData, setFormData] = useState<OnboardingData>({
     childName: "",
     childAge: "",
@@ -36,55 +35,13 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const createAnonymousUser = async () => {
-    setIsCreatingUser(true);
-    try {
-      // Check if user already exists
-      const { data: { user: existingUser } } = await supabase.auth.getUser();
-      
-      if (!existingUser) {
-        // Sign in anonymously
-        const { data, error } = await supabase.auth.signInAnonymously();
-        
-        if (error) throw error;
-        
-        // Create profile
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert({
-              id: data.user.id,
-              child_name: formData.childName,
-              goals: formData.goals ? [formData.goals] : [],
-            });
-          
-          if (profileError) throw profileError;
-        }
-      } else {
-        // Update existing profile
-        await supabase
-          .from("profiles")
-          .upsert({
-            id: existingUser.id,
-            child_name: formData.childName,
-            goals: formData.goals ? [formData.goals] : [],
-          });
-      }
-      
-      onComplete(formData);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      toast.error("Ошибка при создании профиля");
-    } finally {
-      setIsCreatingUser(false);
-    }
-  };
-
   const nextStep = () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      createAnonymousUser();
+      // Store onboarding data in localStorage for now
+      localStorage.setItem('ceolinaUserData', JSON.stringify(formData));
+      onComplete(formData);
     }
   };
 
@@ -193,13 +150,13 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
           <div className="space-y-4">
             <Button
               onClick={nextStep}
-              disabled={!canProceed || isCreatingUser}
+              disabled={!canProceed}
               size="lg"
               variant="therapeutic"
               className="w-full"
             >
-              {isCreatingUser ? "Создание профиля..." : step === 3 ? "Начать" : "Продолжить"}
-              {!isCreatingUser && <ArrowRight className="ml-2" />}
+              {step === 3 ? "Начать" : "Продолжить"}
+              <ArrowRight className="ml-2" />
             </Button>
 
             <div className="flex justify-center gap-2">

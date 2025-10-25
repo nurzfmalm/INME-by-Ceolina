@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Image as ImageIcon, Trash2, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import {
   Select,
   SelectContent,
@@ -43,13 +44,26 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
 
   const loadArtworks = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const isAuth = await isUserAuthenticated();
+      
+      if (!isAuth) {
+        // Demo mode: load from localStorage
+        const stored = localStorage.getItem('ceolinaArtworks');
+        if (stored) {
+          setArtworks(JSON.parse(stored));
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Authenticated mode: load from Supabase
+      const userId = await getCurrentUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from("artworks")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -64,14 +78,28 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
 
   const deleteArtwork = async (id: string, storagePath: string) => {
     try {
-      // Delete from storage
+      const isAuth = await isUserAuthenticated();
+      
+      if (!isAuth) {
+        // Demo mode: delete from localStorage
+        const stored = localStorage.getItem('ceolinaArtworks');
+        if (stored) {
+          const artworks = JSON.parse(stored);
+          const updated = artworks.filter((art: Artwork) => art.id !== id);
+          localStorage.setItem('ceolinaArtworks', JSON.stringify(updated));
+          setArtworks(updated);
+          toast.success("Рисунок удалён");
+        }
+        return;
+      }
+
+      // Authenticated mode: delete from Supabase
       const { error: storageError } = await supabase.storage
         .from("artworks")
         .remove([storagePath]);
 
       if (storageError) throw storageError;
 
-      // Delete from database
       const { error: dbError } = await supabase
         .from("artworks")
         .delete()
