@@ -4,14 +4,16 @@ import ceolinaCharacter from "@/assets/ceolina-character.png";
 import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
+import type { UserRole } from "@/hooks/useUserRole";
 
 interface DashboardProps {
   childData: OnboardingData;
   onNavigate: (section: string) => void;
+  userRole?: UserRole;
 }
 
-export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
-  const menuItems = [
+export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) => {
+  const allMenuItems = [
     {
       id: "art-therapy",
       title: "АРТ - Терапия",
@@ -70,6 +72,11 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
     },
   ];
 
+  // Filter menu items based on role
+  const menuItems = userRole === "child" 
+    ? allMenuItems.filter(item => !["analytics", "parent-dashboard"].includes(item.id))
+    : allMenuItems;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -85,9 +92,11 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
                 <p className="text-lg font-semibold">{childData.childName || "друг"}!</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
-              <Settings size={24} />
-            </Button>
+            {userRole === "parent" && (
+              <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
+                <Settings size={24} />
+              </Button>
+            )}
           </div>
         </div>
       </header>

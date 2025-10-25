@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, TrendingUp, Clock, Palette, Heart, Activity } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { ParentAccessCodes } from "./ParentAccessCodes";
 
 interface ParentDashboardProps {
   onBack: () => void;
@@ -188,11 +189,12 @@ export const ParentDashboard = ({ onBack, childName }: ParentDashboardProps) => 
         </div>
 
         <Tabs defaultValue="progress" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="progress">Прогресс</TabsTrigger>
             <TabsTrigger value="emotions">Эмоции</TabsTrigger>
             <TabsTrigger value="colors">Цвета</TabsTrigger>
             <TabsTrigger value="sessions">Занятия</TabsTrigger>
+            <TabsTrigger value="codes">Коды доступа</TabsTrigger>
           </TabsList>
 
           <TabsContent value="progress" className="space-y-6">
@@ -344,6 +346,10 @@ export const ParentDashboard = ({ onBack, childName }: ParentDashboardProps) => 
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="codes" className="space-y-6">
+            <ParentAccessCodes />
           </TabsContent>
         </Tabs>
       </div>

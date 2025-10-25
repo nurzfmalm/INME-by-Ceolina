@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Onboarding, OnboardingData } from "@/components/Onboarding";
@@ -13,14 +13,34 @@ import { DualDrawing } from "@/components/DualDrawing";
 import { LearningPath } from "@/components/LearningPath";
 import { ParentDashboard } from "@/components/ParentDashboard";
 import { SensorySettings } from "@/components/SensorySettings";
+import { RoleSelection } from "@/components/RoleSelection";
+import { ParentAuth } from "@/components/ParentAuth";
+import { ChildAuth } from "@/components/ChildAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import type { User } from "@supabase/supabase-js";
 
 const Index = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const { role, loading: roleLoading } = useUserRole();
+  const [selectedRole, setSelectedRole] = useState<"parent" | "child" | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [diagnosticComplete, setDiagnosticComplete] = useState(false);
   const [childData, setChildData] = useState<OnboardingData | null>(null);
   const [currentSection, setCurrentSection] = useState<string>("dashboard");
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleOnboardingComplete = (data: OnboardingData) => {
     setChildData(data);
@@ -76,6 +96,50 @@ const Index = () => {
     setCurrentTaskPrompt(prompt);
     setCurrentSection("art-therapy");
   };
+
+  // Show role selection if not authenticated
+  if (!user && !selectedRole) {
+    return <RoleSelection onSelectRole={setSelectedRole} />;
+  }
+
+  // Show auth screens based on selected role
+  if (!user && selectedRole === "parent") {
+    return <ParentAuth onBack={() => setSelectedRole(null)} />;
+  }
+
+  if (!user && selectedRole === "child") {
+    return <ChildAuth onBack={() => setSelectedRole(null)} />;
+  }
+
+  // Loading role
+  if (user && roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Parent role can access everything
+  if (role === "parent") {
+    if (currentSection === "parent-dashboard") {
+      return (
+        <ParentDashboard
+          onBack={() => setCurrentSection("dashboard")}
+          childName={childData?.childName || "Ребёнок"}
+        />
+      );
+    }
+  }
+
+  // Child role restrictions
+  if (role === "child") {
+    // Block access to parent dashboard, settings, analytics
+    if (["parent-dashboard", "settings"].includes(currentSection)) {
+      toast.error("Доступ запрещён");
+      setCurrentSection("dashboard");
+    }
+  }
 
   if (!onboardingComplete || !childData) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
@@ -168,7 +232,7 @@ const Index = () => {
     );
   }
 
-  return <Dashboard childData={childData} onNavigate={handleNavigate} />;
+  return <Dashboard childData={childData} onNavigate={handleNavigate} userRole={role} />;
 };
 
 export default Index;
