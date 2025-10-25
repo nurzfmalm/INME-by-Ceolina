@@ -23,78 +23,87 @@ interface Question {
   adaptNext?: (answer: any) => string | null;
 }
 
+// Ровно 7 диагностических вопросов для полной оценки
 const questions: Question[] = [
   {
-    id: "communication_level",
+    id: "q1_communication",
     category: "Коммуникация",
-    question: "Насколько легко ребёнок общается с другими?",
-    type: "scale",
-    adaptNext: (answer) => (answer < 30 ? "communication_barriers" : "social_interaction"),
-  },
-  {
-    id: "communication_barriers",
-    category: "Коммуникация",
-    question: "Что затрудняет общение?",
-    type: "multiChoice",
-    options: ["Говорит мало слов", "Трудно начать разговор", "Не смотрит в глаза", "Другое"],
-  },
-  {
-    id: "social_interaction",
-    category: "Социализация",
-    question: "Насколько комфортно ребёнку с другими детьми?",
-    type: "scale",
-  },
-  {
-    id: "emotional_regulation",
-    category: "Эмоции",
-    question: "Как часто возникают эмоциональные вспышки?",
-    type: "scale",
-    adaptNext: (answer) => (answer > 70 ? "triggers" : "sensory_sensitivity"),
-  },
-  {
-    id: "triggers",
-    category: "Эмоции",
-    question: "Что чаще всего вызывает эмоциональную реакцию?",
-    type: "multiChoice",
-    options: ["Громкие звуки", "Яркий свет", "Изменение планов", "Толпа людей", "Другое"],
-  },
-  {
-    id: "sensory_sensitivity",
-    category: "Сенсорика",
-    question: "Насколько чувствителен ребёнок к сенсорным раздражителям?",
-    type: "scale",
-  },
-  {
-    id: "focus_attention",
-    category: "Внимание",
-    question: "Как долго ребёнок может концентрироваться на задании?",
+    question: "Как ребёнок общается со сверстниками и взрослыми?",
     type: "choice",
-    options: ["Меньше 5 минут", "5-10 минут", "10-20 минут", "Больше 20 минут"],
+    options: [
+      "Легко начинает диалог, поддерживает беседу",
+      "Общается при помощи взрослого",
+      "Отвечает односложно, избегает разговора",
+      "Не вступает в диалог, молчит"
+    ],
   },
   {
-    id: "interests",
-    category: "Интересы",
-    question: "Какие виды активности интересуют ребёнка больше всего?",
-    type: "multiChoice",
-    options: ["Рисование", "Музыка", "Движение", "Конструирование", "Ролевые игры"],
+    id: "q2_emotions",
+    category: "Эмоции",
+    question: "Как ребёнок выражает свои эмоции и чувства?",
+    type: "choice",
+    options: [
+      "Называет эмоции словами, объясняет причины",
+      "Показывает мимикой и жестами",
+      "Выражает через крик, плач, агрессию",
+      "Подавляет эмоции, замыкается"
+    ],
   },
   {
-    id: "routine_flexibility",
-    category: "Поведение",
-    question: "Насколько гибко ребёнок относится к изменениям в распорядке?",
+    id: "q3_sensory",
+    category: "Сенсорика",
+    question: "Как ребёнок реагирует на громкие звуки, яркий свет, прикосновения?",
     type: "scale",
   },
   {
-    id: "goals",
-    category: "Цели",
-    question: "Что бы вы хотели улучшить в первую очередь?",
+    id: "q4_routine",
+    category: "Поведение",
+    question: "Как ребёнок реагирует на изменения в привычном распорядке?",
+    type: "choice",
+    options: [
+      "Спокойно адаптируется к новому",
+      "Нужна подготовка и объяснение",
+      "Выражает беспокойство, но справляется",
+      "Сильный стресс, истерики"
+    ],
+  },
+  {
+    id: "q5_social",
+    category: "Социализация",
+    question: "Как ребёнок ведёт себя в группе детей?",
+    type: "choice",
+    options: [
+      "Активно играет с другими, инициирует игры",
+      "Играет рядом, но отдельно",
+      "Наблюдает со стороны",
+      "Избегает других детей, уходит"
+    ],
+  },
+  {
+    id: "q6_attention",
+    category: "Внимание",
+    question: "Как долго ребёнок может удерживать внимание на интересном занятии?",
+    type: "choice",
+    options: [
+      "Более 20 минут, увлечённо",
+      "10-20 минут с небольшими перерывами",
+      "5-10 минут, часто отвлекается",
+      "Менее 5 минут, сразу переключается"
+    ],
+  },
+  {
+    id: "q7_interests",
+    category: "Интересы",
+    question: "Какие активности больше всего увлекают ребёнка? (выберите несколько)",
     type: "multiChoice",
     options: [
-      "Коммуникативные навыки",
-      "Управление эмоциями",
-      "Социальное взаимодействие",
-      "Концентрацию внимания",
-      "Снижение тревожности",
+      "Рисование и творчество",
+      "Музыка и звуки",
+      "Движение и танцы",
+      "Конструирование",
+      "Ролевые игры и фантазии",
+      "Сенсорные игры (песок, вода)",
+      "Книги и истории"
     ],
   },
 ];
@@ -102,11 +111,11 @@ const questions: Question[] = [
 export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [visitedQuestions, setVisitedQuestions] = useState<string[]>(["communication_level"]);
   const [loading, setLoading] = useState(false);
 
-  const currentQuestion = questions.find((q) => q.id === visitedQuestions[currentStep]);
-  const progress = ((currentStep + 1) / visitedQuestions.length) * 100;
+  const currentQuestion = questions[currentStep];
+  const progress = ((currentStep + 1) / questions.length) * 100;
+  const totalQuestions = questions.length;
 
   const handleAnswer = (value: any) => {
     if (!currentQuestion) return;
@@ -119,24 +128,8 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
       return;
     }
 
-    // Adaptive logic: determine next question
-    if (currentQuestion.adaptNext) {
-      const nextQuestionId = currentQuestion.adaptNext(answers[currentQuestion.id]);
-      if (nextQuestionId && !visitedQuestions.includes(nextQuestionId)) {
-        setVisitedQuestions([...visitedQuestions, nextQuestionId]);
-      }
-    } else {
-      // Find next unvisited question
-      const nextUnvisited = questions.find((q) => !visitedQuestions.includes(q.id));
-      if (nextUnvisited) {
-        setVisitedQuestions([...visitedQuestions, nextUnvisited.id]);
-      }
-    }
-
-    if (currentStep < visitedQuestions.length - 1) {
+    if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
-    } else if (visitedQuestions.length < questions.length) {
-      setCurrentStep(visitedQuestions.length);
     } else {
       handleComplete();
     }
@@ -160,8 +153,8 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
           user_id: userData.user.id,
           assessment_data: answers,
           completed: true,
-          current_step: visitedQuestions.length,
-          total_steps: visitedQuestions.length,
+          current_step: questions.length,
+          total_steps: questions.length,
           completed_at: new Date().toISOString(),
         })
         .select()
@@ -185,11 +178,11 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
       <div className="container mx-auto max-w-3xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="mr-2" /> Назад
+          <Button variant="ghost" onClick={onBack} disabled={currentStep === 0}>
+            <ArrowLeft className="mr-2" /> Назад к регистрации
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Шаг {currentStep + 1} из {visitedQuestions.length}
+          <div className="text-sm font-medium text-primary">
+            Вопрос {currentStep + 1} из {totalQuestions}
           </div>
         </div>
 
@@ -282,16 +275,42 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
-            <ArrowLeft className="mr-2" /> Назад
+        <div className="flex justify-between gap-4">
+          <Button 
+            variant="outline" 
+            onClick={handleBack} 
+            disabled={currentStep === 0}
+            size="lg"
+            className="flex-1"
+          >
+            <ArrowLeft className="mr-2" /> Предыдущий
           </Button>
-          <Button onClick={handleNext} disabled={loading}>
-            {currentStep === visitedQuestions.length - 1 && visitedQuestions.length >= 5
-              ? "Завершить"
-              : "Далее"}{" "}
+          <Button 
+            onClick={handleNext} 
+            disabled={loading}
+            variant="therapeutic"
+            size="lg"
+            className="flex-1"
+          >
+            {currentStep === questions.length - 1 ? "Завершить диагностику" : "Следующий"}
             <ArrowRight className="ml-2" />
           </Button>
+        </div>
+        
+        {/* Progress indicator dots */}
+        <div className="flex justify-center gap-2 pt-4">
+          {questions.map((_, index) => (
+            <div
+              key={index}
+              className={`h-2 rounded-full transition-all ${
+                index === currentStep
+                  ? "w-8 bg-primary"
+                  : index < currentStep
+                  ? "w-2 bg-primary/50"
+                  : "w-2 bg-muted"
+              }`}
+            />
+          ))}
         </div>
       </div>
     </div>

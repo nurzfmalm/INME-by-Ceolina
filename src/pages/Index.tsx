@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Onboarding, OnboardingData } from "@/components/Onboarding";
+import { AdaptiveDiagnostic } from "@/components/AdaptiveDiagnostic";
 import { Dashboard } from "@/components/Dashboard";
 import { ArtTherapy } from "@/components/ArtTherapy";
 import { Gallery } from "@/components/Gallery";
@@ -10,6 +11,7 @@ import { DualDrawing } from "@/components/DualDrawing";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [diagnosticComplete, setDiagnosticComplete] = useState(false);
   const [childData, setChildData] = useState<OnboardingData | null>(null);
   const [currentSection, setCurrentSection] = useState<string>("dashboard");
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
@@ -18,6 +20,11 @@ const Index = () => {
   const handleOnboardingComplete = (data: OnboardingData) => {
     setChildData(data);
     setOnboardingComplete(true);
+  };
+
+  const handleDiagnosticComplete = (assessmentId: string) => {
+    console.log("Assessment completed:", assessmentId);
+    setDiagnosticComplete(true);
   };
 
   const handleNavigate = (section: string) => {
@@ -32,6 +39,15 @@ const Index = () => {
 
   if (!onboardingComplete || !childData) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  if (!diagnosticComplete) {
+    return (
+      <AdaptiveDiagnostic
+        onComplete={handleDiagnosticComplete}
+        onBack={() => setOnboardingComplete(false)}
+      />
+    );
   }
 
   if (currentSection === "art-therapy") {
