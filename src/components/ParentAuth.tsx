@@ -18,21 +18,7 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
   const [password, setPassword] = useState("");
   const [childName, setChildName] = useState("");
   const [childAge, setChildAge] = useState("");
-  const [childInterests, setChildInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const interestOptions = [
-    "Рисование", "Музыка", "Спорт", "Чтение", 
-    "Танцы", "Игры", "Природа", "Животные"
-  ];
-
-  const toggleInterest = (interest: string) => {
-    setChildInterests(prev => 
-      prev.includes(interest) 
-        ? prev.filter(i => i !== interest)
-        : [...prev, interest]
-    );
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +70,6 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
             .update({ 
               child_name: childName,
               child_age: parseInt(childAge),
-              interests: childInterests,
               parent_email: email
             })
             .eq("id", data.user.id);
@@ -182,24 +167,6 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
                   required
                   placeholder="От 3 до 12 лет"
                 />
-              </div>
-
-              <div>
-                <Label>Интересы ребёнка (выберите несколько)</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {interestOptions.map((interest) => (
-                    <Button
-                      key={interest}
-                      type="button"
-                      variant={childInterests.includes(interest) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleInterest(interest)}
-                      className="w-full"
-                    >
-                      {interest}
-                    </Button>
-                  ))}
-                </div>
               </div>
             </>
           )}
