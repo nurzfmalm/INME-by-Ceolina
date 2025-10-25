@@ -22,14 +22,12 @@ interface GalleryProps {
 
 interface Artwork {
   id: string;
-  image_url: string;
-  storage_path: string;
+  image_url: string | null;
+  storage_path: string | null;
   created_at: string;
-  emotions_used: Record<string, number>;
-  colors_used: string[];
-  metadata: {
-    session_duration?: number;
-  };
+  emotions_used: any; // Json type from database
+  colors_used: any; // Json type from database
+  metadata: any; // Json type from database
 }
 
 export const Gallery = ({ onBack, childName }: GalleryProps) => {

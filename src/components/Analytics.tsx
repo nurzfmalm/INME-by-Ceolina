@@ -39,11 +39,9 @@ interface AnalyticsProps {
 interface Artwork {
   id: string;
   created_at: string;
-  emotions_used: Record<string, number>;
-  colors_used: string[];
-  metadata: {
-    session_duration?: number;
-  };
+  emotions_used: any; // Json type from database
+  colors_used: any; // Json type from database
+  metadata: any; // Json type from database
 }
 
 interface AIAnalysis {
@@ -169,8 +167,9 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
     
     artworks.forEach(art => {
       Object.entries(art.emotions_used || {}).forEach(([emotion, count]) => {
-        emotionTotals[emotion] = (emotionTotals[emotion] || 0) + count;
-        totalEmotions += count;
+        const numCount = Number(count) || 0;
+        emotionTotals[emotion] = (emotionTotals[emotion] || 0) + numCount;
+        totalEmotions += numCount;
       });
     });
 
@@ -270,8 +269,9 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
   // Prepare emotion distribution
   const emotionDistribution = Object.entries(
     artworks.reduce((acc, art) => {
-      Object.entries(art.emotions_used).forEach(([emotion, count]) => {
-        acc[emotion] = (acc[emotion] || 0) + count;
+      Object.entries(art.emotions_used || {}).forEach(([emotion, count]) => {
+        const numCount = Number(count) || 0;
+        acc[emotion] = (acc[emotion] || 0) + numCount;
       });
       return acc;
     }, {} as Record<string, number>)
@@ -310,8 +310,9 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
 
   // Prepare radar chart data for emotional profile
   const emotionTotals = filteredArtworks.reduce((acc, art) => {
-    Object.entries(art.emotions_used).forEach(([emotion, count]) => {
-      acc[emotion] = (acc[emotion] || 0) + count;
+    Object.entries(art.emotions_used || {}).forEach(([emotion, count]) => {
+      const numCount = Number(count) || 0;
+      acc[emotion] = (acc[emotion] || 0) + numCount;
     });
     return acc;
   }, {} as Record<string, number>);
