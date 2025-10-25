@@ -6,7 +6,6 @@ import { Gallery } from "@/components/Gallery";
 import { Analytics } from "@/components/Analytics";
 import { Tasks } from "@/components/Tasks";
 import { Rewards } from "@/components/Rewards";
-import { Garden } from "@/components/Garden";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -80,15 +79,6 @@ const Index = () => {
   if (currentSection === "rewards") {
     return (
       <Rewards
-        onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
-      />
-    );
-  }
-
-  if (currentSection === "garden") {
-    return (
-      <Garden
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
