@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Flower2 } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 
 interface DashboardProps {
@@ -38,6 +38,27 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       icon: BarChart3,
       gradient: "bg-gradient-calm",
       description: "Отслеживай прогресс",
+    },
+    {
+      id: "tasks",
+      title: "Задания",
+      icon: Target,
+      gradient: "bg-gradient-creative",
+      description: "Выполняй задания и получай награды",
+    },
+    {
+      id: "rewards",
+      title: "Награды",
+      icon: ShoppingBag,
+      gradient: "bg-gradient-warm",
+      description: "Разблокируй новые возможности",
+    },
+    {
+      id: "garden",
+      title: "Сад Эмоций",
+      icon: Flower2,
+      gradient: "bg-gradient-calm",
+      description: "Смотри свой эмоциональный рост",
     },
   ];
 

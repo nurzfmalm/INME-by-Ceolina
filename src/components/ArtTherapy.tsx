@@ -9,6 +9,8 @@ import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 interface ArtTherapyProps {
   onBack: () => void;
   childName: string;
+  taskId?: string | null;
+  taskPrompt?: string | null;
 }
 
 const COLORS = [
@@ -20,7 +22,7 @@ const COLORS = [
   { name: "Нежность", color: "#FFB4D6", emotion: "gentle" },
 ];
 
-export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
+export const ArtTherapy = ({ onBack, childName, taskId, taskPrompt }: ArtTherapyProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentColor, setCurrentColor] = useState(COLORS[0].color);
@@ -181,6 +183,7 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
           storage_path: fileName,
           emotions_used: emotionStats,
           colors_used: colorsUsed,
+          task_id: taskId || null,
           metadata: {
             line_width: lineWidth,
             session_duration: Math.floor((Date.now() - sessionStart) / 1000),
@@ -188,6 +191,44 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
         });
 
       if (dbError) throw dbError;
+
+      // If this was from a task, mark it complete and award tokens
+      if (taskId && isAuth) {
+        const { error: taskError } = await supabase
+          .from("user_tasks")
+          .insert({
+            user_id: userId,
+            task_id: taskId,
+          });
+
+        if (!taskError) {
+          // Get task to find reward amount
+          const { data: taskData } = await supabase
+            .from("art_tasks")
+            .select("emotion_tokens_reward")
+            .eq("id", taskId)
+            .single();
+
+          if (taskData) {
+            await supabase.from("emotion_tokens").insert({
+              user_id: userId,
+              amount: taskData.emotion_tokens_reward,
+              reason: "Task completed",
+            });
+          }
+        }
+      } else if (taskId && !isAuth) {
+        // Demo mode task completion
+        const completed = JSON.parse(
+          localStorage.getItem("ceolinaCompletedTasks") || "[]"
+        );
+        completed.push(taskId);
+        localStorage.setItem("ceolinaCompletedTasks", JSON.stringify(completed));
+
+        const currentTokens = parseInt(localStorage.getItem("ceolinaTokens") || "0");
+        const taskReward = 10; // Default reward for demo
+        localStorage.setItem("ceolinaTokens", (currentTokens + taskReward).toString());
+      }
 
       await supabase.from("progress_sessions").insert({
         user_id: userId,
@@ -202,7 +243,9 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
         },
       });
 
-      toast.success("Рисунок сохранён в галерею! 🎨");
+      toast.success(
+        taskId ? "Задание выполнено! Токены начислены 🎉" : "Рисунок сохранён в галерею! 🎨"
+      );
       clearCanvas();
     } catch (error) {
       console.error("Error saving artwork:", error);
@@ -224,7 +267,7 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
             <div>
               <h1 className="text-2xl font-bold">АРТ - Терапия</h1>
               <p className="text-sm text-muted-foreground">
-                Рисуй и выражай свои эмоции, {childName}
+                {taskPrompt || `Рисуй и выражай свои эмоции, ${childName}`}
               </p>
             </div>
           </div>
