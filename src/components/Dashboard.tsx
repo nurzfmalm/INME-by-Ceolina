@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users, Sparkles } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 
 interface DashboardProps {
@@ -45,13 +45,6 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       icon: BarChart3,
       gradient: "bg-gradient-calm",
       description: "Отслеживай прогресс",
-    },
-    {
-      id: "ai-assistant",
-      title: "ИИ-Помощник",
-      icon: Sparkles,
-      gradient: "bg-gradient-creative",
-      description: "Цеолина проанализирует твой прогресс",
     },
     {
       id: "tasks",

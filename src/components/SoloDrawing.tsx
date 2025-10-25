@@ -5,6 +5,7 @@ import { ArrowLeft, Palette, Save, Trash2, BarChart3, Sparkles } from "lucide-re
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
+import { FloatingAssistant } from "./FloatingAssistant";
 
 interface SoloDrawingProps {
   onBack: () => void;
@@ -597,6 +598,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           </Card>
         )}
       </main>
+      
+      <FloatingAssistant taskPrompt={taskPrompt} contextType="drawing" />
     </div>
   );
 };
