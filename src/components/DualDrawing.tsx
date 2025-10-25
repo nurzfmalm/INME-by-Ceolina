@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getCurrentUserId } from "@/lib/auth-helpers";
+import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { CeolinaGuidance } from "./CeolinaGuidance";
 
 interface DualDrawingProps {
@@ -182,9 +182,15 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
   const createSession = async () => {
     try {
+      const authed = await isUserAuthenticated();
+      if (!authed) {
+        toast.error("Войдите, чтобы создать совместную сессию");
+        return;
+      }
+
       const userId = await getCurrentUserId();
       if (!userId) {
-        toast.error("Необходим пользователь");
+        toast.error("Не удалось определить пользователя");
         return;
       }
 
@@ -198,9 +204,9 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           is_active: true,
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error || !data) throw error || new Error("Сессия не создана");
 
       setSessionId(data.id);
       setSessionCode(code);
@@ -208,7 +214,8 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       toast.success(`Сессия создана! Код: ${code}`);
     } catch (error) {
       console.error("Error creating session:", error);
-      toast.error("Ошибка при создании сессии");
+      const msg = error instanceof Error ? error.message : "Ошибка при создании сессии";
+      toast.error(msg.includes("row level security") ? "Требуется вход в систему для совместной сессии" : msg);
     }
   };
 
@@ -219,16 +226,20 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     }
 
     try {
+      const authed = await isUserAuthenticated();
+      if (!authed) {
+        toast.error("Войдите, чтобы присоединиться к совместной сессии");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("drawing_sessions")
         .select("*")
         .eq("session_code", joinCode.toUpperCase())
         .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-
-      if (!data) {
+      if (error || !data) {
         toast.error("Сессия не найдена");
         return;
       }
@@ -314,6 +325,9 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     if (!sessionId) return;
 
     try {
+      const authed = await isUserAuthenticated();
+      if (!authed) return; // Avoid RLS/FK errors in demo mode
+
       const userId = await getCurrentUserId();
       if (!userId) return;
 
