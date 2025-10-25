@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Palette, Save, Trash2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Palette, Save, Trash2, BarChart3, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
@@ -14,8 +14,20 @@ interface SoloDrawingProps {
 }
 
 import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
+import { 
+  getUnlockedRewards, 
+  REWARD_COLORS, 
+  getBrushType, 
+  getAvailableTextures, 
+  getAvailableBackgrounds,
+  applyBrushEffect,
+  applyTexture,
+  type BrushType,
+  type TextureType,
+  type Background
+} from "@/lib/rewards-system";
 
-const COLORS = EMOTION_COLOR_PALETTE.map(c => ({
+const BASE_COLORS = EMOTION_COLOR_PALETTE.map(c => ({
   name: c.name,
   color: c.hex,
   emotion: c.emotion,
@@ -26,8 +38,12 @@ const COLORS = EMOTION_COLOR_PALETTE.map(c => ({
 export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(COLORS[0].color);
+  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].color);
   const [lineWidth, setLineWidth] = useState(5);
+  const [brushType, setBrushType] = useState<BrushType>("normal");
+  const [currentTexture, setCurrentTexture] = useState<TextureType>("none");
+  const [currentBackground, setCurrentBackground] = useState<Background>(getAvailableBackgrounds()[0]);
+  const [availableColors, setAvailableColors] = useState(BASE_COLORS);
   const [emotionStats, setEmotionStats] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [sessionStart] = useState(Date.now());
@@ -35,6 +51,23 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const [analysis, setAnalysis] = useState<any>(null);
   const [taskAnalysis, setTaskAnalysis] = useState<any>(null);
   const [showTaskResult, setShowTaskResult] = useState(false);
+
+  useEffect(() => {
+    // Загружаем разблокированные награды
+    const unlocked = getUnlockedRewards();
+    
+    // Добавляем цвета наград если разблокированы
+    const colors = [...BASE_COLORS];
+    REWARD_COLORS.forEach(rewardColor => {
+      if (unlocked.includes(rewardColor.id)) {
+        colors.push(rewardColor);
+      }
+    });
+    setAvailableColors(colors);
+    
+    // Устанавливаем тип кисти
+    setBrushType(getBrushType());
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -47,11 +80,29 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Применяем фон
+    if (currentBackground.gradient.startsWith('linear-gradient')) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        const gradient = tempCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        // Парсим градиент (упрощенно)
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        tempCtx.fillStyle = gradient;
+        tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempCanvas, 0, 0);
+      }
+    } else {
+      ctx.fillStyle = currentBackground.gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-  }, []);
+  }, [currentBackground]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -68,7 +119,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     ctx.beginPath();
     ctx.moveTo(x, y);
 
-    const emotion = COLORS.find((c) => c.color === currentColor)?.emotion || "other";
+    const emotion = availableColors.find((c) => c.color === currentColor)?.emotion || "other";
     setEmotionStats((prev) => ({
       ...prev,
       [emotion]: (prev[emotion] || 0) + 1,
@@ -88,10 +139,17 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    ctx.strokeStyle = currentColor;
+    // Применяем эффект кисти
+    applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
+    
     ctx.lineWidth = lineWidth;
     ctx.lineTo(x, y);
     ctx.stroke();
+    
+    // Применяем текстуру если активна
+    if (currentTexture !== "none") {
+      applyTexture(ctx, x, y, currentTexture, currentColor);
+    }
   };
 
   const stopDrawing = () => {
@@ -105,13 +163,13 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = currentBackground.gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     setEmotionStats({});
   };
 
   const generateAnalysis = async () => {
-    const colorsUsed = COLORS
+    const colorsUsed = availableColors
       .filter((c) => emotionStats[c.emotion])
       .map((c) => c.name);
     
@@ -137,7 +195,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (!taskId || !taskPrompt) return null;
 
     try {
-      const colorsUsed = COLORS
+      const colorsUsed = availableColors
         .filter((c) => emotionStats[c.emotion])
         .map((c) => c.color);
 
@@ -187,7 +245,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         const dataUrl = canvas.toDataURL("image/png");
         const artworks = JSON.parse(localStorage.getItem('ceolinaArtworks') || '[]');
         
-        const colorsUsed = COLORS
+        const colorsUsed = availableColors
           .filter((c) => emotionStats[c.emotion])
           .map((c) => c.color);
         
@@ -246,7 +304,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         .from("artworks")
         .getPublicUrl(fileName);
 
-      const colorsUsed = COLORS
+      const colorsUsed = availableColors
         .filter((c) => emotionStats[c.emotion])
         .map((c) => c.color);
 
@@ -342,11 +400,11 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Palette className="text-primary" size={20} />
-              <h3 className="font-semibold">Палитра эмоций ({COLORS.length} цветов)</h3>
+              <h3 className="font-semibold">Палитра эмоций ({availableColors.length} цветов)</h3>
             </div>
           </div>
           <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-2 max-h-48 overflow-y-auto p-2">
-            {COLORS.map((item) => (
+            {availableColors.map((item) => (
               <button
                 key={item.color}
                 onClick={() => setCurrentColor(item.color)}
@@ -368,14 +426,74 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           {currentColor && (
             <div className="mt-3 text-center">
               <p className="text-sm font-semibold">
-                {COLORS.find(c => c.color === currentColor)?.name}
+                {availableColors.find(c => c.color === currentColor)?.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                {COLORS.find(c => c.color === currentColor)?.note}
+                {availableColors.find(c => c.color === currentColor)?.note}
               </p>
             </div>
           )}
         </Card>
+
+        {/* Панель инструментов наград */}
+        {(getBrushType() !== "normal" || getAvailableTextures().length > 1 || getAvailableBackgrounds().length > 1) && (
+          <Card className="p-4 border-0 bg-card shadow-soft">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Sparkles className="text-primary" size={20} />
+              Награды
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Кисти */}
+              {getBrushType() !== "normal" && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Кисть: {
+                    brushType === "sparkle" ? "✨ Блестящая" :
+                    brushType === "rainbow" ? "🌈 Радужная" : "Обычная"
+                  }</p>
+                </div>
+              )}
+              
+              {/* Текстуры */}
+              {getAvailableTextures().length > 1 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Текстура:</p>
+                  <div className="flex gap-2">
+                    {getAvailableTextures().map(texture => (
+                      <Button
+                        key={texture}
+                        size="sm"
+                        variant={currentTexture === texture ? "default" : "outline"}
+                        onClick={() => setCurrentTexture(texture)}
+                      >
+                        {texture === "none" ? "Нет" : 
+                         texture === "stars" ? "⭐ Звёзды" : "❤️ Сердца"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Фоны */}
+              {getAvailableBackgrounds().length > 1 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Фон:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {getAvailableBackgrounds().map(bg => (
+                      <Button
+                        key={bg.id}
+                        size="sm"
+                        variant={currentBackground.id === bg.id ? "default" : "outline"}
+                        onClick={() => setCurrentBackground(bg)}
+                      >
+                        {bg.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         <Card className="p-4 border-0 bg-card shadow-soft">
           <canvas
