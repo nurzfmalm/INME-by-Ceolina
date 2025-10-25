@@ -19,6 +19,13 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       description: "Рисуй и выражай свои эмоции",
     },
     {
+      id: "learning-path",
+      title: "Моя программа",
+      icon: Brain,
+      gradient: "bg-gradient-calm",
+      description: "Твой путь обучения",
+    },
+    {
       id: "dual-drawing",
       title: "Совместное рисование",
       icon: Users,
@@ -53,6 +60,13 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       gradient: "bg-gradient-warm",
       description: "Разблокируй новые возможности",
     },
+    {
+      id: "parent-dashboard",
+      title: "Панель родителя",
+      icon: Heart,
+      gradient: "bg-gradient-warm",
+      description: "Детальная аналитика",
+    },
   ];
 
   return (
@@ -70,7 +84,7 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
                 <p className="text-lg font-semibold">{childData.childName || "друг"}!</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
               <Settings size={24} />
             </Button>
           </div>

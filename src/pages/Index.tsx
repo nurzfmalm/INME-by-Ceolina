@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Onboarding, OnboardingData } from "@/components/Onboarding";
 import { AdaptiveDiagnostic } from "@/components/AdaptiveDiagnostic";
 import { Dashboard } from "@/components/Dashboard";
@@ -8,6 +10,9 @@ import { Analytics } from "@/components/Analytics";
 import { Tasks } from "@/components/Tasks";
 import { Rewards } from "@/components/Rewards";
 import { DualDrawing } from "@/components/DualDrawing";
+import { LearningPath } from "@/components/LearningPath";
+import { ParentDashboard } from "@/components/ParentDashboard";
+import { SensorySettings } from "@/components/SensorySettings";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -22,8 +27,28 @@ const Index = () => {
     setOnboardingComplete(true);
   };
 
-  const handleDiagnosticComplete = (assessmentId: string) => {
-    console.log("Assessment completed:", assessmentId);
+  const handleDiagnosticComplete = async (assessmentId: string) => {
+    console.log("Diagnostic completed:", assessmentId);
+    
+    // Generate learning path
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        toast.promise(
+          supabase.functions.invoke('generate-learning-path', {
+            body: { assessmentId }
+          }),
+          {
+            loading: 'Создаём персональную программу...',
+            success: 'Программа готова!',
+            error: 'Ошибка создания программы',
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error generating learning path:", error);
+    }
+    
     setDiagnosticComplete(true);
   };
 
@@ -105,6 +130,23 @@ const Index = () => {
   if (currentSection === "rewards") {
     return (
       <Rewards
+        onBack={() => setCurrentSection("dashboard")}
+        childName={childData.childName}
+      />
+    );
+  }
+
+  if (currentSection === "settings") {
+    return <SensorySettings onBack={() => setCurrentSection("dashboard")} />;
+  }
+
+  if (currentSection === "learning-path") {
+    return <LearningPath onBack={() => setCurrentSection("dashboard")} />;
+  }
+
+  if (currentSection === "parent-dashboard") {
+    return (
+      <ParentDashboard
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
