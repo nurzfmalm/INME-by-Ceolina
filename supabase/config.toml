@@ -1,0 +1,4 @@
+project_id = "bczdklmojomdownmyssx"
+
+[functions.analyze-artworks]
+verify_jwt = false

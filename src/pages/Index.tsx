@@ -3,6 +3,7 @@ import { Onboarding, OnboardingData } from "@/components/Onboarding";
 import { Dashboard } from "@/components/Dashboard";
 import { ArtTherapy } from "@/components/ArtTherapy";
 import { Gallery } from "@/components/Gallery";
+import { Analytics } from "@/components/Analytics";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -34,6 +35,15 @@ const Index = () => {
   if (currentSection === "gallery") {
     return (
       <Gallery
+        onBack={() => setCurrentSection("dashboard")}
+        childName={childData.childName}
+      />
+    );
+  }
+
+  if (currentSection === "analytics") {
+    return (
+      <Analytics
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
