@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Palette, Save, Trash2, BarChart3, Sparkles } from "lucide-react";
+import { ArrowLeft, Palette, Save, Trash2, BarChart3, Sparkles, Eraser, Undo } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
@@ -52,6 +52,9 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const [analysis, setAnalysis] = useState<any>(null);
   const [taskAnalysis, setTaskAnalysis] = useState<any>(null);
   const [showTaskResult, setShowTaskResult] = useState(false);
+  const [isEraser, setIsEraser] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyStep, setHistoryStep] = useState(-1);
 
   useEffect(() => {
     // Загружаем разблокированные награды
@@ -103,9 +106,59 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+    
+    // Сохраняем начальное состояние в историю
+    if (history.length === 0) {
+      const dataUrl = canvas.toDataURL();
+      setHistory([dataUrl]);
+      setHistoryStep(0);
+    }
   }, [currentBackground]);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const saveToHistory = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL();
+    const newHistory = history.slice(0, historyStep + 1);
+    newHistory.push(dataUrl);
+    setHistory(newHistory);
+    setHistoryStep(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (historyStep > 0) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+
+      const img = new Image();
+      img.src = history[historyStep - 1];
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        setHistoryStep(historyStep - 1);
+      };
+    }
+  };
+
+  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    
+    if ('touches' in e) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    }
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -113,21 +166,21 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (!ctx) return;
 
     setIsDrawing(true);
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCoordinates(e);
 
     ctx.beginPath();
     ctx.moveTo(x, y);
 
-    const emotion = availableColors.find((c) => c.color === currentColor)?.emotion || "other";
-    setEmotionStats((prev) => ({
-      ...prev,
-      [emotion]: (prev[emotion] || 0) + 1,
-    }));
+    if (!isEraser) {
+      const emotion = availableColors.find((c) => c.color === currentColor)?.emotion || "other";
+      setEmotionStats((prev) => ({
+        ...prev,
+        [emotion]: (prev[emotion] || 0) + 1,
+      }));
+    }
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
 
     const canvas = canvasRef.current;
@@ -136,25 +189,35 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCoordinates(e);
 
-    // Применяем эффект кисти
-    applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
-    
     ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+
+    if (isEraser) {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = currentColor;
+      // Применяем эффект кисти
+      applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
+    }
+
     ctx.lineTo(x, y);
     ctx.stroke();
     
-    // Применяем текстуру если активна
-    if (currentTexture !== "none") {
+    // Применяем текстуру если активна и не ластик
+    if (!isEraser && currentTexture !== "none") {
       applyTexture(ctx, x, y, currentTexture, currentColor);
     }
   };
 
   const stopDrawing = () => {
-    setIsDrawing(false);
+    if (isDrawing) {
+      setIsDrawing(false);
+      saveToHistory();
+    }
   };
 
   const clearCanvas = () => {
@@ -166,6 +229,11 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
     ctx.fillStyle = currentBackground.gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Сохраняем очищенное состояние в историю
+    const dataUrl = canvas.toDataURL();
+    setHistory([dataUrl]);
+    setHistoryStep(0);
     setEmotionStats({});
   };
 
@@ -317,10 +385,10 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           storage_path: fileName,
           emotions_used: emotionStats,
           colors_used: colorsUsed,
-          task_id: taskId || null,
           metadata: {
             line_width: lineWidth,
             session_duration: Math.floor((Date.now() - sessionStart) / 1000),
+            task_id: taskId || null,
           },
         });
 
@@ -344,7 +412,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             await supabase.from("emotion_tokens").insert({
               user_id: userId,
               amount: analysis.tokensAwarded,
-              reason: `Task completed: ${taskPrompt}`,
+              source: `Task completed: ${taskPrompt}`,
             });
             toast.success(`Задание выполнено! Получено ${analysis.tokensAwarded} токенов! 🎉`);
           }
@@ -357,8 +425,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         user_id: userId,
         session_type: "art_therapy",
         duration_seconds: Math.floor((Date.now() - sessionStart) / 1000),
-        emotional_analysis: emotionStats,
-        behavioral_metrics: {
+        metadata: {
+          emotional_analysis: emotionStats,
           colors_count: colorsUsed.length,
           primary_emotion: Object.keys(emotionStats).sort(
             (a, b) => emotionStats[b] - emotionStats[a]
@@ -408,9 +476,12 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             {availableColors.map((item) => (
               <button
                 key={item.color}
-                onClick={() => setCurrentColor(item.color)}
+                onClick={() => {
+                  setCurrentColor(item.color);
+                  setIsEraser(false);
+                }}
                 className={`relative group transition-all hover:scale-125 ${
-                  currentColor === item.color ? "scale-125 z-10" : ""
+                  currentColor === item.color && !isEraser ? "scale-125 z-10" : ""
                 }`}
                 title={`${item.name} - ${item.note}`}
               >
@@ -418,13 +489,13 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
                   className="w-8 h-8 rounded-full shadow-soft"
                   style={{ backgroundColor: item.color }}
                 />
-                {currentColor === item.color && (
+                {currentColor === item.color && !isEraser && (
                   <div className="absolute inset-0 rounded-full border-2 border-primary animate-pulse" />
                 )}
               </button>
             ))}
           </div>
-          {currentColor && (
+          {currentColor && !isEraser && (
             <div className="mt-3 text-center">
               <p className="text-sm font-semibold">
                 {availableColors.find(c => c.color === currentColor)?.name}
@@ -503,11 +574,30 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
-            className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted"
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted touch-none"
           />
         </Card>
 
         <div className="flex flex-wrap gap-3">
+          <Button 
+            variant={isEraser ? "default" : "outline"} 
+            onClick={() => setIsEraser(!isEraser)}
+            disabled={isSaving}
+          >
+            <Eraser size={18} className="mr-2" />
+            {isEraser ? "Режим ластика" : "Ластик"}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={undo} 
+            disabled={isSaving || historyStep <= 0}
+          >
+            <Undo size={18} className="mr-2" />
+            Отменить
+          </Button>
           <Button variant="outline" onClick={clearCanvas} disabled={isSaving}>
             <Trash2 size={18} className="mr-2" />
             Очистить
@@ -521,7 +611,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             Посмотреть анализ
           </Button>
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">Размер кисти:</span>
+            <span className="text-sm text-muted-foreground">Размер {isEraser ? "ластика" : "кисти"}:</span>
             <input
               type="range"
               min="1"
