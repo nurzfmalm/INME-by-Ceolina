@@ -19,6 +19,7 @@ export const ParentDashboard = ({ onBack, childName }: ParentDashboardProps) => 
   const [analytics, setAnalytics] = useState<any>(null);
   const [progressData, setProgressData] = useState<any[]>([]);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [childProfile, setChildProfile] = useState<any>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -31,6 +32,15 @@ export const ParentDashboard = ({ onBack, childName }: ParentDashboardProps) => 
         toast.error("Необходима авторизация");
         return;
       }
+
+      // Load child profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userData.user.id)
+        .single();
+
+      setChildProfile(profile);
 
       // Load session analytics
       const { data: sessionsData } = await supabase
@@ -133,6 +143,43 @@ export const ParentDashboard = ({ onBack, childName }: ParentDashboardProps) => 
           <h1 className="text-3xl font-bold mb-2">Панель родителя</h1>
           <p className="text-muted-foreground">Прогресс и аналитика для {childName}</p>
         </div>
+
+        {childProfile && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                Профиль ребёнка
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Имя</p>
+                  <p className="font-semibold">{childProfile.child_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Возраст</p>
+                  <p className="font-semibold">{childProfile.child_age ? `${childProfile.child_age} лет` : 'Не указан'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Интересы</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {childProfile.interests && childProfile.interests.length > 0 ? (
+                      childProfile.interests.map((interest: string) => (
+                        <Badge key={interest} variant="secondary">
+                          {interest}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Не указаны</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
