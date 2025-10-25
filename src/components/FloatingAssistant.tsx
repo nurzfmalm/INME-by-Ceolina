@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Textarea } from "./ui/textarea";
@@ -22,6 +22,7 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasShownAutoHint, setHasShownAutoHint] = useState(false);
 
   const getInitialMessage = () => {
     if (contextType === "drawing" && taskPrompt) {
@@ -29,6 +30,31 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
     }
     return "Привет! Я Цеолина, твой помощник. Могу подсказать что делать! 💡";
   };
+
+  const getAutoHint = () => {
+    if (contextType === "drawing" && taskPrompt) {
+      return "Давай начнём! Попробуй выбрать цвет, который отражает твоё настроение прямо сейчас. Какие эмоции ты чувствуешь? 🎨";
+    }
+    return "Выбери любое задание, которое тебе интересно! Я помогу тебе его выполнить. Давай создадим что-то красивое вместе! ✨";
+  };
+
+  // Auto-show hint after 5 seconds
+  useEffect(() => {
+    if (!hasShownAutoHint && contextType === "drawing") {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+        setMessages([
+          {
+            role: "assistant",
+            content: getAutoHint(),
+          },
+        ]);
+        setHasShownAutoHint(true);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [hasShownAutoHint, contextType]);
 
   const handleOpen = () => {
     setIsOpen(true);

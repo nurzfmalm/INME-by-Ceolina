@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
 import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
+import { FloatingAssistant } from "./FloatingAssistant";
 
 interface DashboardProps {
   childData: OnboardingData;
@@ -158,6 +159,8 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
           </Card>
         </div>
       </main>
+      
+      <FloatingAssistant contextType="task" />
     </div>
   );
 };
