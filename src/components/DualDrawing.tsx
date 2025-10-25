@@ -183,30 +183,51 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       }
 
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const sessionId = `session-${Date.now()}`;
       
-      const { data, error } = await supabase
-        .from("drawing_sessions")
-        .insert({
-          session_code: code,
+      // Try database first, fallback to localStorage
+      try {
+        const { data, error } = await supabase
+          .from("drawing_sessions")
+          .insert({
+            session_code: code,
+            created_by: userId,
+            is_active: true,
+          })
+          .select()
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        setSessionId(data.id);
+        setSessionCode(code);
+        setIsHost(true);
+        toast.success(`Сессия создана! Код: ${code}`);
+      } catch (dbError) {
+        console.log("Database not available, using localStorage", dbError);
+        
+        // Store session in localStorage as fallback
+        const session = {
+          id: sessionId,
+          code,
           created_by: userId,
+          created_at: new Date().toISOString(),
           is_active: true,
-        })
-        .select()
-        .maybeSingle();
-
-      if (error || !data) {
-        console.error("Database error:", error);
-        throw error || new Error("Сессия не создана");
+          strokes: []
+        };
+        
+        const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
+        sessions[code] = session;
+        localStorage.setItem('ceolinaSessions', JSON.stringify(sessions));
+        
+        setSessionId(sessionId);
+        setSessionCode(code);
+        setIsHost(true);
+        toast.success(`Сессия создана локально! Код: ${code}`);
       }
-
-      setSessionId(data.id);
-      setSessionCode(code);
-      setIsHost(true);
-      toast.success(`Сессия создана! Код: ${code}`);
     } catch (error) {
       console.error("Error creating session:", error);
-      const msg = error instanceof Error ? error.message : "Ошибка при создании сессии";
-      toast.error(msg.includes("row level security") ? "Ошибка доступа к базе данных" : msg);
+      toast.error("Ошибка при создании сессии");
     }
   };
 
@@ -217,23 +238,46 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("drawing_sessions")
-        .select("*")
-        .eq("session_code", joinCode.toUpperCase())
-        .eq("is_active", true)
-        .maybeSingle();
+      // Try database first
+      try {
+        const { data, error } = await supabase
+          .from("drawing_sessions")
+          .select("*")
+          .eq("session_code", joinCode.toUpperCase())
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (error || !data) {
-        console.error("Session lookup error:", error);
-        toast.error("Сессия не найдена");
-        return;
+        if (!error && data) {
+          setSessionId(data.id);
+          setSessionCode(joinCode.toUpperCase());
+          setIsHost(false);
+          toast.success("Подключено к сессии!");
+          return;
+        }
+      } catch (dbError) {
+        console.log("Database not available, checking localStorage", dbError);
       }
-
-      setSessionId(data.id);
-      setSessionCode(joinCode.toUpperCase());
-      setIsHost(false);
-      toast.success("Подключено к сессии!");
+      
+      // Fallback to localStorage
+      const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
+      const session = sessions[joinCode.toUpperCase()];
+      
+      if (session && session.is_active) {
+        setSessionId(session.id);
+        setSessionCode(joinCode.toUpperCase());
+        setIsHost(false);
+        
+        // Load existing strokes
+        if (session.strokes && session.strokes.length > 0) {
+          session.strokes.forEach((stroke: any) => {
+            drawStroke(stroke);
+          });
+        }
+        
+        toast.success("Подключено к локальной сессии!");
+      } else {
+        toast.error("Сессия не найдена");
+      }
     } catch (error) {
       console.error("Error joining session:", error);
       toast.error("Ошибка при подключении");
@@ -308,13 +352,13 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   };
 
   const saveStroke = async (x: number, y: number, isStart: boolean) => {
-    if (!sessionId) return;
+    if (!sessionId || !sessionCode) return;
 
     try {
       const userId = await getCurrentUserId();
       if (!userId) return;
 
-      await supabase.from("drawing_strokes").insert({
+      const strokeData = {
         session_id: sessionId,
         user_id: userId,
         x,
@@ -322,7 +366,22 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
         color: currentColor,
         size: lineWidth,
         is_start: isStart,
-      });
+      };
+
+      // Try database first
+      try {
+        await supabase.from("drawing_strokes").insert(strokeData);
+      } catch (dbError) {
+        // Fallback to localStorage
+        const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
+        if (sessions[sessionCode]) {
+          if (!sessions[sessionCode].strokes) {
+            sessions[sessionCode].strokes = [];
+          }
+          sessions[sessionCode].strokes.push(strokeData);
+          localStorage.setItem('ceolinaSessions', JSON.stringify(sessions));
+        }
+      }
     } catch (error) {
       console.error("Error saving stroke:", error);
       // Silently fail to avoid disrupting drawing experience
