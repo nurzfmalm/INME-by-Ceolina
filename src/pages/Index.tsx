@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Onboarding, OnboardingData } from "@/components/Onboarding";
 import { Dashboard } from "@/components/Dashboard";
 import { ArtTherapy } from "@/components/ArtTherapy";
+import { Gallery } from "@/components/Gallery";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -24,6 +25,15 @@ const Index = () => {
   if (currentSection === "art-therapy") {
     return (
       <ArtTherapy
+        onBack={() => setCurrentSection("dashboard")}
+        childName={childData.childName}
+      />
+    );
+  }
+
+  if (currentSection === "gallery") {
+    return (
+      <Gallery
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
