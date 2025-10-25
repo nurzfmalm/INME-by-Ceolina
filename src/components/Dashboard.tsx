@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 
 interface DashboardProps {
@@ -24,6 +24,13 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       icon: Brain,
       gradient: "bg-gradient-calm",
       description: "Учись через интерактивные сценарии",
+    },
+    {
+      id: "dual-drawing",
+      title: "Совместное рисование",
+      icon: Users,
+      gradient: "bg-gradient-creative",
+      description: "Рисуй вместе с другом",
     },
     {
       id: "gallery",

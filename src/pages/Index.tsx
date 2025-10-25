@@ -6,6 +6,7 @@ import { Gallery } from "@/components/Gallery";
 import { Analytics } from "@/components/Analytics";
 import { Tasks } from "@/components/Tasks";
 import { Rewards } from "@/components/Rewards";
+import { DualDrawing } from "@/components/DualDrawing";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -71,6 +72,15 @@ const Index = () => {
       <Tasks
         onBack={() => setCurrentSection("dashboard")}
         onStartTask={handleStartTask}
+        childName={childData.childName}
+      />
+    );
+  }
+
+  if (currentSection === "dual-drawing") {
+    return (
+      <DualDrawing
+        onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
     );
