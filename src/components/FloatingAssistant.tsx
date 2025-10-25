@@ -142,17 +142,16 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
     <>
       {/* Floating Button */}
       {!isOpen && (
-        <Button
+        <button
           onClick={handleOpen}
-          size="lg"
-          className="fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-float bg-gradient-creative hover:scale-110 transition-transform z-50 animate-gentle-float"
+          className="fixed bottom-6 right-6 w-20 h-20 rounded-full shadow-float hover:scale-110 transition-transform z-50 animate-gentle-float border-4 border-primary overflow-hidden bg-white cursor-pointer"
         >
           <img
             src={ceolinaCharacter}
             alt="Цеолина"
-            className="w-12 h-12"
+            className="w-full h-full object-cover"
           />
-        </Button>
+        </button>
       )}
 
       {/* Chat Window */}
