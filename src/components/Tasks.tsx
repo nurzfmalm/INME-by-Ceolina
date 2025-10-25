@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { Badge } from "@/components/ui/badge";
+import { FloatingAssistant } from "./FloatingAssistant";
 
 interface TasksProps {
   onBack: () => void;
@@ -288,6 +289,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
           </section>
         )}
       </main>
+      
+      <FloatingAssistant contextType="task" />
     </div>
   );
 };
