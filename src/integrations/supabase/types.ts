@@ -14,7 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      adaptive_assessments: {
+        Row: {
+          assessment_data: Json
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          current_step: number | null
+          id: string
+          total_steps: number | null
+          user_id: string
+        }
+        Insert: {
+          assessment_data: Json
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          total_steps?: number | null
+          user_id: string
+        }
+        Update: {
+          assessment_data?: Json
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          total_steps?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_paths: {
+        Row: {
+          completion_percentage: number | null
+          current_week: number | null
+          id: string
+          last_activity: string | null
+          path_data: Json
+          started_at: string | null
+          total_weeks: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_percentage?: number | null
+          current_week?: number | null
+          id?: string
+          last_activity?: string | null
+          path_data: Json
+          started_at?: string | null
+          total_weeks?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_percentage?: number | null
+          current_week?: number | null
+          id?: string
+          last_activity?: string | null
+          path_data?: Json
+          started_at?: string | null
+          total_weeks?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          child_age: number | null
+          child_name: string
+          created_at: string | null
+          id: string
+          parent_email: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          child_age?: number | null
+          child_name: string
+          created_at?: string | null
+          id: string
+          parent_email?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          child_age?: number | null
+          child_name?: string
+          created_at?: string | null
+          id?: string
+          parent_email?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      progress_tracking: {
+        Row: {
+          id: string
+          metric_type: string
+          metric_value: number
+          recorded_at: string | null
+          user_id: string
+          week_number: number
+        }
+        Insert: {
+          id?: string
+          metric_type: string
+          metric_value: number
+          recorded_at?: string | null
+          user_id: string
+          week_number: number
+        }
+        Update: {
+          id?: string
+          metric_type?: string
+          metric_value?: number
+          recorded_at?: string | null
+          user_id?: string
+          week_number?: number
+        }
+        Relationships: []
+      }
+      sensory_settings: {
+        Row: {
+          animation_speed: number | null
+          color_scheme: string | null
+          created_at: string | null
+          hint_frequency: number | null
+          id: string
+          interface_complexity: string | null
+          quiet_mode: boolean | null
+          sound_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          visual_intensity: number | null
+        }
+        Insert: {
+          animation_speed?: number | null
+          color_scheme?: string | null
+          created_at?: string | null
+          hint_frequency?: number | null
+          id?: string
+          interface_complexity?: string | null
+          quiet_mode?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          visual_intensity?: number | null
+        }
+        Update: {
+          animation_speed?: number | null
+          color_scheme?: string | null
+          created_at?: string | null
+          hint_frequency?: number | null
+          id?: string
+          interface_complexity?: string | null
+          quiet_mode?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          visual_intensity?: number | null
+        }
+        Relationships: []
+      }
+      session_analytics: {
+        Row: {
+          color_choices: Json | null
+          completion_status: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          emotional_markers: Json | null
+          id: string
+          reaction_times: Json | null
+          sensory_activity: Json | null
+          session_type: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          color_choices?: Json | null
+          completion_status?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          emotional_markers?: Json | null
+          id?: string
+          reaction_times?: Json | null
+          sensory_activity?: Json | null
+          session_type: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          color_choices?: Json | null
+          completion_status?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          emotional_markers?: Json | null
+          id?: string
+          reaction_times?: Json | null
+          sensory_activity?: Json | null
+          session_type?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
