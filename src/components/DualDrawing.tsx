@@ -2,23 +2,43 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check, Sparkles, MousePointer2, Activity, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/lib/auth-helpers";
 import { CeolinaGuidance } from "./CeolinaGuidance";
 import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
+import { 
+  getUnlockedRewards, 
+  REWARD_COLORS, 
+  getBrushType, 
+  getAvailableTextures, 
+  getAvailableBackgrounds,
+  applyBrushEffect,
+  applyTexture,
+  type BrushType,
+  type TextureType,
+  type Background
+} from "@/lib/rewards-system";
 
 interface DualDrawingProps {
   onBack: () => void;
   childName: string;
 }
 
-const COLORS = EMOTION_COLOR_PALETTE.slice(0, 24).map(c => ({
+const BASE_COLORS = EMOTION_COLOR_PALETTE.slice(0, 24).map(c => ({
   name: c.name,
   color: c.hex,
   emotion: c.emotion
 }));
+
+interface PartnerCursor {
+  x: number;
+  y: number;
+  color: string;
+  timestamp: number;
+}
 
 interface Stroke {
   id: string;
@@ -40,8 +60,12 @@ interface DrawingSession {
 export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(COLORS[0].color);
+  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].color);
   const [lineWidth, setLineWidth] = useState(5);
+  const [brushType, setBrushType] = useState<BrushType>("normal");
+  const [currentTexture, setCurrentTexture] = useState<TextureType>("none");
+  const [currentBackground, setCurrentBackground] = useState<Background>(getAvailableBackgrounds()[0]);
+  const [availableColors, setAvailableColors] = useState(BASE_COLORS);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCode, setSessionCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -50,13 +74,30 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const [copied, setCopied] = useState(false);
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
   const [partnerActivity, setPartnerActivity] = useState<Date | null>(null);
+  const [partnerCursor, setPartnerCursor] = useState<PartnerCursor | null>(null);
   const [showCeolinaMessage, setShowCeolinaMessage] = useState(false);
   const [ceolinaMessage, setCeolinaMessage] = useState("");
   const [taskProgress, setTaskProgress] = useState({ user1: 0, user2: 0 });
   const [cooperativeTask, setCooperativeTask] = useState<any>(null);
   const [sessionStartTime] = useState(Date.now());
   const [myStrokeCount, setMyStrokeCount] = useState(0);
+  const [partnerStrokeCount, setPartnerStrokeCount] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+
+  useEffect(() => {
+    // Загружаем разблокированные награды
+    const unlocked = getUnlockedRewards();
+    
+    const colors = [...BASE_COLORS];
+    REWARD_COLORS.forEach(rewardColor => {
+      if (unlocked.includes(rewardColor.id)) {
+        colors.push(rewardColor);
+      }
+    });
+    setAvailableColors(colors);
+    
+    setBrushType(getBrushType());
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -69,16 +110,23 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    ctx.fillStyle = "#FFFFFF";
+    if (currentBackground.gradient.startsWith('linear-gradient')) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = gradient;
+    } else {
+      ctx.fillStyle = currentBackground.gradient;
+    }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-  }, []);
+  }, [currentBackground]);
 
   useEffect(() => {
     if (!sessionId) return;
 
-    // Subscribe to drawing strokes
+    // Subscribe to drawing strokes and cursor movements
     const channel = supabase
       .channel(`drawing:${sessionId}`)
       .on(
@@ -96,7 +144,20 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           if (stroke.user_id !== userId) {
             drawStroke(stroke);
             setPartnerActivity(new Date());
+            setPartnerStrokeCount(prev => prev + 1);
           }
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "cursor_move" },
+        (payload) => {
+          setPartnerCursor({
+            x: payload.payload.x,
+            y: payload.payload.y,
+            color: payload.payload.color,
+            timestamp: Date.now()
+          });
         }
       )
       .on(
@@ -337,13 +398,31 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    ctx.strokeStyle = currentColor;
+    applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
     ctx.lineWidth = lineWidth;
     ctx.lineTo(x, y);
     ctx.stroke();
 
+    if (currentTexture !== "none") {
+      applyTexture(ctx, x, y, currentTexture, currentColor);
+    }
+
     setLastPoint({ x, y });
     saveStroke(x, y, false);
+    
+    // Broadcast cursor position
+    broadcastCursor(x, y);
+  };
+
+  const broadcastCursor = async (x: number, y: number) => {
+    if (!sessionId) return;
+    
+    const channel = supabase.channel(`drawing:${sessionId}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'cursor_move',
+      payload: { x, y, color: currentColor }
+    });
   };
 
   const stopDrawing = () => {
@@ -636,7 +715,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
                 <h3 className="font-semibold">Выбери цвет</h3>
               </div>
               <div className="flex flex-wrap gap-3">
-                {COLORS.map((item) => (
+                {availableColors.map((item) => (
                   <button
                     key={item.color}
                     onClick={() => setCurrentColor(item.color)}
