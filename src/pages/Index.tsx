@@ -12,6 +12,7 @@ import { Rewards } from "@/components/Rewards";
 import { DualDrawing } from "@/components/DualDrawing";
 import { LearningPath } from "@/components/LearningPath";
 import { ParentDashboard } from "@/components/ParentDashboard";
+import { ParentControl } from "@/components/ParentControl";
 import { SensorySettings } from "@/components/SensorySettings";
 
 const Index = () => {
@@ -166,6 +167,10 @@ const Index = () => {
         childName={childData.childName}
       />
     );
+  }
+
+  if (currentSection === "parent-control") {
+    return <ParentControl onBack={() => setCurrentSection("dashboard")} />;
   }
 
   return <Dashboard childData={childData} onNavigate={handleNavigate} />;
