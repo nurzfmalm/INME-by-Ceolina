@@ -2,10 +2,11 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check } from "lucide-react";
+import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/lib/auth-helpers";
+import { CeolinaGuidance } from "./CeolinaGuidance";
 
 interface DualDrawingProps {
   onBack: () => void;
@@ -19,6 +20,10 @@ const COLORS = [
   { name: "Энергия", color: "#FF6B6B", emotion: "energy" },
   { name: "Творчество", color: "#C68FE6", emotion: "creative" },
   { name: "Нежность", color: "#FFB4D6", emotion: "gentle" },
+  { name: "Золото", color: "#FFD700", emotion: "special" },
+  { name: "Серебро", color: "#C0C0C0", emotion: "special" },
+  { name: "Небо", color: "#87CEEB", emotion: "calm" },
+  { name: "Лес", color: "#228B22", emotion: "calm" },
 ];
 
 interface Stroke {
@@ -50,6 +55,14 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const [isHost, setIsHost] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
+  const [partnerActivity, setPartnerActivity] = useState<Date | null>(null);
+  const [showCeolinaMessage, setShowCeolinaMessage] = useState(false);
+  const [ceolinaMessage, setCeolinaMessage] = useState("");
+  const [taskProgress, setTaskProgress] = useState({ user1: 0, user2: 0 });
+  const [cooperativeTask, setCooperativeTask] = useState<any>(null);
+  const [sessionStartTime] = useState(Date.now());
+  const [myStrokeCount, setMyStrokeCount] = useState(0);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -86,9 +99,26 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           const stroke = payload.new as any;
           const userId = await getCurrentUserId();
           
-          // Only draw strokes from other users
           if (stroke.user_id !== userId) {
             drawStroke(stroke);
+            setPartnerActivity(new Date());
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_activity",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        async (payload) => {
+          const activity = payload.new as any;
+          const userId = await getCurrentUserId();
+          
+          if (activity.user_id !== userId) {
+            setPartnerActivity(new Date(activity.last_active));
           }
         }
       )
@@ -110,6 +140,45 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       supabase.removeChannel(channel);
     };
   }, [sessionId]);
+
+  // Monitor partner inactivity
+  useEffect(() => {
+    if (!partnerActivity || connectedUsers < 2) return;
+
+    const checkInactivity = setInterval(() => {
+      const timeSinceActivity = Date.now() - partnerActivity.getTime();
+      
+      if (timeSinceActivity > 15000) { // 15 seconds
+        setCeolinaMessage("Давайте подождём вашего партнёра! Может быть, он думает над следующим штрихом 😊");
+        setShowCeolinaMessage(true);
+      } else {
+        setShowCeolinaMessage(false);
+      }
+    }, 5000);
+
+    return () => clearInterval(checkInactivity);
+  }, [partnerActivity, connectedUsers]);
+
+  // Update activity tracker
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const updateActivity = setInterval(async () => {
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+
+      await supabase
+        .from("session_activity")
+        .upsert({
+          session_id: sessionId,
+          user_id: userId,
+          last_active: new Date().toISOString(),
+          stroke_count: myStrokeCount,
+        });
+    }, 3000);
+
+    return () => clearInterval(updateActivity);
+  }, [sessionId, myStrokeCount]);
 
   const createSession = async () => {
     try {
@@ -211,6 +280,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     }
 
     saveStroke(x, y, true);
+    setMyStrokeCount(c => c + 1);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -288,6 +358,9 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       const userId = await getCurrentUserId();
       if (!userId) return;
 
+      // Analyze collaboration before saving
+      await analyzeCollaboration();
+
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((blob) => resolve(blob!), "image/png");
       });
@@ -334,6 +407,70 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     }
   };
 
+  const analyzeCollaboration = async () => {
+    if (!sessionId || connectedUsers < 2) return;
+
+    try {
+      const userId = await getCurrentUserId();
+      
+      // Get session activity data
+      const { data: activities, error } = await supabase
+        .from("session_activity")
+        .select("*")
+        .eq("session_id", sessionId);
+
+      if (error) throw error;
+
+      if (!activities || activities.length < 2) return;
+
+      const user1Data = activities[0];
+      const user2Data = activities[1];
+
+      const sessionDuration = Math.floor((Date.now() - sessionStartTime) / 1000);
+
+      const sessionData = {
+        duration: sessionDuration,
+        participants: connectedUsers,
+        taskType: "collaborative_drawing"
+      };
+
+      const participantData = {
+        user1: {
+          strokeCount: user1Data.stroke_count,
+          activityRate: Math.round((user1Data.stroke_count / sessionDuration) * 100),
+          colors: [currentColor],
+          inactivePeriods: 0
+        },
+        user2: {
+          strokeCount: user2Data.stroke_count,
+          activityRate: Math.round((user2Data.stroke_count / sessionDuration) * 100),
+          colors: [currentColor],
+          inactivePeriods: 0
+        }
+      };
+
+      const { data, error: analyzeError } = await supabase.functions.invoke(
+        "analyze-collaboration",
+        {
+          body: { sessionData, participantData }
+        }
+      );
+
+      if (analyzeError) throw analyzeError;
+
+      setAnalysisResult(data.analysis);
+      
+      if (data.analysis.encouragement) {
+        setCeolinaMessage(data.analysis.encouragement);
+        setShowCeolinaMessage(true);
+      }
+
+      toast.success("Анализ сотрудничества завершён! 🤝");
+    } catch (error) {
+      console.error("Error analyzing collaboration:", error);
+    }
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(sessionCode);
     setCopied(true);
@@ -343,6 +480,11 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
   return (
     <div className="min-h-screen bg-background">
+      <CeolinaGuidance
+        message={ceolinaMessage}
+        visible={showCeolinaMessage}
+        onClose={() => setShowCeolinaMessage(false)}
+      />
       <header className="bg-card shadow-soft border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -468,6 +610,61 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
                 className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted"
               />
             </Card>
+
+            {/* Canvas */}
+            <Card className="p-4 border-0 bg-card shadow-soft">
+              <canvas
+                ref={canvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted"
+              />
+            </Card>
+
+            {/* Collaboration Analysis */}
+            {analysisResult && (
+              <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="text-white" size={20} />
+                    <h3 className="font-bold text-white text-lg">Анализ сотрудничества</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                      <p className="text-xs text-white/70 mb-1">Сотрудничество</p>
+                      <p className="text-2xl font-bold text-white">{analysisResult.collaboration_score}%</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                      <p className="text-xs text-white/70 mb-1">Синхронность</p>
+                      <p className="text-2xl font-bold text-white">{analysisResult.emotional_sync}%</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                      <p className="text-xs text-white/70 mb-1">Баланс</p>
+                      <p className="text-2xl font-bold text-white">{analysisResult.balance_score}%</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm font-semibold text-white mb-2">Сильные стороны:</p>
+                    <ul className="space-y-1">
+                      {analysisResult.strengths?.map((strength: string, i: number) => (
+                        <li key={i} className="text-sm text-white/90">✓ {strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {analysisResult.therapist_notes && (
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                      <p className="text-sm font-semibold text-white mb-2">Для терапевта:</p>
+                      <p className="text-sm text-white/90">{analysisResult.therapist_notes}</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
 
             {/* Tools */}
             <div className="flex flex-wrap gap-3">
