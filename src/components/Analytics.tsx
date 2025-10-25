@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Brain, TrendingUp, Palette, Heart } from "lucide-react";
+import { ArrowLeft, Brain, TrendingUp, Palette, Heart, Activity, Calendar, Target, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
@@ -20,6 +20,13 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  AreaChart,
+  Area,
 } from "recharts";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -79,6 +86,7 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('all');
 
   useEffect(() => {
     loadArtworks();
@@ -283,6 +291,86 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
     }, {} as Record<string, number>)
   ).map(([color, count]) => ({ color, count }));
 
+  // Filter artworks by time range
+  const getFilteredArtworks = () => {
+    if (timeRange === 'all') return artworks;
+    
+    const now = new Date();
+    const cutoff = new Date();
+    if (timeRange === 'week') {
+      cutoff.setDate(now.getDate() - 7);
+    } else if (timeRange === 'month') {
+      cutoff.setMonth(now.getMonth() - 1);
+    }
+    
+    return artworks.filter(art => new Date(art.created_at) >= cutoff);
+  };
+
+  const filteredArtworks = getFilteredArtworks();
+
+  // Prepare radar chart data for emotional profile
+  const emotionalProfile = Object.entries(
+    filteredArtworks.reduce((acc, art) => {
+      Object.entries(art.emotions_used).forEach(([emotion, count]) => {
+        acc[emotion] = (acc[emotion] || 0) + count;
+      });
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([emotion, value]) => ({
+    emotion: EMOTION_NAMES[emotion] || emotion,
+    value: Math.round(value),
+    fullMark: Math.max(...Object.values(
+      filteredArtworks.reduce((acc, art) => {
+        Object.entries(art.emotions_used).forEach(([e, count]) => {
+          acc[e] = (acc[e] || 0) + count;
+        });
+        return acc;
+      }, {} as Record<string, number>)
+    ))
+  }));
+
+  // Activity heatmap by day of week
+  const activityByDay = filteredArtworks.reduce((acc, art) => {
+    const day = format(new Date(art.created_at), 'EEEE', { locale: ru });
+    acc[day] = (acc[day] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const weekdayData = [
+    { day: 'Понедельник', count: activityByDay['понедельник'] || 0 },
+    { day: 'Вторник', count: activityByDay['вторник'] || 0 },
+    { day: 'Среда', count: activityByDay['среда'] || 0 },
+    { day: 'Четверг', count: activityByDay['четверг'] || 0 },
+    { day: 'Пятница', count: activityByDay['пятница'] || 0 },
+    { day: 'Суббота', count: activityByDay['суббота'] || 0 },
+    { day: 'Воскресенье', count: activityByDay['воскресенье'] || 0 },
+  ];
+
+  // Engagement metrics
+  const avgSessionDuration = filteredArtworks.length > 0
+    ? filteredArtworks.reduce((sum, art) => sum + (art.metadata?.session_duration || 0), 0) / filteredArtworks.length
+    : 0;
+
+  const totalColors = new Set(filteredArtworks.flatMap(art => art.colors_used || [])).size;
+  
+  const emotionDiversity = Object.keys(
+    filteredArtworks.reduce((acc, art) => {
+      Object.keys(art.emotions_used).forEach(e => acc[e] = true);
+      return acc;
+    }, {} as Record<string, boolean>)
+  ).length;
+
+  // Progress trend (comparing first half vs second half)
+  const halfPoint = Math.floor(filteredArtworks.length / 2);
+  const firstHalf = filteredArtworks.slice(0, halfPoint);
+  const secondHalf = filteredArtworks.slice(halfPoint);
+
+  const getAvgDuration = (arts: Artwork[]) => 
+    arts.length > 0 ? arts.reduce((sum, a) => sum + (a.metadata?.session_duration || 0), 0) / arts.length : 0;
+
+  const durationTrend = getAvgDuration(secondHalf) - getAvgDuration(firstHalf);
+  const progressTrend = durationTrend > 10 ? 'improving' : durationTrend < -10 ? 'declining' : 'stable';
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card shadow-soft border-b border-border sticky top-0 z-10">
@@ -307,6 +395,84 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        {/* Time Range Filter */}
+        <Card className="p-4 border-0 bg-card">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Период анализа</h3>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={timeRange === 'week' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('week')}
+              >
+                Неделя
+              </Button>
+              <Button
+                size="sm"
+                variant={timeRange === 'month' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('month')}
+              >
+                Месяц
+              </Button>
+              <Button
+                size="sm"
+                variant={timeRange === 'all' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('all')}
+              >
+                Всё время
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Enhanced Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 border-0 bg-gradient-warm">
+            <div className="flex items-center gap-2 mb-2">
+              <Palette className="text-white" size={20} />
+              <h3 className="text-sm text-white/80">Рисунков</h3>
+            </div>
+            <p className="text-3xl font-bold text-white">{filteredArtworks.length}</p>
+            <p className="text-xs text-white/70 mt-1">
+              {timeRange === 'week' ? 'за неделю' : timeRange === 'month' ? 'за месяц' : 'всего'}
+            </p>
+          </Card>
+
+          <Card className="p-4 border-0 bg-gradient-calm">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="text-white" size={20} />
+              <h3 className="text-sm text-white/80">Вовлечённость</h3>
+            </div>
+            <p className="text-3xl font-bold text-white">{Math.round(avgSessionDuration)}с</p>
+            <p className="text-xs text-white/70 mt-1 flex items-center gap-1">
+              {progressTrend === 'improving' && <TrendingUp size={12} />}
+              {progressTrend === 'improving' ? 'Растёт' : progressTrend === 'declining' ? 'Снижается' : 'Стабильно'}
+            </p>
+          </Card>
+
+          <Card className="p-4 border-0 bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="text-primary" size={20} />
+              <h3 className="text-sm text-muted-foreground">Эмоций</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{emotionDiversity}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {emotionDiversity > 4 ? 'Отлично!' : 'Хорошо'}
+            </p>
+          </Card>
+
+          <Card className="p-4 border-0 bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="text-primary" size={20} />
+              <h3 className="text-sm text-muted-foreground">Цветов</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{totalColors}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {totalColors > 10 ? 'Разнообразие!' : 'Стабильность'}
+            </p>
+          </Card>
+        </div>
+
         {/* Ceolina Feedback */}
         {aiAnalysis?.ceolina_feedback && (
           <CeolinaFeedback message={aiAnalysis.ceolina_feedback} />
@@ -449,72 +615,84 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
           )}
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-4 border-0 bg-card">
-            <h3 className="text-sm text-muted-foreground mb-1">
-              Всего рисунков
-            </h3>
-            <p className="text-3xl font-bold text-primary">{artworks.length}</p>
+        {/* Emotional Profile Radar Chart */}
+        {emotionalProfile.length > 0 && (
+          <Card className="p-6 border-0 bg-card">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Brain size={24} />
+              Эмоциональный профиль
+            </h2>
+            <ResponsiveContainer width="100%" height={350}>
+              <RadarChart data={emotionalProfile}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="emotion" />
+                <PolarRadiusAxis />
+                <Radar
+                  name="Интенсивность"
+                  dataKey="value"
+                  stroke="#8b5cf6"
+                  fill="#8b5cf6"
+                  fillOpacity={0.6}
+                />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
           </Card>
-          <Card className="p-4 border-0 bg-card">
-            <h3 className="text-sm text-muted-foreground mb-1">
-              Основная эмоция
-            </h3>
-            <div className="flex items-center gap-2">
-              <p className="text-2xl font-bold text-secondary">
-                {aiAnalysis?.primary_emotion
-                  ? EMOTION_NAMES[aiAnalysis.primary_emotion] || aiAnalysis.primary_emotion
-                  : "—"}
-              </p>
-              {aiAnalysis?.emotion_balance && (
-                <span className="text-xs bg-secondary/20 px-2 py-1 rounded">
-                  {aiAnalysis.emotion_balance === 'balanced' ? '✓' : 
-                   aiAnalysis.emotion_balance === 'improving' ? '↗️' : '⚠️'}
-                </span>
-              )}
-            </div>
-          </Card>
-          <Card className="p-4 border-0 bg-card">
-            <h3 className="text-sm text-muted-foreground mb-1">
-              Среднее время сессии
-            </h3>
-            <p className="text-3xl font-bold text-success">
-              {artworks.length > 0
-                ? Math.round(
-                    artworks.reduce(
-                      (sum, art) => sum + (art.metadata?.session_duration || 0),
-                      0
-                    ) / artworks.length
-                  )
-                : 0}
-              <span className="text-lg"> сек</span>
+        )}
+
+        {/* Activity Heatmap */}
+        {weekdayData.some(d => d.count > 0) && (
+          <Card className="p-6 border-0 bg-card">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Calendar size={24} />
+              Активность по дням недели
+            </h2>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={weekdayData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="day" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-sm text-muted-foreground text-center mt-3">
+              Самый активный день: {weekdayData.reduce((max, d) => d.count > max.count ? d : max, weekdayData[0]).day}
             </p>
           </Card>
-        </div>
+        )}
 
-        {/* Emotion Timeline Chart */}
+        {/* Emotion Timeline Chart with Area */}
         {emotionTimeline.length > 0 && (
           <Card className="p-6 border-0 bg-card">
-            <h2 className="text-xl font-bold mb-4">Динамика эмоций</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={emotionTimeline}>
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <TrendingUp size={24} />
+              Динамика эмоций во времени
+            </h2>
+            <ResponsiveContainer width="100%" height={350}>
+              <AreaChart data={emotionTimeline}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
                 {Object.keys(EMOTION_COLORS).map((emotion) => (
-                  <Line
+                  <Area
                     key={emotion}
                     type="monotone"
                     dataKey={emotion}
+                    stackId="1"
                     stroke={EMOTION_COLORS[emotion]}
+                    fill={EMOTION_COLORS[emotion]}
                     name={EMOTION_NAMES[emotion]}
-                    strokeWidth={2}
                   />
                 ))}
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </Card>
         )}
