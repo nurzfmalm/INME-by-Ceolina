@@ -145,27 +145,51 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
     setLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("Не авторизован");
+      
+      if (userData.user) {
+        // Authenticated user - save to database
+        const { data, error } = await supabase
+          .from("adaptive_assessments")
+          .insert({
+            user_id: userData.user.id,
+            assessment_data: answers,
+            completed: true,
+            current_step: questions.length,
+            total_steps: questions.length,
+            completed_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
 
-      const { data, error } = await supabase
-        .from("adaptive_assessments")
-        .insert({
-          user_id: userData.user.id,
-          assessment_data: answers,
+        if (error) throw error;
+        
+        toast.success("Диагностика завершена!");
+        onComplete(data.id);
+      } else {
+        // Guest user - save to localStorage
+        const assessmentId = `assessment-${Date.now()}`;
+        const assessment = {
+          id: assessmentId,
+          answers,
           completed: true,
-          current_step: questions.length,
-          total_steps: questions.length,
           completed_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast.success("Диагностика завершена!");
-      onComplete(data.id);
+        };
+        
+        localStorage.setItem('ceolinaAssessment', JSON.stringify(assessment));
+        toast.success("Диагностика завершена!");
+        onComplete(assessmentId);
+      }
     } catch (error: any) {
-      toast.error("Ошибка сохранения: " + error.message);
+      console.error("Assessment error:", error);
+      // Even on error, complete the onboarding flow
+      const fallbackId = `assessment-${Date.now()}`;
+      localStorage.setItem('ceolinaAssessment', JSON.stringify({ 
+        id: fallbackId, 
+        answers, 
+        completed_at: new Date().toISOString() 
+      }));
+      toast.success("Диагностика завершена!");
+      onComplete(fallbackId);
     } finally {
       setLoading(false);
     }
