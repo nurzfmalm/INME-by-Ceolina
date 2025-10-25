@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users, Shield } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 
 interface DashboardProps {
@@ -61,11 +61,11 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       description: "Разблокируй новые возможности",
     },
     {
-      id: "parent-control",
-      title: "Родительский контроль",
-      icon: Shield,
-      gradient: "bg-gradient-calm",
-      description: "Управление и безопасность",
+      id: "parent-dashboard",
+      title: "Панель родителя",
+      icon: Heart,
+      gradient: "bg-gradient-warm",
+      description: "Детальная аналитика",
     },
   ];
 
