@@ -47,6 +47,158 @@ export type Database = {
         }
         Relationships: []
       }
+      art_tasks: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          id: string
+          prompt: string
+          title: string
+          tokens_reward: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          prompt: string
+          title: string
+          tokens_reward?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          prompt?: string
+          title?: string
+          tokens_reward?: number | null
+        }
+        Relationships: []
+      }
+      artworks: {
+        Row: {
+          colors_used: Json | null
+          created_at: string | null
+          emotions_used: Json | null
+          id: string
+          image_url: string | null
+          metadata: Json | null
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          colors_used?: Json | null
+          created_at?: string | null
+          emotions_used?: Json | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          colors_used?: Json | null
+          created_at?: string | null
+          emotions_used?: Json | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      drawing_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          guest_user_id: string | null
+          host_user_id: string
+          id: string
+          session_code: string
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          guest_user_id?: string | null
+          host_user_id: string
+          id?: string
+          session_code: string
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          guest_user_id?: string | null
+          host_user_id?: string
+          id?: string
+          session_code?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      drawing_strokes: {
+        Row: {
+          created_at: string | null
+          id: string
+          session_id: string
+          stroke_data: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          session_id: string
+          stroke_data: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          session_id?: string
+          stroke_data?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_strokes_session"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "drawing_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emotion_tokens: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       learning_paths: {
         Row: {
           completion_percentage: number | null
@@ -104,6 +256,33 @@ export type Database = {
           id?: string
           parent_email?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      progress_sessions: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          metadata: Json | null
+          session_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          session_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          session_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -176,6 +355,38 @@ export type Database = {
         }
         Relationships: []
       }
+      session_activity: {
+        Row: {
+          id: string
+          last_activity: string | null
+          session_id: string
+          stroke_count: number | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_activity?: string | null
+          session_id: string
+          stroke_count?: number | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_activity?: string | null
+          session_id?: string
+          stroke_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_activity_session"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "drawing_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_analytics: {
         Row: {
           color_choices: Json | null
@@ -217,6 +428,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          artwork_id: string | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          artwork_id?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          artwork_id?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user_tasks_artwork"
+            columns: ["artwork_id"]
+            isOneToOne: false
+            referencedRelation: "artworks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_user_tasks_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "art_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
