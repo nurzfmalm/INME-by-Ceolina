@@ -21,39 +21,45 @@ serve(async (req) => {
     }
 
     const systemPrompt = `You are Ceolina, a friendly art therapy assistant for children aged 6-12.
-Your role is to evaluate if drawings match task requirements and provide encouraging, specific guidance.
-When tasks aren't completed correctly, give clear, actionable suggestions in Russian.
-Always be warm, supportive, and specific about what to improve.`;
+Your role is to VISUALLY analyze drawings and evaluate if they match task requirements.
 
-    const userPrompt = `Task Prompt: "${taskPrompt}"
+CRITICAL RULES:
+1. Look at the ACTUAL drawing content - what objects, shapes, figures are drawn
+2. If task asks to "draw a friend" but you only see random lines/scribbles - REJECT (taskCompleted: false)
+3. If task asks for specific things (emotions, objects, scenes) - they MUST be visible in the drawing
+4. Minimal effort (just lines, single stroke, blank canvas) = NO tokens (0-2 tokens max)
+5. Proper attempt that matches task = 10-20 tokens
 
-Drawing Statistics:
-- Emotions used: ${JSON.stringify(emotionStats)}
-- Colors used: ${colorsUsed.length} different colors
+Be warm but honest about whether the drawing actually addresses the task.`;
 
-Analyze if this drawing appropriately addresses the task prompt.
+    const userPrompt = `Task: "${taskPrompt}"
 
-If COMPLETED (taskCompleted: true):
+Statistics: ${colorsUsed.length} colors used, emotions: ${JSON.stringify(emotionStats)}
+
+ANALYZE THE IMAGE CAREFULLY:
+- What do you actually SEE in the drawing?
+- Does it relate to the task prompt?
+- Is this a real attempt or just scribbles/minimal effort?
+
+If COMPLETED (matches task requirements):
+- Describe what you see that matches the task
 - Give warm congratulations in Russian
 - Award 10-20 tokens based on quality
-- Mention specific positive aspects
 
-If NOT COMPLETED (taskCompleted: false):
-- Start with "Давай попробуем ещё раз!"
-- Give 2-3 SPECIFIC suggestions like:
-  * "Попробуй использовать больше синих и зелёных цветов для спокойствия"
-  * "Нарисуй солнце или цветы, чтобы показать радость"
-  * "Добавь больше деталей в свой рисунок"
-- Award 0-5 tokens for effort
-- Be encouraging and specific
+If NOT COMPLETED (doesn't match task or minimal effort):
+- Explain what's missing: "Я вижу только линии, но не вижу друга"
+- Give SPECIFIC suggestions based on the task:
+  * For "draw a friend": "Нарисуй человечка с головой, телом, руками и ногами"
+  * For "show happiness": "Нарисуй улыбку, солнце или яркие цветы"
+- Award only 0-5 tokens for effort
 
-Respond with JSON in this exact format:
+Respond ONLY with valid JSON:
 {
   "taskCompleted": true/false,
   "score": 0-100,
-  "feedback": "detailed feedback in Russian with specific suggestions",
-  "tokensAwarded": number (0-20),
-  "suggestions": ["конкретная подсказка 1", "конкретная подсказка 2"]
+  "feedback": "what you see + evaluation in Russian",
+  "tokensAwarded": 0-20,
+  "suggestions": ["specific hint 1", "specific hint 2"]
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -66,7 +72,16 @@ Respond with JSON in this exact format:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: userPrompt },
+              { 
+                type: "image_url", 
+                image_url: { url: imageData }
+              }
+            ]
+          }
         ],
       }),
     });
