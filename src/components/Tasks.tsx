@@ -16,12 +16,11 @@ interface TasksProps {
 interface Task {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   prompt: string;
-  difficulty: "easy" | "medium" | "hard";
-  emotion_tokens_reward: number;
+  difficulty: string;
+  tokens_reward: number; // Changed from emotion_tokens_reward
   category: string | null;
-  is_active: boolean;
 }
 
 interface CompletedTask {
@@ -66,9 +65,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
             description: "Создай рисунок, который показывает, что делает тебя счастливым",
             prompt: "Нарисуй что-то, что делает тебя счастливым",
             difficulty: "easy",
-            emotion_tokens_reward: 10,
+            tokens_reward: 10,
             category: "emotions",
-            is_active: true,
           },
           {
             id: "2",
@@ -76,9 +74,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
             description: "Нарисуй друга для персонажа Ceolina",
             prompt: "Нарисуй друга для Ceolina",
             difficulty: "easy",
-            emotion_tokens_reward: 10,
+            tokens_reward: 10,
             category: "social",
-            is_active: true,
           },
           {
             id: "3",
@@ -86,9 +83,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
             description: "Изобрази место или момент, где ты чувствуешь себя спокойно",
             prompt: "Нарисуй место, где ты чувствуешь спокойствие",
             difficulty: "medium",
-            emotion_tokens_reward: 15,
+            tokens_reward: 15,
             category: "emotions",
-            is_active: true,
           },
           {
             id: "4",
@@ -96,9 +92,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
             description: "Нарисуй свою семью или близких людей",
             prompt: "Нарисуй свою семью",
             difficulty: "medium",
-            emotion_tokens_reward: 15,
+            tokens_reward: 15,
             category: "social",
-            is_active: true,
           },
           {
             id: "5",
@@ -106,9 +101,8 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
             description: "Создай сад, где каждый цветок - это разная эмоция",
             prompt: "Нарисуй сад с цветами разных эмоций",
             difficulty: "hard",
-            emotion_tokens_reward: 20,
+            tokens_reward: 20,
             category: "emotions",
-            is_active: true,
           },
         ]);
         setLoading(false);
@@ -118,7 +112,6 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
       const { data, error } = await supabase
         .from("art_tasks")
         .select("*")
-        .eq("is_active", true)
         .order("difficulty");
 
       if (error) throw error;
@@ -249,7 +242,7 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
                     </Badge>
                     <div className="flex items-center gap-1 text-sm font-semibold text-primary">
                       <Star size={16} />
-                      +{task.emotion_tokens_reward}
+                      +{task.tokens_reward}
                     </div>
                   </div>
                   <h3 className="text-lg font-bold mb-2">{task.title}</h3>

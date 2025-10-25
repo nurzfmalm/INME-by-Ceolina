@@ -248,15 +248,15 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       
       // Try database first, fallback to localStorage
       try {
-        const { data, error } = await supabase
-          .from("drawing_sessions")
-          .insert({
-            session_code: code,
-            created_by: userId,
-            is_active: true,
-          })
-          .select()
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("drawing_sessions")
+        .insert({
+          session_code: code,
+          host_user_id: userId,
+          status: 'waiting',
+        })
+        .select()
+        .single();
 
         if (error) throw error;
         
@@ -305,7 +305,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           .from("drawing_sessions")
           .select("*")
           .eq("session_code", joinCode.toUpperCase())
-          .eq("is_active", true)
+          .eq("status", "waiting")
           .maybeSingle();
 
         if (!error && data) {
@@ -440,16 +440,18 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       const strokeData = {
         session_id: sessionId,
         user_id: userId,
-        x,
-        y,
-        color: currentColor,
-        size: lineWidth,
-        is_start: isStart,
+        stroke_data: {
+          x,
+          y,
+          color: currentColor,
+          size: lineWidth,
+          is_start: isStart,
+        },
       };
 
       // Try database first
       try {
-        await supabase.from("drawing_strokes").insert(strokeData);
+        await supabase.from("drawing_strokes").insert([strokeData]);
       } catch (dbError) {
         // Fallback to localStorage
         const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
