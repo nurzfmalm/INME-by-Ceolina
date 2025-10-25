@@ -158,7 +158,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         taskCompleted: true,
         score: 70,
         feedback: "Отличная работа! Продолжай рисовать!",
-        tokensAwarded: 10
+        tokensAwarded: 10,
+        suggestions: []
       };
     }
   };
@@ -419,14 +420,33 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             taskAnalysis.taskCompleted ? 'bg-gradient-calm' : 'bg-gradient-warm'
           }`}>
             <h3 className="font-semibold text-primary-foreground mb-4 text-xl">
-              {taskAnalysis.taskCompleted ? '✅ Задание выполнено!' : '🎨 Результат анализа'}
+              {taskAnalysis.taskCompleted ? '✅ Задание выполнено!' : '🎨 Попробуй ещё раз!'}
             </h3>
             <div className="space-y-3 text-primary-foreground/90">
               <p className="text-lg font-semibold">Оценка: {taskAnalysis.score}/100</p>
-              <p className="text-sm">{taskAnalysis.feedback}</p>
-              {taskAnalysis.taskCompleted && (
+              <p className="text-sm mb-3">{taskAnalysis.feedback}</p>
+              
+              {!taskAnalysis.taskCompleted && taskAnalysis.suggestions?.length > 0 && (
+                <div className="mt-4 p-4 bg-white/20 rounded-lg">
+                  <p className="font-semibold mb-2">💡 Подсказки от Ceolina:</p>
+                  <ul className="space-y-2">
+                    {taskAnalysis.suggestions.map((suggestion: string, idx: number) => (
+                      <li key={idx} className="text-sm flex items-start gap-2">
+                        <span className="mt-1">•</span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {taskAnalysis.taskCompleted ? (
                 <p className="text-lg font-bold mt-4">
                   🎉 Получено токенов: {taskAnalysis.tokensAwarded}
+                </p>
+              ) : (
+                <p className="text-sm mt-4 opacity-90">
+                  Получено за старание: {taskAnalysis.tokensAwarded} токенов
                 </p>
               )}
             </div>
