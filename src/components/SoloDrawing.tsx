@@ -13,17 +13,15 @@ interface SoloDrawingProps {
   taskPrompt?: string | null;
 }
 
-const COLORS = [
-  { name: "Радость", color: "#FFD93D", emotion: "joy" },
-  { name: "Спокойствие", color: "#6BCB77", emotion: "calm" },
-  { name: "Грусть", color: "#4D96FF", emotion: "sadness" },
-  { name: "Энергия", color: "#FF6B6B", emotion: "energy" },
-  { name: "Творчество", color: "#C68FE6", emotion: "creative" },
-  { name: "Нежность", color: "#FFB4D6", emotion: "gentle" },
-  { name: "Оранжевый", color: "#FF8C42", emotion: "warm" },
-  { name: "Бирюзовый", color: "#4ECDC4", emotion: "fresh" },
-  { name: "Лавандовый", color: "#A8DADC", emotion: "peace" },
-];
+import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
+
+const COLORS = EMOTION_COLOR_PALETTE.map(c => ({
+  name: c.name,
+  color: c.hex,
+  emotion: c.emotion,
+  category: c.emotionCategory,
+  note: c.therapeuticNote
+}));
 
 export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -294,32 +292,42 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
       <main className="container mx-auto px-4 py-6 space-y-6">
         <Card className="p-4 border-0 bg-card shadow-soft">
-          <div className="flex items-center gap-2 mb-3">
-            <Palette className="text-primary" size={20} />
-            <h3 className="font-semibold">Выбери цвет эмоции</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Palette className="text-primary" size={20} />
+              <h3 className="font-semibold">Палитра эмоций ({COLORS.length} цветов)</h3>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-2 max-h-48 overflow-y-auto p-2">
             {COLORS.map((item) => (
               <button
                 key={item.color}
                 onClick={() => setCurrentColor(item.color)}
-                className={`relative group transition-transform hover:scale-110 ${
-                  currentColor === item.color ? "scale-110" : ""
+                className={`relative group transition-all hover:scale-125 ${
+                  currentColor === item.color ? "scale-125 z-10" : ""
                 }`}
+                title={`${item.name} - ${item.note}`}
               >
                 <div
-                  className="w-12 h-12 rounded-full shadow-soft"
+                  className="w-8 h-8 rounded-full shadow-soft"
                   style={{ backgroundColor: item.color }}
                 />
                 {currentColor === item.color && (
-                  <div className="absolute inset-0 rounded-full border-4 border-primary" />
+                  <div className="absolute inset-0 rounded-full border-2 border-primary animate-pulse" />
                 )}
-                <p className="text-xs text-center mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {item.name}
-                </p>
               </button>
             ))}
           </div>
+          {currentColor && (
+            <div className="mt-3 text-center">
+              <p className="text-sm font-semibold">
+                {COLORS.find(c => c.color === currentColor)?.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {COLORS.find(c => c.color === currentColor)?.note}
+              </p>
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 border-0 bg-card shadow-soft">

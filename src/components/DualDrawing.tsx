@@ -7,24 +7,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { CeolinaGuidance } from "./CeolinaGuidance";
+import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
 
 interface DualDrawingProps {
   onBack: () => void;
   childName: string;
 }
 
-const COLORS = [
-  { name: "Радость", color: "#FFD93D", emotion: "joy" },
-  { name: "Спокойствие", color: "#6BCB77", emotion: "calm" },
-  { name: "Грусть", color: "#4D96FF", emotion: "sadness" },
-  { name: "Энергия", color: "#FF6B6B", emotion: "energy" },
-  { name: "Творчество", color: "#C68FE6", emotion: "creative" },
-  { name: "Нежность", color: "#FFB4D6", emotion: "gentle" },
-  { name: "Золото", color: "#FFD700", emotion: "special" },
-  { name: "Серебро", color: "#C0C0C0", emotion: "special" },
-  { name: "Небо", color: "#87CEEB", emotion: "calm" },
-  { name: "Лес", color: "#228B22", emotion: "calm" },
-];
+const COLORS = EMOTION_COLOR_PALETTE.slice(0, 24).map(c => ({
+  name: c.name,
+  color: c.hex,
+  emotion: c.emotion
+}));
 
 interface Stroke {
   id: string;

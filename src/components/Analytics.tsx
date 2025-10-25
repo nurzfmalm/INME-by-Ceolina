@@ -5,6 +5,7 @@ import { ArrowLeft, Brain, TrendingUp, Palette, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
+import { CeolinaFeedback } from "./CeolinaFeedback";
 import {
   LineChart,
   Line,
@@ -41,10 +42,18 @@ interface Artwork {
 interface AIAnalysis {
   emotional_summary: string;
   color_insights: string;
+  line_analysis?: string;
+  composition_insights?: string;
+  behavioral_patterns?: string;
   progress_notes: string;
-  recommendations: string[];
+  recommendations_parents?: string[];
+  recommendations_therapists?: string[];
+  recommendations?: string[]; // legacy support
+  ceolina_feedback?: string;
   primary_emotion: string;
+  emotion_balance?: string;
   stability_score: number;
+  therapeutic_focus?: string;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -191,6 +200,11 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        {/* Ceolina Feedback */}
+        {aiAnalysis?.ceolina_feedback && (
+          <CeolinaFeedback message={aiAnalysis.ceolina_feedback} />
+        )}
+        
         {/* AI Analysis Section */}
         <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
           <div className="flex items-center justify-between mb-4">
@@ -241,20 +255,49 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
                 <p className="text-white/90">{aiAnalysis.color_insights}</p>
               </div>
 
+              {aiAnalysis.line_analysis && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                  <h3 className="font-semibold text-white mb-2">✏️ Анализ линий и штрихов</h3>
+                  <p className="text-white/90">{aiAnalysis.line_analysis}</p>
+                </div>
+              )}
+
+              {aiAnalysis.composition_insights && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                  <h3 className="font-semibold text-white mb-2">🧩 Композиция и формы</h3>
+                  <p className="text-white/90">{aiAnalysis.composition_insights}</p>
+                </div>
+              )}
+
+              {aiAnalysis.behavioral_patterns && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                  <h3 className="font-semibold text-white mb-2">💬 Поведенческие паттерны</h3>
+                  <p className="text-white/90">{aiAnalysis.behavioral_patterns}</p>
+                </div>
+              )}
+
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                   <TrendingUp size={18} />
-                  Прогресс
+                  Прогресс и динамика
                 </h3>
                 <p className="text-white/90">{aiAnalysis.progress_notes}</p>
+                {aiAnalysis.emotion_balance && (
+                  <div className="mt-2 inline-block bg-white/20 px-3 py-1 rounded-full text-sm">
+                    Баланс: {aiAnalysis.emotion_balance === 'balanced' ? '✓ Сбалансирован' : 
+                             aiAnalysis.emotion_balance === 'improving' ? '↗️ Улучшается' : '⚠️ Требует внимания'}
+                  </div>
+                )}
               </div>
 
+              {aiAnalysis.ceolina_feedback && (
+                <CeolinaFeedback message={aiAnalysis.ceolina_feedback} />
+              )}
+
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                <h3 className="font-semibold text-white mb-2">
-                  Рекомендации
-                </h3>
+                <h3 className="font-semibold text-white mb-3">📋 Рекомендации для родителей</h3>
                 <ul className="space-y-2">
-                  {aiAnalysis.recommendations.map((rec, idx) => (
+                  {(aiAnalysis.recommendations_parents || aiAnalysis.recommendations || []).map((rec, idx) => (
                     <li key={idx} className="text-white/90 flex items-start gap-2">
                       <span className="text-white font-bold">•</span>
                       {rec}
@@ -262,6 +305,27 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
                   ))}
                 </ul>
               </div>
+
+              {aiAnalysis.recommendations_therapists && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                  <h3 className="font-semibold text-white mb-3">🩺 Рекомендации для терапевтов</h3>
+                  <ul className="space-y-2">
+                    {aiAnalysis.recommendations_therapists.map((rec, idx) => (
+                      <li key={idx} className="text-white/90 flex items-start gap-2">
+                        <span className="text-white font-bold">★</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiAnalysis.therapeutic_focus && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                  <h3 className="font-semibold text-white mb-2">🎯 Терапевтический фокус</h3>
+                  <p className="text-white/90">{aiAnalysis.therapeutic_focus}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -290,11 +354,19 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
             <h3 className="text-sm text-muted-foreground mb-1">
               Основная эмоция
             </h3>
-            <p className="text-2xl font-bold text-secondary">
-              {aiAnalysis?.primary_emotion
-                ? EMOTION_NAMES[aiAnalysis.primary_emotion] || aiAnalysis.primary_emotion
-                : "—"}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold text-secondary">
+                {aiAnalysis?.primary_emotion
+                  ? EMOTION_NAMES[aiAnalysis.primary_emotion] || aiAnalysis.primary_emotion
+                  : "—"}
+              </p>
+              {aiAnalysis?.emotion_balance && (
+                <span className="text-xs bg-secondary/20 px-2 py-1 rounded">
+                  {aiAnalysis.emotion_balance === 'balanced' ? '✓' : 
+                   aiAnalysis.emotion_balance === 'improving' ? '↗️' : '⚠️'}
+                </span>
+              )}
+            </div>
           </Card>
           <Card className="p-4 border-0 bg-card">
             <h3 className="text-sm text-muted-foreground mb-1">
