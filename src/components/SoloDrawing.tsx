@@ -33,6 +33,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const [sessionStart] = useState(Date.now());
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [taskAnalysis, setTaskAnalysis] = useState<any>(null);
+  const [showTaskResult, setShowTaskResult] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,6 +133,36 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     setShowAnalysis(true);
   };
 
+  const analyzeTaskCompletion = async () => {
+    if (!taskId || !taskPrompt) return null;
+
+    try {
+      const colorsUsed = COLORS
+        .filter((c) => emotionStats[c.emotion])
+        .map((c) => c.color);
+
+      const { data, error } = await supabase.functions.invoke('analyze-task-drawing', {
+        body: {
+          imageData: canvasRef.current?.toDataURL(),
+          taskPrompt,
+          emotionStats,
+          colorsUsed
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error analyzing task:", error);
+      return {
+        taskCompleted: true,
+        score: 70,
+        feedback: "Отличная работа! Продолжай рисовать!",
+        tokensAwarded: 10
+      };
+    }
+  };
+
   const saveDrawing = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -172,7 +204,29 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         });
         
         localStorage.setItem('ceolinaArtworks', JSON.stringify(artworks));
-        toast.success("Рисунок сохранён в галерею! 🎨");
+        
+        // Analyze task for demo mode
+        if (taskId && taskPrompt) {
+          const analysis = await analyzeTaskCompletion();
+          setTaskAnalysis(analysis);
+          setShowTaskResult(true);
+          
+          if (analysis?.taskCompleted) {
+            const completed = JSON.parse(
+              localStorage.getItem("ceolinaCompletedTasks") || "[]"
+            );
+            completed.push(taskId);
+            localStorage.setItem("ceolinaCompletedTasks", JSON.stringify(completed));
+
+            const currentTokens = parseInt(localStorage.getItem("ceolinaTokens") || "0");
+            localStorage.setItem("ceolinaTokens", (currentTokens + analysis.tokensAwarded).toString());
+            toast.success(`Задание выполнено! Получено ${analysis.tokensAwarded} токенов! 🎉`);
+          } else {
+            toast.info("Попробуй ещё раз! " + analysis?.feedback);
+          }
+        } else {
+          toast.success("Рисунок сохранён в галерею! 🎨");
+        }
         clearCanvas();
         return;
       }
@@ -212,39 +266,31 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
       if (dbError) throw dbError;
 
-      if (taskId && isAuth) {
-        const { error: taskError } = await supabase
-          .from("user_tasks")
-          .insert({
-            user_id: userId,
-            task_id: taskId,
-          });
+      // Analyze task completion with AI
+      if (taskId && taskPrompt) {
+        const analysis = await analyzeTaskCompletion();
+        setTaskAnalysis(analysis);
+        setShowTaskResult(true);
 
-        if (!taskError) {
-          const { data: taskData } = await supabase
-            .from("art_tasks")
-            .select("emotion_tokens_reward")
-            .eq("id", taskId)
-            .single();
+        if (analysis?.taskCompleted) {
+          const { error: taskError } = await supabase
+            .from("user_tasks")
+            .insert({
+              user_id: userId,
+              task_id: taskId,
+            });
 
-          if (taskData) {
+          if (!taskError) {
             await supabase.from("emotion_tokens").insert({
               user_id: userId,
-              amount: taskData.emotion_tokens_reward,
-              reason: "Task completed",
+              amount: analysis.tokensAwarded,
+              reason: `Task completed: ${taskPrompt}`,
             });
+            toast.success(`Задание выполнено! Получено ${analysis.tokensAwarded} токенов! 🎉`);
           }
+        } else {
+          toast.info("Попробуй ещё раз! " + analysis?.feedback);
         }
-      } else if (taskId && !isAuth) {
-        const completed = JSON.parse(
-          localStorage.getItem("ceolinaCompletedTasks") || "[]"
-        );
-        completed.push(taskId);
-        localStorage.setItem("ceolinaCompletedTasks", JSON.stringify(completed));
-
-        const currentTokens = parseInt(localStorage.getItem("ceolinaTokens") || "0");
-        const taskReward = 10;
-        localStorage.setItem("ceolinaTokens", (currentTokens + taskReward).toString());
       }
 
       await supabase.from("progress_sessions").insert({
@@ -260,9 +306,9 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         },
       });
 
-      toast.success(
-        taskId ? "Задание выполнено! Токены начислены 🎉" : "Рисунок сохранён в галерею! 🎨"
-      );
+      if (!taskId) {
+        toast.success("Рисунок сохранён в галерею! 🎨");
+      }
       clearCanvas();
     } catch (error) {
       console.error("Error saving artwork:", error);
@@ -367,6 +413,25 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             <span className="text-sm font-semibold">{lineWidth}px</span>
           </div>
         </div>
+
+        {showTaskResult && taskAnalysis && (
+          <Card className={`p-6 border-0 shadow-soft ${
+            taskAnalysis.taskCompleted ? 'bg-gradient-calm' : 'bg-gradient-warm'
+          }`}>
+            <h3 className="font-semibold text-primary-foreground mb-4 text-xl">
+              {taskAnalysis.taskCompleted ? '✅ Задание выполнено!' : '🎨 Результат анализа'}
+            </h3>
+            <div className="space-y-3 text-primary-foreground/90">
+              <p className="text-lg font-semibold">Оценка: {taskAnalysis.score}/100</p>
+              <p className="text-sm">{taskAnalysis.feedback}</p>
+              {taskAnalysis.taskCompleted && (
+                <p className="text-lg font-bold mt-4">
+                  🎉 Получено токенов: {taskAnalysis.tokensAwarded}
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
 
         {showAnalysis && analysis && (
           <Card className="p-6 border-0 bg-gradient-calm shadow-soft">

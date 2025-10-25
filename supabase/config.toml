@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.analyze-collaboration]
 verify_jwt = false
+
+[functions.analyze-task-drawing]
+verify_jwt = false
