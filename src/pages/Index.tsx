@@ -13,6 +13,7 @@ import { DualDrawing } from "@/components/DualDrawing";
 import { LearningPath } from "@/components/LearningPath";
 import { ParentDashboard } from "@/components/ParentDashboard";
 import { SensorySettings } from "@/components/SensorySettings";
+import { AIAssistant } from "@/components/AIAssistant";
 
 const Index = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -165,6 +166,22 @@ const Index = () => {
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
       />
+    );
+  }
+
+  if (currentSection === "ai-assistant") {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={() => setCurrentSection("dashboard")}
+            className="mb-4 text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Назад
+          </button>
+          <AIAssistant />
+        </div>
+      </div>
     );
   }
 
