@@ -19,13 +19,6 @@ export const Dashboard = ({ childData, onNavigate }: DashboardProps) => {
       description: "Рисуй и выражай свои эмоции",
     },
     {
-      id: "scenarios",
-      title: "Социальные истории",
-      icon: Brain,
-      gradient: "bg-gradient-calm",
-      description: "Учись через интерактивные сценарии",
-    },
-    {
       id: "dual-drawing",
       title: "Совместное рисование",
       icon: Users,
