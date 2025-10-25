@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Eraser, Palette, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Palette, Save, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ArtTherapyProps {
   onBack: () => void;
@@ -23,6 +25,8 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
   const [currentColor, setCurrentColor] = useState(COLORS[0].color);
   const [lineWidth, setLineWidth] = useState(5);
   const [emotionStats, setEmotionStats] = useState<Record<string, number>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [sessionStart] = useState(Date.now());
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -101,15 +105,85 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
     setEmotionStats({});
   };
 
-  const saveDrawing = () => {
+  const saveDrawing = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dataUrl = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = `ceolina-art-${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
+    setIsSaving(true);
+    
+    try {
+      // Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Необходимо войти в систему");
+        return;
+      }
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), "image/png");
+      });
+
+      // Upload to Supabase Storage
+      const fileName = `${user.id}/${Date.now()}.png`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("artworks")
+        .upload(fileName, blob, {
+          contentType: "image/png",
+          cacheControl: "3600",
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("artworks")
+        .getPublicUrl(fileName);
+
+      // Get colors used
+      const colorsUsed = COLORS
+        .filter((c) => emotionStats[c.emotion])
+        .map((c) => c.color);
+
+      // Save artwork metadata to database
+      const { error: dbError } = await supabase
+        .from("artworks")
+        .insert({
+          user_id: user.id,
+          image_url: publicUrl,
+          storage_path: fileName,
+          emotions_used: emotionStats,
+          colors_used: colorsUsed,
+          metadata: {
+            line_width: lineWidth,
+            session_duration: Math.floor((Date.now() - sessionStart) / 1000),
+          },
+        });
+
+      if (dbError) throw dbError;
+
+      // Save progress session
+      await supabase.from("progress_sessions").insert({
+        user_id: user.id,
+        session_type: "art_therapy",
+        duration_seconds: Math.floor((Date.now() - sessionStart) / 1000),
+        emotional_analysis: emotionStats,
+        behavioral_metrics: {
+          colors_count: colorsUsed.length,
+          primary_emotion: Object.keys(emotionStats).sort(
+            (a, b) => emotionStats[b] - emotionStats[a]
+          )[0],
+        },
+      });
+
+      toast.success("Рисунок сохранён в галерею! 🎨");
+      clearCanvas();
+    } catch (error) {
+      console.error("Error saving artwork:", error);
+      toast.error("Ошибка при сохранении рисунка");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -176,13 +250,13 @@ export const ArtTherapy = ({ onBack, childName }: ArtTherapyProps) => {
 
         {/* Tools */}
         <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={clearCanvas}>
+          <Button variant="outline" onClick={clearCanvas} disabled={isSaving}>
             <Trash2 size={18} className="mr-2" />
             Очистить
           </Button>
-          <Button variant="secondary" onClick={saveDrawing}>
+          <Button variant="default" onClick={saveDrawing} disabled={isSaving}>
             <Save size={18} className="mr-2" />
-            Сохранить
+            {isSaving ? "Сохранение..." : "Сохранить в галерею"}
           </Button>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground">Размер кисти:</span>
