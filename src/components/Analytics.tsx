@@ -309,25 +309,25 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
   const filteredArtworks = getFilteredArtworks();
 
   // Prepare radar chart data for emotional profile
-  const emotionalProfile = Object.entries(
-    filteredArtworks.reduce((acc, art) => {
-      Object.entries(art.emotions_used).forEach(([emotion, count]) => {
-        acc[emotion] = (acc[emotion] || 0) + count;
-      });
-      return acc;
-    }, {} as Record<string, number>)
-  ).map(([emotion, value]) => ({
+  const emotionTotals = filteredArtworks.reduce((acc, art) => {
+    Object.entries(art.emotions_used).forEach(([emotion, count]) => {
+      acc[emotion] = (acc[emotion] || 0) + count;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  const maxEmotionValue = Math.max(...Object.values(emotionTotals), 1);
+  
+  const emotionalProfile = Object.entries(emotionTotals).map(([emotion, value]) => ({
     emotion: EMOTION_NAMES[emotion] || emotion,
     value: Math.round(value),
-    fullMark: Math.max(...Object.values(
-      filteredArtworks.reduce((acc, art) => {
-        Object.entries(art.emotions_used).forEach(([e, count]) => {
-          acc[e] = (acc[e] || 0) + count;
-        });
-        return acc;
-      }, {} as Record<string, number>)
-    ))
+    percentage: Math.round((value / maxEmotionValue) * 100),
+    fullMark: 100,
+    color: EMOTION_COLORS[emotion] || "#999"
   }));
+
+  // Sort by value descending
+  emotionalProfile.sort((a, b) => b.value - a.value);
 
   // Activity heatmap by day of week
   const activityByDay = filteredArtworks.reduce((acc, art) => {
@@ -619,24 +619,88 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
         {emotionalProfile.length > 0 && (
           <Card className="p-6 border-0 bg-card">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Brain size={24} />
+              <Brain size={24} className="text-primary" />
               Эмоциональный профиль
             </h2>
-            <ResponsiveContainer width="100%" height={350}>
-              <RadarChart data={emotionalProfile}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="emotion" />
-                <PolarRadiusAxis />
-                <Radar
-                  name="Интенсивность"
-                  dataKey="value"
-                  stroke="#8b5cf6"
-                  fill="#8b5cf6"
-                  fillOpacity={0.6}
-                />
-                <Tooltip />
-              </RadarChart>
-            </ResponsiveContainer>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <RadarChart data={emotionalProfile}>
+                    <PolarGrid stroke="#e5e7eb" />
+                    <PolarAngleAxis 
+                      dataKey="emotion" 
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                    />
+                    <PolarRadiusAxis 
+                      angle={90} 
+                      domain={[0, 100]}
+                      tick={{ fill: '#9ca3af', fontSize: 10 }}
+                    />
+                    <Radar
+                      name="Интенсивность (%)"
+                      dataKey="percentage"
+                      stroke="#8b5cf6"
+                      fill="#8b5cf6"
+                      fillOpacity={0.5}
+                      strokeWidth={2}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '8px'
+                      }}
+                      formatter={(value: any) => [`${value}%`, 'Интенсивность']}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg mb-4">Детализация эмоций</h3>
+                {emotionalProfile.map((item, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="font-medium">{item.emotion}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {item.value} раз
+                      </span>
+                    </div>
+                    <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="absolute h-full rounded-full transition-all"
+                        style={{ 
+                          width: `${item.percentage}%`,
+                          backgroundColor: item.color 
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Доминирующая эмоция:</strong> {emotionalProfile[0]?.emotion}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    <strong className="text-foreground">Эмоциональный баланс:</strong> {
+                      emotionalProfile.length >= 4 
+                        ? '✓ Хорошее разнообразие эмоций' 
+                        : emotionalProfile.length >= 2
+                        ? '○ Умеренное разнообразие'
+                        : '⚠ Ограниченный диапазон'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
           </Card>
         )}
 
