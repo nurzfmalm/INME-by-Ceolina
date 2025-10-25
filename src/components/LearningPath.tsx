@@ -69,12 +69,37 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
           .eq("user_id", userData.user.id)
           .order("started_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
-        setPath(data as any);
+        if (error) {
+          console.error("Database error:", error);
+          throw error;
+        }
+        
+        if (data) {
+          console.log("Loaded learning path from database:", data.id);
+          setPath(data as any);
+        } else {
+          console.log("No learning path in database, checking localStorage");
+          // Try localStorage as fallback
+          const localPath = localStorage.getItem('learningPath');
+          if (localPath) {
+            const parsedPath = JSON.parse(localPath);
+            setPath({
+              id: parsedPath.id,
+              current_week: 1,
+              total_weeks: 6,
+              path_data: parsedPath.path_data,
+              completion_percentage: 0,
+            });
+            console.log("Loaded learning path from localStorage");
+          } else {
+            toast.error("Программа не найдена. Пройдите диагностику заново.");
+          }
+        }
       } else {
         // Load from localStorage for guest users
+        console.log("Guest user, loading from localStorage");
         const localPath = localStorage.getItem('learningPath');
         if (localPath) {
           const parsedPath = JSON.parse(localPath);
@@ -85,12 +110,13 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
             path_data: parsedPath.path_data,
             completion_percentage: 0,
           });
+          console.log("Loaded learning path from localStorage");
         } else {
-          throw new Error("Программа не найдена");
+          toast.error("Программа не найдена. Пройдите диагностику.");
         }
       }
     } catch (error: any) {
-      console.error("Error:", error);
+      console.error("Error loading learning path:", error);
       toast.error("Ошибка загрузки программы");
     } finally {
       setLoading(false);
