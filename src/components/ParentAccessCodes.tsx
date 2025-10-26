@@ -47,13 +47,33 @@ export const ParentAccessCodes = () => {
     setGenerating(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Вы не авторизованы");
+        return;
+      }
+
+      // Check if user has parent role
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "parent")
+        .single();
+
+      if (roleError || !roleData) {
+        console.error("User doesn't have parent role:", roleError);
+        toast.error("У вас нет прав родителя. Пожалуйста, войдите как родитель.");
+        return;
+      }
 
       // Generate code
       const { data: codeData, error: codeError } = await supabase
         .rpc("generate_access_code");
 
-      if (codeError) throw codeError;
+      if (codeError) {
+        console.error("Error generating code:", codeError);
+        throw codeError;
+      }
 
       // Insert link
       const { error: insertError } = await supabase
@@ -64,13 +84,16 @@ export const ParentAccessCodes = () => {
           child_user_id: null,
         }]);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Error inserting link:", insertError);
+        throw insertError;
+      }
 
       toast.success("Код создан!");
       fetchCodes();
     } catch (error: any) {
       console.error("Error generating code:", error);
-      toast.error("Ошибка создания кода");
+      toast.error(error.message || "Ошибка создания кода");
     } finally {
       setGenerating(false);
     }

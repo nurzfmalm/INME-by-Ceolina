@@ -59,13 +59,19 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
 
         if (data.user) {
           // Set parent role
-          await supabase.from("user_roles").insert({
+          const { error: roleError } = await supabase.from("user_roles").insert({
             user_id: data.user.id,
             role: "parent",
           });
+
+          if (roleError) {
+            console.error("Error creating role:", roleError);
+            toast.error("Ошибка создания роли");
+            return;
+          }
           
           // Update profile with child data
-          await supabase
+          const { error: profileError } = await supabase
             .from("profiles")
             .update({ 
               child_name: childName,
@@ -73,6 +79,12 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
               parent_email: email
             })
             .eq("id", data.user.id);
+
+          if (profileError) {
+            console.error("Error updating profile:", profileError);
+            toast.error("Ошибка обновления профиля");
+            return;
+          }
           
           toast.success("Аккаунт создан! Войдите в систему.");
           setIsLogin(true);
