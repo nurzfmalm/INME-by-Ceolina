@@ -235,21 +235,21 @@ export type Database = {
       parent_child_links: {
         Row: {
           access_code: string
-          child_user_id: string
+          child_user_id: string | null
           created_at: string | null
           id: string
           parent_user_id: string
         }
         Insert: {
           access_code: string
-          child_user_id: string
+          child_user_id?: string | null
           created_at?: string | null
           id?: string
           parent_user_id: string
         }
         Update: {
           access_code?: string
-          child_user_id?: string
+          child_user_id?: string | null
           created_at?: string | null
           id?: string
           parent_user_id?: string
