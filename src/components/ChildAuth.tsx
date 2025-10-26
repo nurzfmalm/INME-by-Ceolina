@@ -77,32 +77,54 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
 
       if (data.user) {
         // Set child role
-        await supabase.from("user_roles").insert({
+        const { error: roleError } = await supabase.from("user_roles").insert({
           user_id: data.user.id,
           role: "child",
         });
 
+        if (roleError) {
+          console.error("Error creating child role:", roleError);
+          toast.error("Ошибка создания роли");
+          return;
+        }
+
         // Update link with child user
-        const { data: link } = await supabase
+        const { data: link, error: linkError } = await supabase
           .from("parent_child_links")
           .select("*")
           .eq("access_code", accessCode.toUpperCase())
           .single();
 
-        if (link) {
-          await supabase
-            .from("parent_child_links")
-            .update({ child_user_id: data.user.id })
-            .eq("id", link.id);
+        if (linkError || !link) {
+          console.error("Error fetching link:", linkError);
+          toast.error("Ошибка поиска кода доступа");
+          return;
+        }
 
-          // Update profile with parent link and child name
-          await supabase
-            .from("profiles")
-            .update({ 
-              parent_user_id: link.parent_user_id,
-              child_name: childName
-            })
-            .eq("id", data.user.id);
+        const { error: updateLinkError } = await supabase
+          .from("parent_child_links")
+          .update({ child_user_id: data.user.id })
+          .eq("id", link.id);
+
+        if (updateLinkError) {
+          console.error("Error updating link:", updateLinkError);
+          toast.error("Ошибка обновления связи");
+          return;
+        }
+
+        // Update profile with parent link and child name
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ 
+            parent_user_id: link.parent_user_id,
+            child_name: childName
+          })
+          .eq("id", data.user.id);
+
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+          toast.error("Ошибка обновления профиля");
+          return;
         }
 
         toast.success("Профиль создан! Добро пожаловать!");

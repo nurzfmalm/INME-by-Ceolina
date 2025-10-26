@@ -71,14 +71,14 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
   const streamChat = async (userMessage: string) => {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
     
-    const contextMessage = taskPrompt 
-      ? `Контекст: Ребёнок выполняет задание "${taskPrompt}". Давай короткие творческие подсказки (2-3 предложения).`
-      : "Давай короткие позитивные подсказки (2-3 предложения).";
+    // Добавляем контекст задания в сообщение пользователя для лучшего понимания
+    const enrichedMessage = taskPrompt 
+      ? `[Задание: "${taskPrompt}"] ${userMessage}`
+      : userMessage;
 
     const newMessages = [
-      { role: "system" as const, content: contextMessage },
       ...messages,
-      { role: "user" as const, content: userMessage }
+      { role: "user" as const, content: enrichedMessage }
     ];
     
     setMessages([...messages, { role: "user", content: userMessage }]);
