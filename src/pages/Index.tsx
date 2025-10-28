@@ -144,10 +144,92 @@ const Index = () => {
     }
   }
 
+  // Load data for authenticated users
+  useEffect(() => {
+    if (user && !roleLoading && role) {
+      loadUserData();
+    }
+  }, [user, roleLoading, role]);
+
+  const loadUserData = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user!.id)
+        .single();
+
+      if (profile) {
+        // Check if this is a child with parent data
+        if (role === "child" && profile.parent_user_id) {
+          // Load parent's profile to get child data
+          const { data: parentProfile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", profile.parent_user_id)
+            .single();
+
+          if (parentProfile) {
+            // Use parent's data for the child
+            const userData: OnboardingData = {
+              childName: profile.child_name || parentProfile.child_name || "Ребёнок",
+              childAge: String(profile.child_age || parentProfile.child_age || ""),
+              communicationLevel: "",
+              emotionalLevel: "",
+              goals: ""
+            };
+            setChildData(userData);
+            
+            // Check if assessment exists
+            const { data: assessment } = await supabase
+              .from("adaptive_assessments")
+              .select("*")
+              .eq("user_id", profile.parent_user_id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+
+            if (assessment && assessment.completed) {
+              setOnboardingComplete(true);
+              setDiagnosticComplete(true);
+              toast.success(`Добро пожаловать, ${userData.childName}!`);
+            }
+          }
+        } else if (role === "parent" && profile.child_name) {
+          // Parent with existing data
+          const userData: OnboardingData = {
+            childName: profile.child_name,
+            childAge: String(profile.child_age || ""),
+            communicationLevel: "",
+            emotionalLevel: "",
+            goals: ""
+          };
+          setChildData(userData);
+          
+          // Check if assessment exists
+          const { data: assessment } = await supabase
+            .from("adaptive_assessments")
+            .select("*")
+            .eq("user_id", user!.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (assessment && assessment.completed) {
+            setOnboardingComplete(true);
+            setDiagnosticComplete(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
   // Child role restrictions
   if (role === "child") {
-    // Block access to parent dashboard, settings, analytics
-    if (["parent-dashboard", "settings"].includes(currentSection)) {
+    // Block access to parent dashboard, settings, analytics, learning path
+    if (["parent-dashboard", "settings", "analytics", "learning-path"].includes(currentSection)) {
       toast.error("Доступ запрещён");
       setCurrentSection("dashboard");
     }

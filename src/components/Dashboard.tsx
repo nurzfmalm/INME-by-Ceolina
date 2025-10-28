@@ -73,8 +73,9 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
   ];
 
   // Filter menu items based on role
+  // Children have access only to: art-therapy, dual-drawing, gallery, tasks, rewards
   const menuItems = userRole === "child" 
-    ? allMenuItems.filter(item => !["analytics", "parent-dashboard"].includes(item.id))
+    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path"].includes(item.id))
     : allMenuItems;
 
   return (

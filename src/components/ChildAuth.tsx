@@ -14,7 +14,6 @@ interface ChildAuthProps {
 
 export const ChildAuth = ({ onBack }: ChildAuthProps) => {
   const [accessCode, setAccessCode] = useState("");
-  const [childName, setChildName] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"code" | "register">("code");
@@ -47,7 +46,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
       }
 
       setStep("register");
-      toast.success("Код правильный! Теперь создай свой профиль");
+      toast.success("Код правильный! Придумай пароль для входа");
     } catch (error: any) {
       console.error("Code check error:", error);
       toast.error("Ошибка проверки кода");
@@ -61,6 +60,34 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
     setLoading(true);
 
     try {
+      // Get link info first to access parent profile
+      const { data: link, error: linkError } = await supabase
+        .from("parent_child_links")
+        .select("*")
+        .eq("access_code", accessCode.toUpperCase())
+        .single();
+
+      if (linkError || !link) {
+        console.error("Error fetching link:", linkError);
+        toast.error("Ошибка поиска кода доступа");
+        setLoading(false);
+        return;
+      }
+
+      // Get parent profile to copy data
+      const { data: parentProfile, error: parentProfileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", link.parent_user_id)
+        .single();
+
+      if (parentProfileError) {
+        console.error("Error fetching parent profile:", parentProfileError);
+        toast.error("Ошибка загрузки данных родителя");
+        setLoading(false);
+        return;
+      }
+
       // Create child account
       const { data, error } = await supabase.auth.signUp({
         email: `${accessCode.toLowerCase()}@child.app`,
@@ -68,7 +95,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            child_name: childName,
+            child_name: parentProfile.child_name,
           },
         },
       });
@@ -89,18 +116,6 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         }
 
         // Update link with child user
-        const { data: link, error: linkError } = await supabase
-          .from("parent_child_links")
-          .select("*")
-          .eq("access_code", accessCode.toUpperCase())
-          .single();
-
-        if (linkError || !link) {
-          console.error("Error fetching link:", linkError);
-          toast.error("Ошибка поиска кода доступа");
-          return;
-        }
-
         const { error: updateLinkError } = await supabase
           .from("parent_child_links")
           .update({ child_user_id: data.user.id })
@@ -112,12 +127,14 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           return;
         }
 
-        // Update profile with parent link and child name
+        // Update child profile with parent data and link
         const { error: profileError } = await supabase
           .from("profiles")
           .update({ 
             parent_user_id: link.parent_user_id,
-            child_name: childName
+            child_name: parentProfile.child_name,
+            child_age: parentProfile.child_age,
+            interests: parentProfile.interests || []
           })
           .eq("id", data.user.id);
 
@@ -127,7 +144,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           return;
         }
 
-        toast.success("Профиль создан! Добро пожаловать!");
+        toast.success("Профиль найден. Подключаемся к вашему родителю...");
       }
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -152,12 +169,12 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
             className="w-20 h-20 mx-auto mb-4 animate-gentle-float"
           />
           <h2 className="text-2xl font-bold">
-            {step === "code" ? "Введи код доступа" : "Создай свой профиль"}
+            {step === "code" ? "Введи код доступа" : "Придумай пароль"}
           </h2>
           <p className="text-sm text-muted-foreground mt-2">
             {step === "code"
               ? "Спроси код у родителя"
-              : "Придумай пароль для своего профиля"}
+              : "Твой профиль уже создан родителем - остался только пароль"}
           </p>
         </div>
 
@@ -194,18 +211,6 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <Label htmlFor="childName">Твоё имя</Label>
-              <Input
-                id="childName"
-                type="text"
-                value={childName}
-                onChange={(e) => setChildName(e.target.value)}
-                required
-                placeholder="Как тебя зовут?"
-              />
-            </div>
-
-            <div>
               <Label htmlFor="password">Пароль</Label>
               <Input
                 id="password"
@@ -225,10 +230,10 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Создание...
+                  Подключение...
                 </>
               ) : (
-                "Создать профиль"
+                "Подключиться к профилю"
               )}
             </Button>
           </form>
