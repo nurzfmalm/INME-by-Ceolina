@@ -45,6 +45,13 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Load data for authenticated users
+  useEffect(() => {
+    if (user && !roleLoading && role) {
+      loadUserData();
+    }
+  }, [user, roleLoading, role]);
+
   const handleOnboardingComplete = (data: OnboardingData) => {
     setChildData(data);
     setOnboardingComplete(true);
@@ -143,13 +150,6 @@ const Index = () => {
       );
     }
   }
-
-  // Load data for authenticated users
-  useEffect(() => {
-    if (user && !roleLoading && role) {
-      loadUserData();
-    }
-  }, [user, roleLoading, role]);
 
   const loadUserData = async () => {
     try {
