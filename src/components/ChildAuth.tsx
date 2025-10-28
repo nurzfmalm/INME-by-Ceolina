@@ -127,16 +127,18 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           return;
         }
 
-        // Update child profile with parent data and link
+        // Upsert child profile with parent data and link
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({ 
+          .upsert({ 
+            id: data.user.id,
             parent_user_id: link.parent_user_id,
             child_name: parentProfile.child_name,
             child_age: parentProfile.child_age,
             interests: parentProfile.interests || []
-          })
-          .eq("id", data.user.id);
+          }, {
+            onConflict: 'id'
+          });
 
         if (profileError) {
           console.error("Error updating profile:", profileError);
