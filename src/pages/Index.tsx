@@ -21,6 +21,7 @@ import type { User } from "@supabase/supabase-js";
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const { role, loading: roleLoading } = useUserRole();
   const [selectedRole, setSelectedRole] = useState<"parent" | "child" | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -33,10 +34,12 @@ const Index = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -96,6 +99,15 @@ const Index = () => {
     setCurrentTaskPrompt(prompt);
     setCurrentSection("art-therapy");
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // Show role selection if not authenticated
   if (!user && !selectedRole) {
