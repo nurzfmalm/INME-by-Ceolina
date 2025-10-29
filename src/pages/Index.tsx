@@ -139,6 +139,37 @@ const Index = () => {
     );
   }
 
+  // If user is authenticated but has no role, show role selection
+  if (user && !roleLoading && !role) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background flex flex-col items-center justify-center p-4">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-2">Добро пожаловать!</h2>
+          <p className="text-muted-foreground">Выберите свою роль для продолжения</p>
+        </div>
+        <RoleSelection onSelectRole={async (selectedRole) => {
+          try {
+            const { error } = await supabase.from("user_roles").insert({
+              user_id: user.id,
+              role: selectedRole,
+            });
+            
+            if (error) {
+              console.error("Error setting role:", error);
+              toast.error("Ошибка установки роли");
+            } else {
+              toast.success("Роль установлена!");
+              window.location.reload();
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            toast.error("Ошибка");
+          }
+        }} />
+      </div>
+    );
+  }
+
   // Parent role can access everything
   if (role === "parent") {
     if (currentSection === "parent-dashboard") {
@@ -157,7 +188,7 @@ const Index = () => {
         .from("profiles")
         .select("*")
         .eq("id", user!.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         // Check if this is a child with parent data
@@ -187,7 +218,7 @@ const Index = () => {
               .eq("user_id", profile.parent_user_id)
               .order("created_at", { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
 
             if (assessment && assessment.completed) {
               setOnboardingComplete(true);
@@ -213,7 +244,7 @@ const Index = () => {
             .eq("user_id", user!.id)
             .order("created_at", { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           if (assessment && assessment.completed) {
             setOnboardingComplete(true);

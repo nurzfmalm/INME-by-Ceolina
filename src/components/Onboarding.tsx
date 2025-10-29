@@ -35,11 +35,34 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Store onboarding data in localStorage for now
+      // Save to Supabase
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await supabase
+            .from("profiles")
+            .update({
+              child_name: formData.childName,
+              child_age: parseInt(formData.childAge) || null,
+            })
+            .eq("id", user.id);
+
+          if (error) {
+            console.error("Error saving profile:", error);
+            toast.error("Ошибка сохранения данных");
+          } else {
+            toast.success("Данные сохранены!");
+          }
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+
+      // Also store in localStorage as backup
       localStorage.setItem('ceolinaUserData', JSON.stringify(formData));
       onComplete(formData);
     }
