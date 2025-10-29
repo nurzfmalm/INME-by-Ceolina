@@ -55,6 +55,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     // Загружаем разблокированные награды
@@ -167,6 +168,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
     setIsDrawing(true);
     const { x, y } = getCoordinates(e);
+    
+    lastPointRef.current = { x, y };
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -181,7 +184,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !lastPointRef.current) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -190,9 +193,11 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (!ctx) return;
 
     const { x, y } = getCoordinates(e);
+    const lastPoint = lastPointRef.current;
 
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
 
     if (isEraser) {
       ctx.globalCompositeOperation = "destination-out";
@@ -200,22 +205,34 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     } else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = currentColor;
-      // Применяем эффект кисти
-      applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
     }
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    // Плавное рисование с использованием квадратичных кривых Безье
+    ctx.beginPath();
+    ctx.moveTo(lastPoint.x, lastPoint.y);
     
-    // Применяем текстуру если активна и не ластик
-    if (!isEraser && currentTexture !== "none") {
-      applyTexture(ctx, x, y, currentTexture, currentColor);
+    const midX = (lastPoint.x + x) / 2;
+    const midY = (lastPoint.y + y) / 2;
+    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
+    ctx.stroke();
+
+    if (!isEraser) {
+      // Применяем эффект кисти
+      applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
+      
+      // Применяем текстуру если активна
+      if (currentTexture !== "none") {
+        applyTexture(ctx, x, y, currentTexture, currentColor);
+      }
     }
+
+    lastPointRef.current = { x, y };
   };
 
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false);
+      lastPointRef.current = null;
       saveToHistory();
     }
   };
