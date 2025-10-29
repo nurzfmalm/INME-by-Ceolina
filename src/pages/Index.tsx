@@ -30,6 +30,7 @@ const Index = () => {
   const [currentSection, setCurrentSection] = useState<string>("dashboard");
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,6 +50,11 @@ const Index = () => {
   useEffect(() => {
     if (user && !roleLoading && role) {
       loadUserData();
+    } else if (user && !roleLoading && !role) {
+      // User has no role yet
+      setDataLoading(false);
+    } else if (!user) {
+      setDataLoading(false);
     }
   }, [user, roleLoading, role]);
 
@@ -130,42 +136,11 @@ const Index = () => {
     return <ChildAuth onBack={() => setSelectedRole(null)} />;
   }
 
-  // Loading role
-  if (user && roleLoading) {
+  // Loading role or data
+  if (user && (roleLoading || dataLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // If user is authenticated but has no role, show role selection
-  if (user && !roleLoading && !role) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background flex flex-col items-center justify-center p-4">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold mb-2">Добро пожаловать!</h2>
-          <p className="text-muted-foreground">Выберите свою роль для продолжения</p>
-        </div>
-        <RoleSelection onSelectRole={async (selectedRole) => {
-          try {
-            const { error } = await supabase.from("user_roles").insert({
-              user_id: user.id,
-              role: selectedRole,
-            });
-            
-            if (error) {
-              console.error("Error setting role:", error);
-              toast.error("Ошибка установки роли");
-            } else {
-              toast.success("Роль установлена!");
-              window.location.reload();
-            }
-          } catch (error) {
-            console.error("Error:", error);
-            toast.error("Ошибка");
-          }
-        }} />
       </div>
     );
   }
@@ -183,6 +158,7 @@ const Index = () => {
   }
 
   const loadUserData = async () => {
+    setDataLoading(true);
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -254,8 +230,41 @@ const Index = () => {
       }
     } catch (error) {
       console.error("Error loading user data:", error);
+    } finally {
+      setDataLoading(false);
     }
   };
+
+  // If user is authenticated but has no role, show role selection (after data loading)
+  if (user && !roleLoading && !role && !dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background flex flex-col items-center justify-center p-4">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-2">Добро пожаловать!</h2>
+          <p className="text-muted-foreground">Выберите свою роль для продолжения</p>
+        </div>
+        <RoleSelection onSelectRole={async (selectedRole) => {
+          try {
+            const { error } = await supabase.from("user_roles").insert({
+              user_id: user.id,
+              role: selectedRole,
+            });
+            
+            if (error) {
+              console.error("Error setting role:", error);
+              toast.error("Ошибка установки роли");
+            } else {
+              toast.success("Роль установлена!");
+              window.location.reload();
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            toast.error("Ошибка");
+          }
+        }} />
+      </div>
+    );
+  }
 
   // Child role restrictions
   if (role === "child") {
