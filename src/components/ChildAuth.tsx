@@ -79,11 +79,17 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         .from("profiles")
         .select("*")
         .eq("id", link.parent_user_id)
-        .single();
+        .maybeSingle();
 
       if (parentProfileError) {
         console.error("Error fetching parent profile:", parentProfileError);
         toast.error("Ошибка загрузки данных родителя");
+        setLoading(false);
+        return;
+      }
+
+      if (!parentProfile) {
+        toast.error("Профиль родителя не найден. Попросите родителя создать профиль сначала.");
         setLoading(false);
         return;
       }
