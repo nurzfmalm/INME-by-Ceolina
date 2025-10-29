@@ -26,12 +26,29 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
+
+        // Check if role exists, if not create it
+        if (data.user) {
+          const { data: existingRole } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+
+          if (!existingRole) {
+            await supabase.from("user_roles").insert({
+              user_id: data.user.id,
+              role: "parent",
+            });
+          }
+        }
+
         toast.success("Вход выполнен!");
       } else {
         // Validation for registration
