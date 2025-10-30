@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users, Camera } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
 import type { UserRole } from "@/hooks/useUserRole";
@@ -50,6 +50,13 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
       description: "Отслеживай прогресс",
     },
     {
+      id: "photo-analysis",
+      title: "Фото рисунков",
+      icon: Camera,
+      gradient: "bg-gradient-warm",
+      description: "Анализ фото рисунков с AI",
+    },
+    {
       id: "tasks",
       title: "Задания",
       icon: Target,
@@ -75,7 +82,7 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
   // Filter menu items based on role
   // Children have access only to: art-therapy, dual-drawing, gallery, tasks, rewards
   const menuItems = userRole === "child" 
-    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path"].includes(item.id))
+    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path", "photo-analysis"].includes(item.id))
     : allMenuItems;
 
   return (
