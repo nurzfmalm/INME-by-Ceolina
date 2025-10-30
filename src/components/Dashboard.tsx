@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users, Camera } from "lucide-react";
+import { Palette, Brain, Image, BarChart3, Settings, Heart, Target, ShoppingBag, Users, Camera, LogOut } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
 import type { UserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface DashboardProps {
   childData: OnboardingData;
@@ -13,6 +15,17 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) => {
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Ошибка при выходе");
+      console.error("Logout error:", error);
+    } else {
+      toast.success("Вы вышли из аккаунта");
+      window.location.reload();
+    }
+  };
+
   const allMenuItems = [
     {
       id: "art-therapy",
@@ -100,11 +113,16 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
                 <p className="text-lg font-semibold">{childData.childName || "друг"}!</p>
               </div>
             </div>
-            {userRole === "parent" && (
-              <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
-                <Settings size={24} />
+            <div className="flex items-center gap-2">
+              {userRole === "parent" && (
+                <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
+                  <Settings size={24} />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Выйти из аккаунта">
+                <LogOut size={24} />
               </Button>
-            )}
+            </div>
           </div>
         </div>
       </header>
