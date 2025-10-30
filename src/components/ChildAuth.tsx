@@ -65,44 +65,36 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         .from("parent_child_links")
         .select("*")
         .eq("access_code", accessCode.toUpperCase())
-        .single();
+        .maybeSingle();
 
-      if (linkError || !link) {
+      if (linkError) {
         console.error("Error fetching link:", linkError);
         toast.error("Ошибка поиска кода доступа");
         setLoading(false);
         return;
       }
 
-      // Get parent profile to copy data
-      const { data: parentProfile, error: parentProfileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", link.parent_user_id)
-        .maybeSingle();
-
-      if (parentProfileError) {
-        console.error("Error fetching parent profile:", parentProfileError);
-        toast.error("Ошибка загрузки данных родителя");
+      if (!link) {
+        toast.error("Код не найден или истёк. Попросите новый у родителя.");
         setLoading(false);
         return;
       }
 
-      if (!parentProfile) {
-        toast.error("Профиль родителя не найден. Попросите родителя создать профиль сначала.");
+      if (link.child_user_id) {
+        toast.error("Этот код уже использован. Попросите новый у родителя.");
         setLoading(false);
         return;
       }
+
+      // Не читаем профиль родителя из-за правил доступа (RLS).
+      // Данные ребёнка создадим пустыми и привяжем к родителю после регистрации.
 
       // Create child account
       const { data, error } = await supabase.auth.signUp({
         email: `${accessCode.toLowerCase()}@child.app`,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            child_name: parentProfile.child_name,
-          },
+          emailRedirectTo: `${window.location.origin}/`
         },
       });
 
@@ -133,15 +125,15 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           return;
         }
 
-        // Upsert child profile with parent data and link
+        // Upsert child profile with link to parent and default values
         const { error: profileError } = await supabase
           .from("profiles")
           .upsert({ 
             id: data.user.id,
             parent_user_id: link.parent_user_id,
-            child_name: parentProfile.child_name,
-            child_age: parentProfile.child_age,
-            interests: parentProfile.interests || []
+            child_name: 'Без имени',
+            child_age: null,
+            interests: []
           }, {
             onConflict: 'id'
           });
