@@ -16,6 +16,7 @@ import { SensorySettings } from "@/components/SensorySettings";
 import { RoleSelection } from "@/components/RoleSelection";
 import { ParentAuth } from "@/components/ParentAuth";
 import { ChildAuth } from "@/components/ChildAuth";
+import { PhotoAnalysis } from "@/components/PhotoAnalysis";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
 
@@ -268,8 +269,8 @@ const Index = () => {
 
   // Child role restrictions
   if (role === "child") {
-    // Block access to parent dashboard, settings, analytics, learning path
-    if (["parent-dashboard", "settings", "analytics", "learning-path"].includes(currentSection)) {
+    // Block access to parent dashboard, settings, analytics, learning path, photo-analysis
+    if (["parent-dashboard", "settings", "analytics", "learning-path", "photo-analysis"].includes(currentSection)) {
       toast.error("Доступ запрещён");
       setCurrentSection("dashboard");
     }
@@ -361,6 +362,16 @@ const Index = () => {
     return (
       <ParentDashboard
         onBack={() => setCurrentSection("dashboard")}
+        childName={childData.childName}
+      />
+    );
+  }
+
+  if (currentSection === "photo-analysis") {
+    return (
+      <PhotoAnalysis
+        onBack={() => setCurrentSection("dashboard")}
+        userId={user!.id}
         childName={childData.childName}
       />
     );
