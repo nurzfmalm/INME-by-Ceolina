@@ -7,12 +7,12 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES (
   'artworks',
   'artworks',
-  true,  -- Публичный доступ для просмотра
+  false,  -- PRIVATE bucket for security (children's drawings are sensitive)
   10485760,  -- 10 MB limit
   ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
 )
 ON CONFLICT (id) DO UPDATE SET
-  public = true,
+  public = false,
   file_size_limit = 10485760,
   allowed_mime_types = ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 
@@ -20,10 +20,13 @@ ON CONFLICT (id) DO UPDATE SET
 -- STORAGE POLICIES
 -- =====================================================
 
--- 1. SELECT Policy - Все могут просматривать артворки
-CREATE POLICY "Anyone can view artworks"
+-- 1. SELECT Policy - Users can view only their own artworks
+CREATE POLICY "Users can view own artworks"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'artworks');
+USING (
+  bucket_id = 'artworks'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
 
 -- 2. INSERT Policy - Пользователи могут загружать только в свою папку
 CREATE POLICY "Users can upload own artworks"
@@ -167,10 +170,12 @@ const { data, error } = await supabase.storage
   .from('artworks')
   .upload(path, file);
 
-// Получить публичный URL
-const { data: { publicUrl } } = supabase.storage
+// Получить подписанный URL (bucket приватный)
+const { data: signedData, error } = await supabase.storage
   .from('artworks')
-  .getPublicUrl(path);
+  .createSignedUrl(path, 3600); // URL действителен 1 час
+
+const signedUrl = signedData?.signedUrl;
 
 // Удалить файл
 const { error } = await supabase.storage
@@ -184,8 +189,9 @@ const { error } = await supabase.storage
 
 БЕЗОПАСНОСТЬ:
 - RLS включен автоматически
+- Bucket ПРИВАТНЫЙ - доступ только через подписанные URL
 - Только авторизованные пользователи могут загружать
 - Каждый пользователь может загружать только в свою папку (user_id/)
-- Все могут просматривать (public bucket)
+- Только владелец и родители могут просматривать артворки
 - Только владелец может удалять/обновлять свои файлы
 */

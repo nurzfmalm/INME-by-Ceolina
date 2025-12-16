@@ -448,9 +448,14 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL (bucket is private for security)
+      const { data: signedData, error: signedError } = await supabase.storage
         .from("artworks")
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600);
+
+      if (signedError || !signedData?.signedUrl) {
+        throw new Error("Failed to create signed URL");
+      }
 
       const colorsUsed = availableColors
         .filter((c) => emotionStats[c.emotion])
@@ -460,7 +465,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         .from("artworks")
         .insert({
           user_id: userId,
-          image_url: publicUrl,
+          image_url: signedData.signedUrl,
           storage_path: fileName,
           emotions_used: emotionStats,
           colors_used: colorsUsed,
