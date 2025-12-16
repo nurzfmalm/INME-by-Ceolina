@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-type UserRole = 'parent' | 'child' | null;
+export type UserRole = 'parent' | 'child' | null;
 
 export function useUserRole() {
   const [role, setRole] = useState<UserRole>(null);
