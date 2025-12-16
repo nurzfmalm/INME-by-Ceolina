@@ -217,7 +217,7 @@ ${previousContext}
   }
 }
 
-ВАЖНО: Отвечай ТОЛЬКО валидным JSON без дополнительного текста.`;
+ВАЖНО: Отвечай ТОЛЬКО валидным JSON без markdown-обёртки, без \`\`\`json, просто чистый JSON.`;
 
     console.log('Sending request to Lovable AI...');
 
@@ -230,6 +230,10 @@ ${previousContext}
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
+          {
+            role: 'system',
+            content: 'You are a JSON API. Always respond with valid JSON only, no markdown formatting, no code blocks, no explanations. Just pure JSON.'
+          },
           { 
             role: 'user',
             content: [
@@ -238,6 +242,7 @@ ${previousContext}
             ]
           }
         ],
+        max_tokens: 8192,
       }),
     });
 
