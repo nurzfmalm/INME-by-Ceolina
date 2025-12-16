@@ -124,26 +124,27 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
   };
 
   const updateProgress = async (weekNum: number, activityDay: number) => {
-    if (!path) return;
+    if (!path || !path.path_data?.weeks) return;
 
     const updatedPathData = { ...path.path_data };
-    const week = updatedPathData.weeks.find((w) => w.week === weekNum);
+    const weeksData = updatedPathData.weeks || [];
+    const week = weeksData.find((w: Week) => w.week === weekNum);
     if (week) {
-      const activity = week.activities.find((a) => a.day === activityDay);
+      const activity = week.activities.find((a: Activity) => a.day === activityDay);
       if (activity) {
         activity.completed = !activity.completed;
       }
     }
 
-    const totalActivities = updatedPathData.weeks.reduce(
-      (sum, w) => sum + w.activities.length,
+    const totalActivities = weeksData.reduce(
+      (sum: number, w: Week) => sum + (w.activities?.length || 0),
       0
     );
-    const completedActivities = updatedPathData.weeks.reduce(
-      (sum, w) => sum + w.activities.filter((a) => a.completed).length,
+    const completedActivities = weeksData.reduce(
+      (sum: number, w: Week) => sum + (w.activities?.filter((a: Activity) => a.completed).length || 0),
       0
     );
-    const percentage = Math.round((completedActivities / totalActivities) * 100);
+    const percentage = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
 
     try {
       const { error } = await supabase
@@ -196,8 +197,28 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
     );
   }
 
-  const currentWeek = path.path_data.weeks.find((w) => w.week === path.current_week);
+  // Handle different data structures - path_data.weeks or path_data directly containing weeks
+  const pathData = path.path_data;
+  const weeks = pathData?.weeks || [];
+  
+  if (weeks.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-6">
+        <Button onClick={onBack} variant="ghost" className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Назад
+        </Button>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-muted-foreground">Программа обучения пуста или повреждена. Пройдите диагностику заново.</p>
+            <Button onClick={onBack} className="mt-4">Вернуться</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  const currentWeek = weeks.find((w: Week) => w.week === path.current_week);
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-6">
       <div className="max-w-4xl mx-auto">
