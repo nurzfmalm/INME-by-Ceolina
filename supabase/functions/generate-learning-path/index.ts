@@ -22,14 +22,14 @@ serve(async (req) => {
       }
     );
 
-    const { assessmentId, userId } = await req.json();
+    const { assessmentId, userId, assessmentData: providedData, childName, childAge } = await req.json();
     
     console.log('Generating learning path for assessment:', assessmentId, 'user:', userId);
 
-    // Fetch assessment data
-    let assessmentData: any = null;
+    // Fetch assessment data from DB or use provided data
+    let assessmentData: any = providedData;
     
-    if (assessmentId && !assessmentId.startsWith('assessment-')) {
+    if (!assessmentData && assessmentId && !assessmentId.startsWith('assessment-')) {
       const { data: assessment, error: assessmentError } = await supabaseClient
         .from('adaptive_assessments')
         .select('*')
@@ -42,8 +42,10 @@ serve(async (req) => {
       }
       
       assessmentData = assessment.assessment_data;
-    } else {
-      // For guest users, use placeholder data
+    }
+    
+    // Default data if nothing provided
+    if (!assessmentData) {
       assessmentData = {
         q1: 3,
         q2: 2,
