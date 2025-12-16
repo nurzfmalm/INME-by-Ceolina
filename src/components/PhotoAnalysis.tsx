@@ -52,17 +52,20 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
         .from('artworks')
         .getPublicUrl(fileName);
 
-      // Call AI analysis
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-artworks', {
+      // Call CLIP AI analysis
+      const { data: clipAnalysisData, error: clipError } = await supabase.functions.invoke('analyze-image-clip', {
         body: {
-          artworks: [{
-            image_url: selectedImage,
-            metadata: { source: 'photo_upload' }
-          }]
+          imageData: selectedImage,
+          taskContext: `Анализ рисунка ребенка ${childName} для арт-терапии`
         }
       });
 
-      if (analysisError) throw analysisError;
+      if (clipError) {
+        console.error("CLIP analysis error:", clipError);
+        throw clipError;
+      }
+
+      const analysisResult = clipAnalysisData?.analysis;
 
       // Save to database
       const { error: saveError } = await supabase
@@ -73,20 +76,23 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
           storage_path: fileName,
           metadata: {
             source: 'photo_upload',
-            analysis: analysisData,
-            analyzed_at: new Date().toISOString()
+            clip_analysis: analysisResult,
+            analyzed_at: new Date().toISOString(),
+            top_labels: analysisResult?.labels?.slice(0, 5) || []
           },
-          colors_used: analysisData?.colors || [],
-          emotions_used: analysisData?.emotions || []
+          colors_used: analysisResult?.labels?.filter((l: any) =>
+            l.label.includes('color') || l.label === 'colorful'
+          ).map((l: any) => l.label) || [],
+          emotions_used: analysisResult?.emotions?.map((e: any) => e.emotion) || []
         });
 
       if (saveError) throw saveError;
 
-      setAnalysis(analysisData);
+      setAnalysis(analysisResult);
       toast.success("Анализ завершён! Результаты сохранены.");
     } catch (error: any) {
       console.error("Ошибка анализа:", error);
-      toast.error("Ошибка при анализе фото");
+      toast.error("Ошибка при анализе фото: " + (error.message || "Неизвестная ошибка"));
     } finally {
       setIsAnalyzing(false);
     }
@@ -192,23 +198,97 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
 
             {analysis && (
               <Card className="p-6 space-y-4">
-                <h3 className="text-xl font-bold">Результаты анализа</h3>
-                
+                <h3 className="text-xl font-bold">Результаты AI-анализа (CLIP)</h3>
+
+                {/* Overall Score */}
+                {analysis.overallScore && (
+                  <div className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg">
+                    <h4 className="font-semibold mb-2">📊 Общая оценка</h4>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                          style={{ width: `${analysis.overallScore}%` }}
+                        />
+                      </div>
+                      <span className="font-bold text-lg">{analysis.overallScore}%</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Labels */}
+                {analysis.labels && analysis.labels.length > 0 && (
+                  <div className="p-4 bg-blue-500/10 rounded-lg">
+                    <h4 className="font-semibold mb-3">🏷️ Что видит AI</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.labels.slice(0, 8).map((label: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="px-3 py-1 bg-white/50 rounded-full text-sm flex items-center gap-2"
+                        >
+                          <span>{label.label}</span>
+                          <span className="text-xs text-gray-500">
+                            {Math.round(label.score * 100)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Emotions */}
+                {analysis.emotions && analysis.emotions.length > 0 && (
+                  <div className="p-4 bg-pink-500/10 rounded-lg">
+                    <h4 className="font-semibold mb-3">❤️ Обнаруженные эмоции</h4>
+                    <div className="space-y-2">
+                      {analysis.emotions.map((emotion: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className="capitalize">{emotion.emotion}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-pink-500 transition-all"
+                                style={{ width: `${emotion.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500 w-10">
+                              {Math.round(emotion.confidence * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <div className="p-4 bg-primary/10 rounded-lg">
-                    <h4 className="font-semibold mb-2">🌈 Цвета и настроение</h4>
-                    <p className="text-sm">{analysis.colorAnalysis || "Преобладают тёплые оттенки, указывающие на позитивное настроение."}</p>
+                    <h4 className="font-semibold mb-2">🌈 Анализ цвета</h4>
+                    <p className="text-sm">{analysis.colorAnalysis || "Нейтральная цветовая палитра"}</p>
                   </div>
 
                   <div className="p-4 bg-secondary/10 rounded-lg">
                     <h4 className="font-semibold mb-2">🎨 Композиция</h4>
-                    <p className="text-sm">{analysis.compositionAnalysis || "Хорошо сбалансированная композиция с вниманием к деталям."}</p>
+                    <p className="text-sm">{analysis.compositionInsights || "Сбалансированная композиция"}</p>
                   </div>
 
-                  <div className="p-4 bg-accent/10 rounded-lg">
-                    <h4 className="font-semibold mb-2">💡 Рекомендации</h4>
-                    <p className="text-sm">{analysis.recommendations || "Попробуйте предложить работу с контрастными цветами для развития эмоциональной гибкости."}</p>
-                  </div>
+                  {analysis.therapeuticRecommendations && analysis.therapeuticRecommendations.length > 0 && (
+                    <div className="p-4 bg-green-500/10 rounded-lg">
+                      <h4 className="font-semibold mb-2">💡 Рекомендации</h4>
+                      <ul className="text-sm space-y-1 list-disc list-inside">
+                        {analysis.therapeuticRecommendations.map((rec: string, idx: number) => (
+                          <li key={idx}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {analysis.ceolinaFeedback && (
+                    <div className="p-4 bg-yellow-500/10 rounded-lg border-2 border-yellow-500/20">
+                      <h4 className="font-semibold mb-2">✨ Сообщение от Ceolina</h4>
+                      <p className="text-sm italic">{analysis.ceolinaFeedback}</p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
