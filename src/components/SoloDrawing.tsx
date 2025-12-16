@@ -50,6 +50,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const [sessionStart] = useState(Date.now());
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [taskAnalysis, setTaskAnalysis] = useState<any>(null);
   const [showTaskResult, setShowTaskResult] = useState(false);
   const [isEraser, setIsEraser] = useState(false);
@@ -255,26 +256,87 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   };
 
   const generateAnalysis = async () => {
-    const colorsUsed = availableColors
-      .filter((c) => emotionStats[c.emotion])
-      .map((c) => c.name);
-    
-    const dominantEmotion = Object.keys(emotionStats).sort(
-      (a, b) => emotionStats[b] - emotionStats[a]
-    )[0];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    setAnalysis({
-      colorsUsed,
-      dominantEmotion,
-      sessionDuration: Math.floor((Date.now() - sessionStart) / 1000),
-      totalStrokes: Object.values(emotionStats).reduce((a, b) => a + b, 0),
-      insights: [
-        `Сегодня ты использовал(а) ${colorsUsed.length} разных цветов`,
-        `Твоя основная эмоция: ${dominantEmotion}`,
-        `Ты рисовал(а) ${Math.floor((Date.now() - sessionStart) / 60000)} минут`,
-      ],
-    });
-    setShowAnalysis(true);
+    setIsAnalyzing(true);
+    setShowAnalysis(false);
+
+    try {
+      const imageData = canvas.toDataURL('image/png');
+      const durationSeconds = Math.floor((Date.now() - sessionStart) / 1000);
+      const colorsUsed = availableColors.filter((c) => emotionStats[c.emotion]);
+      const strokeCount = Object.values(emotionStats).reduce((a, b) => a + b, 0);
+
+      // Get user profile for age
+      const userId = await getCurrentUserId();
+      let childAge = 7;
+      
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('child_age')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile?.child_age) childAge = profile.child_age;
+      }
+
+      // Create observation data from session
+      const observation = {
+        child_id: userId || 'anonymous',
+        child_age: childAge,
+        session_date: new Date().toISOString(),
+        task_type: taskPrompt ? 'custom' : 'free_drawing',
+        task_description: taskPrompt || undefined,
+        emotional_states: ['neutral'], // Default for now
+        behaviors: strokeCount > 50 ? ['focused'] : ['slow_drawing'],
+        materials_used: colorsUsed.length > 5 ? ['many_colors'] : colorsUsed.length === 1 ? ['one_color'] : [],
+        colors_count: colorsUsed.length,
+        drawing_duration_seconds: durationSeconds,
+        pause_frequency: 'low' as const,
+        stroke_count: strokeCount,
+        average_pressure: lineWidth / 2, // Approximate from line width
+        eraser_usage: 0
+      };
+
+      // Call deep analysis
+      const { data: analysisData, error } = await supabase.functions.invoke('analyze-drawing-deep', {
+        body: {
+          imageData,
+          observation
+        }
+      });
+
+      if (error) {
+        console.error('Analysis error:', error);
+        throw error;
+      }
+
+      if (analysisData?.report) {
+        setAnalysis(analysisData.report);
+        setShowAnalysis(true);
+      } else {
+        throw new Error('No report returned');
+      }
+    } catch (error) {
+      console.error('Error generating analysis:', error);
+      toast.error('Не удалось провести анализ. Попробуйте позже.');
+      
+      // Fallback to simple analysis
+      const colorsUsed = availableColors
+        .filter((c) => emotionStats[c.emotion])
+        .map((c) => c.name);
+      
+      setAnalysis({
+        simple: true,
+        colorsUsed,
+        sessionDuration: Math.floor((Date.now() - sessionStart) / 1000),
+        totalStrokes: Object.values(emotionStats).reduce((a, b) => a + b, 0),
+      });
+      setShowAnalysis(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const analyzeTaskCompletion = async () => {
@@ -628,9 +690,9 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             <Save size={18} className="mr-2" />
             {isSaving ? "Сохранение..." : "Сохранить в галерею"}
           </Button>
-          <Button variant="secondary" onClick={generateAnalysis}>
+          <Button variant="secondary" onClick={generateAnalysis} disabled={isAnalyzing}>
             <BarChart3 size={18} className="mr-2" />
-            Посмотреть анализ
+            {isAnalyzing ? "Анализирую..." : "Посмотреть анализ"}
           </Button>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground">Размер {isEraser ? "ластика" : "кисти"}:</span>
@@ -684,16 +746,88 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           </Card>
         )}
 
+        {isAnalyzing && (
+          <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-primary-foreground">Анализирую рисунок...</span>
+            </div>
+          </Card>
+        )}
+
         {showAnalysis && analysis && (
           <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
             <h3 className="font-semibold text-primary-foreground mb-4 text-xl">
               Анализ твоего рисунка
             </h3>
-            <div className="space-y-3 text-primary-foreground/90">
-              {analysis.insights.map((insight: string, idx: number) => (
-                <p key={idx} className="text-sm">✨ {insight}</p>
-              ))}
-            </div>
+            
+            {analysis.simple ? (
+              // Fallback simple analysis
+              <div className="space-y-3 text-primary-foreground/90">
+                <p className="text-sm">✨ Использовано цветов: {analysis.colorsUsed?.length || 0}</p>
+                <p className="text-sm">✨ Время рисования: {Math.floor((analysis.sessionDuration || 0) / 60)} мин</p>
+                <p className="text-sm">✨ Количество штрихов: {analysis.totalStrokes || 0}</p>
+              </div>
+            ) : (
+              // Deep analysis
+              <div className="space-y-4 text-primary-foreground/90">
+                {/* What's on the drawing */}
+                {analysis.visual_description?.objects_identified?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">🎨 Что изображено:</h4>
+                    <p className="text-sm">{analysis.visual_description.objects_identified.join(', ')}</p>
+                  </div>
+                )}
+
+                {/* Composition */}
+                {analysis.visual_description?.composition_analysis && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">📐 Композиция:</h4>
+                    <p className="text-sm">{analysis.visual_description.composition_analysis}</p>
+                  </div>
+                )}
+
+                {/* Emotional themes */}
+                {analysis.interpretation?.emotional_themes?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">💭 Эмоциональные темы:</h4>
+                    {analysis.interpretation.emotional_themes.map((theme: any, idx: number) => (
+                      <div key={idx} className="mb-2">
+                        <p className="text-sm font-medium">{theme.theme}</p>
+                        {theme.supporting_evidence?.length > 0 && (
+                          <ul className="text-xs opacity-80 ml-4">
+                            {theme.supporting_evidence.map((e: string, i: number) => (
+                              <li key={i}>• {e}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {analysis.recommendations?.for_parents?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">💡 Рекомендации:</h4>
+                    <ul className="text-sm space-y-1">
+                      {analysis.recommendations.for_parents.slice(0, 3).map((rec: string, idx: number) => (
+                        <li key={idx}>• {rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Confidence indicator */}
+                {analysis.analysis_metadata?.confidence_score && (
+                  <div className="pt-2 border-t border-primary-foreground/20">
+                    <p className="text-xs opacity-70">
+                      Уверенность анализа: {analysis.analysis_metadata.confidence_score}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         )}
 
