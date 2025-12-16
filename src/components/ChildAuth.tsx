@@ -23,24 +23,14 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
     setLoading(true);
 
     try {
-      // Check if code exists
-      const { data: link, error } = await supabase
-        .from("parent_child_links")
-        .select("*")
-        .eq("access_code", accessCode.toUpperCase())
-        .maybeSingle();
+      // Use secure RPC function to validate code without exposing parent_user_id
+      const { data: isValid, error } = await supabase
+        .rpc("validate_access_code", { code: accessCode.toUpperCase() });
 
       if (error) throw error;
 
-      if (!link) {
-        toast.error("Неверный код доступа");
-        setLoading(false);
-        return;
-      }
-
-      // Check if already used
-      if (link.child_user_id) {
-        toast.error("Этот код уже использован");
+      if (!isValid) {
+        toast.error("Неверный код доступа или код уже использован");
         setLoading(false);
         return;
       }
@@ -60,28 +50,14 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
     setLoading(true);
 
     try {
-      // Get link info first to access parent profile
-      const { data: link, error: linkError } = await supabase
-        .from("parent_child_links")
-        .select("*")
-        .eq("access_code", accessCode.toUpperCase())
-        .maybeSingle();
+      // Validate code is still available before registration
+      const { data: isValid, error: validateError } = await supabase
+        .rpc("validate_access_code", { code: accessCode.toUpperCase() });
 
-      if (linkError) {
-        console.error("Error fetching link:", linkError);
-        toast.error("Ошибка поиска кода доступа");
-        setLoading(false);
-        return;
-      }
+      if (validateError) throw validateError;
 
-      if (!link) {
-        toast.error("Код не найден или истёк. Попросите новый у родителя.");
-        setLoading(false);
-        return;
-      }
-
-      if (link.child_user_id) {
-        toast.error("Этот код уже использован. Попросите новый у родителя.");
+      if (!isValid) {
+        toast.error("Код не найден или уже использован. Попросите новый у родителя.");
         setLoading(false);
         return;
       }
@@ -113,15 +89,21 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           return;
         }
 
-        // Update link with child user
-        const { error: updateLinkError } = await supabase
-          .from("parent_child_links")
-          .update({ child_user_id: data.user.id })
-          .eq("id", link.id);
+        // Use secure RPC function to claim the access code and get parent_user_id
+        const { data: parentUserId, error: claimError } = await supabase
+          .rpc("claim_access_code", { 
+            code: accessCode.toUpperCase(), 
+            child_id: data.user.id 
+          });
 
-        if (updateLinkError) {
-          console.error("Error updating link:", updateLinkError);
-          toast.error("Ошибка обновления связи");
+        if (claimError) {
+          console.error("Error claiming code:", claimError);
+          toast.error("Ошибка привязки кода");
+          return;
+        }
+
+        if (!parentUserId) {
+          toast.error("Код уже использован или не найден");
           return;
         }
 
@@ -130,7 +112,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           .from("profiles")
           .upsert({ 
             id: data.user.id,
-            parent_user_id: link.parent_user_id,
+            parent_user_id: parentUserId,
             child_name: 'Без имени',
             child_age: null,
             interests: []

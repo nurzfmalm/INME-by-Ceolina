@@ -530,6 +530,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_access_code: {
+        Args: { child_id: string; code: string }
+        Returns: string
+      }
       generate_access_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -538,6 +542,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_access_code: { Args: { code: string }; Returns: boolean }
     }
     Enums: {
       app_role: "parent" | "child"
