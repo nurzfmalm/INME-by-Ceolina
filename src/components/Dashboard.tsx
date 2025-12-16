@@ -288,10 +288,12 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-3 py-1.5 cursor-help">
-                      <Star className="w-3 h-3 mr-1" fill="currentColor" />
-                      {tokenCount}
-                    </Badge>
+                    <span className="cursor-help">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-3 py-1.5">
+                        <Star className="w-3 h-3 mr-1" fill="currentColor" />
+                        {tokenCount}
+                      </Badge>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p className="font-semibold mb-1">⭐ Токены награды</p>
