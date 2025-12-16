@@ -182,6 +182,18 @@ export const AnalysisReportComponent = ({
               {report.visual_description.detail_level}
             </Badge>
           </div>
+
+          {report.visual_description.composition_analysis && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-semibold mb-2">Анализ композиции:</h4>
+                <p className="text-sm text-muted-foreground">
+                  {report.visual_description.composition_analysis}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -263,6 +275,16 @@ export const AnalysisReportComponent = ({
                     </Alert>
                   </Card>
                 ))}
+              </div>
+            </>
+          )}
+
+          {report.interpretation.developmental_observations && (
+            <>
+              <Separator />
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
+                <h4 className="font-semibold mb-2">Наблюдения о развитии:</h4>
+                <p className="text-sm">{report.interpretation.developmental_observations}</p>
               </div>
             </>
           )}

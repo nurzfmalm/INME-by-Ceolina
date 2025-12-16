@@ -44,6 +44,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,6 +59,7 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -66,69 +68,25 @@ serve(async (req) => {
 
     const { imageData, observation, previousDrawings }: AnalysisRequest = await req.json();
 
+    if (!imageData) {
+      console.error('No image data provided');
+      return new Response(
+        JSON.stringify({ error: 'No image data provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Starting deep drawing analysis for user:', user.id);
+    console.log('Image data length:', imageData.length);
+    console.log('Observation data:', JSON.stringify(observation).substring(0, 200));
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY is not configured');
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Starting deep drawing analysis...');
-
-    // Step 1: Visual validation - AI must actually describe what it sees
-    const validationPrompt = `Ты арт-терапевт. Опиши ТОЛЬКО ФАКТЫ о рисунке БЕЗ анализа эмоций:
-1. Какие объекты изображены?
-2. Где они расположены на листе (центр, углы, края)?
-3. Какие цвета использованы и где?
-4. Есть ли повторяющиеся формы или паттерны?
-5. Какой уровень детализации?
-
-Ответь ТОЛЬКО фактами, никаких интерпретаций.`;
-
-    const validationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: validationPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Опиши рисунок.' },
-              { type: 'image_url', image_url: { url: imageData } }
-            ]
-          }
-        ],
-      }),
-    });
-
-    if (!validationResponse.ok) {
-      const errorText = await validationResponse.text();
-      console.error('Validation API error:', validationResponse.status, errorText);
-      
-      if (validationResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Превышен лимит запросов. Попробуйте позже.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (validationResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Недостаточно средств для AI-анализа.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      throw new Error(`Validation failed: ${validationResponse.status}`);
-    }
-
-    const validationResult = await validationResponse.json();
-    const visualDescription = validationResult.choices?.[0]?.message?.content || '';
-    
-    console.log('Visual validation complete:', visualDescription.substring(0, 200));
-
-    // Step 2: Deep multi-factor analysis with observation data
+    // Build observation context
     const taskTypeMap: Record<string, string> = {
       'free_drawing': 'Свободное рисование',
       'draw_family': 'Нарисуй семью',
@@ -157,105 +115,111 @@ serve(async (req) => {
     };
 
     const observationContext = `
-ДАННЫЕ О СЕССИИ:
+ДАННЫЕ О СЕССИИ РИСОВАНИЯ:
 - Возраст ребёнка: ${observation.child_age} лет
 - Тип задания: ${taskTypeMap[observation.task_type] || observation.task_type}
-- Длительность: ${Math.floor(observation.drawing_duration_seconds / 60)} мин ${observation.drawing_duration_seconds % 60} сек
-- Эмоциональное состояние: ${observation.emotional_states.map(s => emotionalStateMap[s] || s).join(', ')}
+- Длительность: ${Math.floor(observation.drawing_duration_seconds / 60)} мин
+- Эмоциональное состояние во время рисования: ${observation.emotional_states.map(s => emotionalStateMap[s] || s).join(', ')}
 - Поведение: ${observation.behaviors.map(b => behaviorMap[b] || b).join(', ')}
-- Средний нажим: ${observation.average_pressure.toFixed(1)}/10
-- Количество штрихов: ${observation.stroke_count}
-- Использование ластика: ${observation.eraser_usage} раз
-- Частота пауз: ${observation.pause_frequency === 'low' ? 'низкая' : observation.pause_frequency === 'medium' ? 'средняя' : 'высокая'}
-${observation.verbal_comments ? `- Комментарии ребёнка: "${observation.verbal_comments}"` : ''}
-${observation.additional_notes ? `- Дополнительные заметки: ${observation.additional_notes}` : ''}
+- Средний нажим: ${observation.average_pressure}/10
+${observation.verbal_comments ? `- Комментарии ребёнка во время рисования: "${observation.verbal_comments}"` : ''}
+${observation.additional_notes ? `- Дополнительные заметки наблюдателя: ${observation.additional_notes}` : ''}
 `;
 
     let previousContext = '';
     if (previousDrawings && previousDrawings.length > 0) {
-      previousContext = `\n\nПРЕДЫДУЩИЕ РИСУНКИ (${previousDrawings.length}):
+      previousContext = `\n\nИСТОРИЯ ПРЕДЫДУЩИХ РИСУНКОВ (${previousDrawings.length}):
 ${previousDrawings.slice(0, 3).map((d, i) => {
   const daysAgo = Math.floor((Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24));
-  return `${i + 1}. ${daysAgo} дней назад: ${d.metadata?.clip_analysis?.colorAnalysis || 'Нет данных'}`;
+  const prevAnalysis = d.metadata?.deep_analysis || d.metadata?.clip_analysis;
+  return `${i + 1}. ${daysAgo} дней назад: ${prevAnalysis?.visual_description?.objects_identified?.join(', ') || 'Нет данных'}`;
 }).join('\n')}
 
-Сравни текущий рисунок с предыдущими и отметь изменения.`;
+Обязательно сравни текущий рисунок с предыдущими и отметь изменения в динамике.`;
     }
 
-    const analysisPrompt = `Ты опытный арт-терапевт, специализирующийся на работе с детьми с расстройствами аутистического спектра (ASD).
+    // Single comprehensive analysis prompt
+    const analysisPrompt = `Ты опытный детский арт-терапевт, специализирующийся на работе с детьми с РАС (расстройство аутистического спектра).
+
+ТВОЯ ЗАДАЧА: Провести глубокий, многофакторный анализ детского рисунка.
 
 КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:
-1. ЗАПРЕЩЕНО делать выводы "цвет = эмоция" (темный ≠ грусть, яркий ≠ радость)
-2. Анализ ТОЛЬКО многофакторный: композиция + пространство + нажим + процесс + детализация
-3. Каждый вывод ОБЯЗАТЕЛЬНО обоснован конкретными визуальными данными
-4. Все интерпретации - это ГИПОТЕЗЫ, а не утверждения
-5. НЕ используй шаблонные фразы ("выражает эмоции через цвет", "рисунок отражает внутренний мир")
-
-ФАКТИЧЕСКОЕ ОПИСАНИЕ РИСУНКА (от AI):
-${visualDescription}
+1. ЗАПРЕЩЕНО делать простые выводы "цвет = эмоция" (темный ≠ грусть, яркий ≠ радость)
+2. Анализ должен быть МНОГОФАКТОРНЫМ: учитывай композицию, использование пространства, детализацию, паттерны, а также данные о процессе рисования
+3. КАЖДЫЙ вывод ОБЯЗАТЕЛЬНО обосновывай конкретными визуальными элементами рисунка
+4. Все интерпретации — это ГИПОТЕЗЫ, а не утверждения
+5. НЕ используй шаблонные фразы ("ребёнок выражает эмоции через цвет", "рисунок отражает внутренний мир")
+6. Описывай КОНКРЕТНО что изображено: какие объекты, где расположены, какого размера, как детализированы
 
 ${observationContext}
 ${previousContext}
 
-Проанализируй рисунок и верни JSON строго в следующем формате:
+ВНИМАТЕЛЬНО ИЗУЧИ РИСУНОК И ОТВЕТЬ В ФОРМАТЕ JSON:
+
 {
   "visual_description": {
-    "objects_identified": ["массив объектов на рисунке"],
+    "objects_identified": ["подробный список всех объектов, которые ты видишь на рисунке"],
     "spatial_layout": {
-      "center_usage": "empty|partial|full",
-      "space_distribution": "scattered|grouped|balanced|confined",
-      "object_positions": ["описание позиций объектов"]
+      "center_usage": "empty или partial или full - насколько заполнен центр листа",
+      "space_distribution": "scattered или grouped или balanced или confined - как распределены элементы",
+      "object_positions": ["конкретные позиции: например 'солнце в правом верхнем углу', 'дом занимает центр', 'человек слева внизу']"
     },
     "colors_used": [
-      {"color": "название", "hex": "#код", "coverage_percentage": число, "location": "где использован"}
+      {"color": "название цвета", "hex": "#примерный код", "coverage_percentage": примерный процент, "location": "где использован этот цвет"}
     ],
-    "patterns_detected": ["повторяющиеся элементы"],
-    "detail_level": "minimal|moderate|high|very_high"
+    "patterns_detected": ["повторяющиеся элементы, формы, линии"],
+    "detail_level": "minimal или moderate или high или very_high",
+    "composition_analysis": "анализ композиции: баланс, симметрия, фокусные точки"
   },
   "process_analysis": {
-    "emotional_state_impact": "как эмоциональное состояние повлияло на рисунок",
-    "pressure_patterns": "анализ нажима в контексте наблюдений",
-    "timing_observations": "анализ темпа и пауз",
-    "behavioral_correlations": "связь поведения с результатом"
+    "emotional_state_impact": "как наблюдаемое эмоциональное состояние ребёнка могло повлиять на рисунок",
+    "pressure_patterns": "анализ нажима (${observation.average_pressure}/10) в контексте содержания рисунка",
+    "timing_observations": "что говорит длительность ${Math.floor(observation.drawing_duration_seconds / 60)} мин о вовлечённости",
+    "behavioral_correlations": "связь между наблюдаемым поведением и результатом на рисунке"
   },
   "interpretation": {
     "emotional_themes": [
       {
-        "theme": "название темы",
-        "confidence": "low|medium|high",
-        "supporting_evidence": ["конкретные визуальные доказательства"]
+        "theme": "название эмоциональной темы (это ГИПОТЕЗА)",
+        "confidence": "low или medium или high",
+        "supporting_evidence": ["конкретные визуальные элементы рисунка, подтверждающие эту гипотезу"]
       }
     ],
     "asd_specific_markers": [
       {
-        "marker": "название маркера",
-        "observation": "что наблюдается",
-        "clinical_relevance": "клиническая значимость"
-      }
-    ]
-  },
-  "progress_tracking": {
-    "changes_from_previous": [
-      {
-        "aspect": "аспект",
-        "change_description": "описание изменения",
-        "direction": "positive|neutral|concerning"
+        "marker": "название маркера специфичного для ASD",
+        "observation": "что конкретно наблюдается на рисунке",
+        "clinical_relevance": "почему это может быть важно для понимания ребёнка"
       }
     ],
-    "trend_analysis": "общий анализ тренда"
+    "developmental_observations": "наблюдения о развитии мелкой моторики, пространственного мышления"
   },
+  "progress_tracking": ${previousDrawings && previousDrawings.length > 0 ? `{
+    "changes_from_previous": [
+      {
+        "aspect": "аспект изменения",
+        "change_description": "что изменилось по сравнению с предыдущими рисунками",
+        "direction": "positive или neutral или concerning"
+      }
+    ],
+    "trend_analysis": "общий анализ тренда развития"
+  }` : 'null'},
   "recommendations": {
-    "for_parents": ["рекомендации для родителей"],
+    "for_parents": ["конкретные рекомендации для родителей на основе анализа"],
     "for_therapists": ["рекомендации для терапевтов"],
-    "suggested_activities": ["рекомендуемые активности"],
-    "areas_to_monitor": ["области для наблюдения"]
+    "suggested_activities": ["рекомендуемые арт-терапевтические активности"],
+    "areas_to_monitor": ["области, требующие внимания и наблюдения"]
   },
-  "disclaimer": "Этот анализ носит наблюдательный характер и не является медицинским диагнозом. Для клинической оценки обратитесь к квалифицированному специалисту.",
+  "disclaimer": "Данный анализ носит наблюдательный характер и не является медицинским диагнозом. Для клинической оценки необходима консультация квалифицированного специалиста.",
   "analysis_metadata": {
-    "confidence_score": число от 0 до 100,
-    "requires_professional_review": true/false
+    "confidence_score": число от 0 до 100 - общая уверенность в анализе,
+    "requires_professional_review": true или false - нужна ли проверка специалиста
   }
-}`;
+}
+
+ВАЖНО: Отвечай ТОЛЬКО валидным JSON без дополнительного текста.`;
+
+    console.log('Sending request to Lovable AI...');
 
     const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -266,11 +230,10 @@ ${previousContext}
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: analysisPrompt },
-          {
+          { 
             role: 'user',
             content: [
-              { type: 'text', text: 'Проведи глубокий анализ этого рисунка. Верни только JSON.' },
+              { type: 'text', text: analysisPrompt },
               { type: 'image_url', image_url: { url: imageData } }
             ]
           }
@@ -281,46 +244,107 @@ ${previousContext}
     if (!analysisResponse.ok) {
       const errorText = await analysisResponse.text();
       console.error('Analysis API error:', analysisResponse.status, errorText);
-      throw new Error(`Analysis failed: ${analysisResponse.status}`);
+      
+      if (analysisResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Превышен лимит запросов. Попробуйте позже.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (analysisResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Недостаточно средств для AI-анализа.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw new Error(`Analysis failed: ${analysisResponse.status} - ${errorText}`);
     }
 
     const analysisResult = await analysisResponse.json();
     let analysisContent = analysisResult.choices?.[0]?.message?.content || '';
     
-    // Extract JSON from response
-    const jsonMatch = analysisContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON found in response:', analysisContent);
-      throw new Error('Invalid analysis response format');
+    console.log('AI Response length:', analysisContent.length);
+    console.log('AI Response preview:', analysisContent.substring(0, 500));
+
+    // Extract JSON from response (handle markdown code blocks)
+    let jsonString = analysisContent;
+    
+    // Remove markdown code blocks if present
+    const jsonBlockMatch = analysisContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonBlockMatch) {
+      jsonString = jsonBlockMatch[1].trim();
+    } else {
+      // Try to find raw JSON
+      const jsonMatch = analysisContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[0];
+      }
     }
 
     let report;
     try {
-      report = JSON.parse(jsonMatch[0]);
+      report = JSON.parse(jsonString);
+      console.log('JSON parsed successfully');
     } catch (parseError) {
-      console.error('JSON parse error:', parseError, jsonMatch[0]);
-      throw new Error('Failed to parse analysis response');
+      console.error('JSON parse error:', parseError);
+      console.error('Raw content:', jsonString.substring(0, 1000));
+      
+      // Create a fallback report with the raw AI response
+      report = {
+        visual_description: {
+          objects_identified: ['Не удалось распарсить ответ AI'],
+          spatial_layout: {
+            center_usage: 'partial',
+            space_distribution: 'balanced',
+            object_positions: []
+          },
+          colors_used: [],
+          patterns_detected: [],
+          detail_level: 'moderate',
+          composition_analysis: analysisContent.substring(0, 500)
+        },
+        process_analysis: {
+          emotional_state_impact: 'Анализ требует ручной проверки',
+          pressure_patterns: '',
+          timing_observations: '',
+          behavioral_correlations: ''
+        },
+        interpretation: {
+          emotional_themes: [],
+          asd_specific_markers: []
+        },
+        recommendations: {
+          for_parents: ['Рекомендуется повторный анализ'],
+          for_therapists: [],
+          suggested_activities: [],
+          areas_to_monitor: []
+        },
+        disclaimer: 'Произошла ошибка при обработке анализа. Пожалуйста, попробуйте снова.',
+        analysis_metadata: {
+          confidence_score: 0,
+          requires_professional_review: true
+        }
+      };
     }
 
     // Add metadata
     report.analysis_metadata = {
       ...report.analysis_metadata,
       analyzed_at: new Date().toISOString(),
-      analysis_version: '2.0-deep',
+      analysis_version: '2.1-deep',
     };
 
-    // If no previous drawings, remove progress_tracking
+    // If no previous drawings, ensure progress_tracking is null
     if (!previousDrawings || previousDrawings.length === 0) {
-      delete report.progress_tracking;
+      report.progress_tracking = null;
     }
 
-    console.log('Deep analysis complete');
+    console.log('Analysis complete, returning report');
 
     return new Response(
       JSON.stringify({
         success: true,
-        report,
-        visualValidation: visualDescription
+        report
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

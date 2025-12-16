@@ -92,6 +92,7 @@ export interface AnalysisReport {
     }[];
     patterns_detected: string[]; // повторяющиеся элементы
     detail_level: "minimal" | "moderate" | "high" | "very_high";
+    composition_analysis?: string; // анализ композиции
   };
 
   // 2. Анализ процесса рисования
@@ -114,6 +115,7 @@ export interface AnalysisReport {
       observation: string;
       clinical_relevance: string;
     }[];
+    developmental_observations?: string; // наблюдения о развитии
   };
 
   // 4. Динамика (если есть предыдущие рисунки)
