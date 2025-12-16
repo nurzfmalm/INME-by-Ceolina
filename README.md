@@ -78,10 +78,14 @@ cp .env.example .env
 Заполните значения:
 
 ```env
+VITE_SUPABASE_PROJECT_ID=your_supabase_project_id
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
-VITE_OPENAI_API_KEY=your-openai-key-here  # Опционально
+VITE_GEMINI_API_KEY=your_gemini_api_key
+VITE_HUGGINGFACE_API_KEY=your_huggingface_api_key
 ```
+
+**Важно:** Не коммитите `.env` файл в репозиторий. Он уже добавлен в `.gitignore` для вашей безопасности.
 
 ### 5. Разверните Edge Functions
 
