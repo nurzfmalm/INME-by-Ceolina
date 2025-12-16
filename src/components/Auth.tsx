@@ -13,6 +13,7 @@ interface AuthProps {
 
 export const Auth = ({ onAuthSuccess }: AuthProps) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [childName, setChildName] = useState("");
@@ -23,7 +24,14 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isResetPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/`,
+        });
+        if (error) throw error;
+        toast.success("Письмо для сброса пароля отправлено на вашу почту!");
+        setIsResetPassword(false);
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -36,6 +44,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
               child_name: childName,
             },
@@ -61,14 +70,20 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
             alt="Ceolina"
             className="w-24 h-24 mx-auto animate-gentle-float"
           />
-          <h1 className="text-3xl font-bold">Добро пожаловать!</h1>
+          <h1 className="text-3xl font-bold">
+            {isResetPassword ? "Сброс пароля" : "Добро пожаловать!"}
+          </h1>
           <p className="text-muted-foreground">
-            {isLogin ? "Войдите в свой аккаунт" : "Создайте новый аккаунт"}
+            {isResetPassword
+              ? "Введите email для сброса пароля"
+              : isLogin
+              ? "Войдите в свой аккаунт"
+              : "Создайте новый аккаунт"}
           </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          {!isLogin && (
+          {!isLogin && !isResetPassword && (
             <div className="space-y-2">
               <Label htmlFor="childName">Имя ребёнка</Label>
               <Input
@@ -76,7 +91,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                 type="text"
                 value={childName}
                 onChange={(e) => setChildName(e.target.value)}
-                required={!isLogin}
+                required={!isLogin && !isResetPassword}
                 placeholder="Введите имя ребёнка"
               />
             </div>
@@ -94,37 +109,64 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Пароль</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              minLength={6}
-            />
-          </div>
+          {!isResetPassword && (
+            <div className="space-y-2">
+              <Label htmlFor="password">Пароль</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                minLength={6}
+              />
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading
               ? "Загрузка..."
+              : isResetPassword
+              ? "Отправить письмо"
               : isLogin
               ? "Войти"
               : "Зарегистрироваться"}
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full"
-            onClick={() => setIsLogin(!isLogin)}
-          >
-            {isLogin
-              ? "Нет аккаунта? Зарегистрируйтесь"
-              : "Уже есть аккаунт? Войдите"}
-          </Button>
+          {isResetPassword ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setIsResetPassword(false)}
+            >
+              Вернуться к входу
+            </Button>
+          ) : (
+            <>
+              {isLogin && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full text-sm"
+                  onClick={() => setIsResetPassword(true)}
+                >
+                  Забыли пароль?
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin
+                  ? "Нет аккаунта? Зарегистрируйтесь"
+                  : "Уже есть аккаунт? Войдите"}
+              </Button>
+            </>
+          )}
         </form>
       </Card>
     </div>
