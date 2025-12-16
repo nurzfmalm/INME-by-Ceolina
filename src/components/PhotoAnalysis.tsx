@@ -90,9 +90,16 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL (bucket is private for security)
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('artworks')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600);
+
+      if (signedError || !signedData?.signedUrl) {
+        throw new Error("Failed to create signed URL");
+      }
+
+      const imageUrl = signedData.signedUrl;
 
       // Call deep analysis
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-drawing-deep', {
@@ -119,7 +126,7 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
         .from('artworks')
         .insert([{
           user_id: userId,
-          image_url: publicUrl,
+          image_url: imageUrl,
           storage_path: fileName,
           metadata: JSON.parse(JSON.stringify({
             source: 'photo_upload',

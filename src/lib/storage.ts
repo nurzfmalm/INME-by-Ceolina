@@ -56,13 +56,18 @@ export async function uploadArtwork(
       throw error;
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // Get signed URL (bucket is private for security)
+    const { data: signedData, error: signedError } = await supabase.storage
       .from(ARTWORK_BUCKET)
-      .getPublicUrl(path);
+      .createSignedUrl(path, 3600); // 1 hour expiry
+
+    if (signedError || !signedData?.signedUrl) {
+      console.error("Signed URL error:", signedError);
+      throw new Error("Failed to create signed URL");
+    }
 
     return {
-      url: publicUrl,
+      url: signedData.signedUrl,
       path: data.path,
     };
   } catch (error: any) {
@@ -94,14 +99,20 @@ export async function deleteArtwork(path: string): Promise<boolean> {
 }
 
 /**
- * Get public URL for an artwork
+ * Get signed URL for an artwork (async because bucket is private)
  * @param path - Storage path
+ * @param expiresIn - URL expiry in seconds (default 1 hour)
  */
-export function getArtworkUrl(path: string): string {
-  const { data: { publicUrl } } = supabase.storage
+export async function getArtworkUrl(path: string, expiresIn: number = 3600): Promise<string> {
+  const { data, error } = await supabase.storage
     .from(ARTWORK_BUCKET)
-    .getPublicUrl(path);
-  return publicUrl;
+    .createSignedUrl(path, expiresIn);
+
+  if (error || !data?.signedUrl) {
+    console.error("Failed to create signed URL:", error);
+    return "";
+  }
+  return data.signedUrl;
 }
 
 /**

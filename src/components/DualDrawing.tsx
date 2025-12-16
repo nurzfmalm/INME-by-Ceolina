@@ -510,13 +510,18 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL (bucket is private for security)
+      const { data: signedData, error: signedError } = await supabase.storage
         .from("artworks")
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600);
+
+      if (signedError || !signedData?.signedUrl) {
+        throw new Error("Failed to create signed URL");
+      }
 
       await supabase.from("artworks").insert({
         user_id: userId,
-        image_url: publicUrl,
+        image_url: signedData.signedUrl,
         storage_path: fileName,
         emotions_used: {},
         colors_used: [currentColor],
