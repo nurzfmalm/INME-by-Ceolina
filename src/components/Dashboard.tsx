@@ -43,10 +43,46 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
     tasksCompleted: 0,
     streak: 0,
   });
+  const [weeklyProgress, setWeeklyProgress] = useState(0);
 
   useEffect(() => {
     loadUserStats();
   }, []);
+
+  const calculateStreak = (dates: string[]): number => {
+    if (dates.length === 0) return 0;
+    
+    const uniqueDays = [...new Set(dates.map(d => new Date(d).toDateString()))];
+    uniqueDays.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const lastActivity = new Date(uniqueDays[0]);
+    lastActivity.setHours(0, 0, 0, 0);
+    
+    // If last activity is not today or yesterday, streak is 0
+    if (lastActivity < yesterday) return 0;
+    
+    let streak = 0;
+    let checkDate = lastActivity.getTime() === today.getTime() ? today : yesterday;
+    
+    for (const dayStr of uniqueDays) {
+      const day = new Date(dayStr);
+      day.setHours(0, 0, 0, 0);
+      
+      if (day.getTime() === checkDate.getTime()) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (day < checkDate) {
+        break;
+      }
+    }
+    
+    return streak;
+  };
 
   const loadUserStats = async () => {
     try {
@@ -74,10 +110,45 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
 
       const totalTokens = tokens?.reduce((sum, t) => sum + t.amount, 0) || 0;
 
+      // Calculate streak from activity dates
+      const activityDates: string[] = [];
+      
+      const { data: artworks } = await supabase
+        .from('artworks')
+        .select('created_at')
+        .eq('user_id', user.id);
+      
+      const { data: sessions } = await supabase
+        .from('session_analytics')
+        .select('created_at')
+        .eq('user_id', user.id);
+      
+      const { data: completedTasks } = await supabase
+        .from('user_tasks')
+        .select('completed_at')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+      
+      artworks?.forEach(a => a.created_at && activityDates.push(a.created_at));
+      sessions?.forEach(s => s.created_at && activityDates.push(s.created_at));
+      completedTasks?.forEach(t => t.completed_at && activityDates.push(t.completed_at));
+      
+      const streak = calculateStreak(activityDates);
+
+      // Calculate weekly progress (activities this week vs target of 7)
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const thisWeekActivities = activityDates.filter(d => new Date(d) >= weekStart);
+      const uniqueWeekDays = new Set(thisWeekActivities.map(d => new Date(d).toDateString())).size;
+      const progress = Math.min(100, Math.round((uniqueWeekDays / 7) * 100));
+      
+      setWeeklyProgress(progress);
       setStats({
         artworks: artworksCount || 0,
         tasksCompleted: tasksCount || 0,
-        streak: 5, // TODO: Calculate actual streak
+        streak,
       });
       setTokenCount(totalTokens);
     } catch (error) {
@@ -278,9 +349,9 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Недельный прогресс</span>
-                <span className="font-semibold">65%</span>
+                <span className="font-semibold">{weeklyProgress}%</span>
               </div>
-              <Progress value={65} className="h-2 bg-white/20" />
+              <Progress value={weeklyProgress} className="h-2 bg-white/20" />
             </div>
           </div>
         </Card>
