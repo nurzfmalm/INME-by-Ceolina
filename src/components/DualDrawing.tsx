@@ -739,26 +739,35 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
             {/* Canvas */}
             <Card className="p-4 border-0 bg-card shadow-soft">
-              <canvas
-                ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted"
-              />
-            </Card>
+              <div className="relative">
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={(e) => startDrawing(e.touches[0] as any)}
+                  onTouchMove={(e) => draw(e.touches[0] as any)}
+                  onTouchEnd={stopDrawing}
+                  className="w-full h-[400px] bg-white rounded-2xl border-2 border-muted touch-none"
+                  style={{
+                    cursor: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><circle cx="${(lineWidth + 4) / 2}" cy="${(lineWidth + 4) / 2}" r="${lineWidth / 2}" fill="${currentColor}" stroke="black" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
+                  }}
+                />
 
-            {/* Canvas */}
-            <Card className="p-4 border-0 bg-card shadow-soft">
-              <canvas
-                ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted"
-              />
+                {/* Partner cursor indicator */}
+                {partnerCursor && Date.now() - partnerCursor.timestamp < 2000 && (
+                  <div
+                    className="absolute w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none transition-all duration-100"
+                    style={{
+                      backgroundColor: partnerCursor.color,
+                      left: `${partnerCursor.x}px`,
+                      top: `${partnerCursor.y}px`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  />
+                )}
+              </div>
             </Card>
 
             {/* Collaboration Analysis */}

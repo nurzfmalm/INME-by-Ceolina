@@ -1,46 +1,297 @@
-## How can I edit this code?
+# INME - Инклюзивное Обучение через Искусство
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Современное прогрессивное веб-приложение для арт-терапии и развития детей через творчество с AI-ассистентом Ceolina.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Особенности
 
-Follow these steps:
+✨ **Полностью адаптивный дизайн** - работает на телефонах, планшетах и десктопах
+🚀 **Progressive Web App (PWA)** - устанавливается как нативное приложение
+🎨 **Арт-терапия** - интерактивное рисование с анализом эмоций
+🤖 **AI-ассистент Ceolina** - персонализированная поддержка
+📊 **Аналитика прогресса** - отслеживание развития ребёнка
+👥 **Совместное рисование** - рисуйте вместе с друзьями в реальном времени
+🎯 **Задания и награды** - геймификация обучения
+🔒 **Безопасность** - Row Level Security в Supabase
+🌓 **Тёмная тема** - автоматическое переключение тем
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Технологии
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: TailwindCSS, shadcn/ui, Radix UI
+- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **State Management**: TanStack Query (React Query)
+- **Forms**: React Hook Form + Zod validation
+- **Charts**: Recharts
+- **Dates**: date-fns
+- **Icons**: Lucide React
+- **AI**: OpenAI API (через Supabase Edge Functions)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Быстрый старт
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### 1. Клонируйте репозиторий
+
+```bash
+git clone https://github.com/your-username/inme-app.git
+cd inme-app/INME-by-Ceolina
 ```
 
-**Edit a file directly in GitHub**
+### 2. Установите зависимости
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm install
+```
 
-**Use GitHub Codespaces**
+### 3. Настройте Supabase
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+#### 3.1 Создайте проект в Supabase
 
-## What technologies are used for this project?
+1. Перейдите на [supabase.com](https://supabase.com)
+2. Создайте новый проект
+3. Скопируйте URL проекта и anon key
 
-This project is built with:
+#### 3.2 Настройте базу данных
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Откройте SQL Editor в вашем Supabase проекте
+2. Выполните скрипт из файла `supabase/setup.sql`
 
+```bash
+# Или используйте Supabase CLI
+supabase db push
+```
+
+#### 3.3 Создайте Storage Bucket
+
+В Supabase Dashboard → Storage:
+
+1. Создайте bucket с именем `artworks`
+2. Сделайте его публичным
+3. Настройте политики (они уже включены в setup.sql)
+
+### 4. Настройте переменные окружения
+
+Скопируйте `.env.example` в `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Заполните значения:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_OPENAI_API_KEY=your-openai-key-here  # Опционально
+```
+
+### 5. Разверните Edge Functions
+
+```bash
+# Установите Supabase CLI
+npm install -g supabase
+
+# Войдите в аккаунт
+supabase login
+
+# Свяжите с проектом
+supabase link --project-ref your-project-ref
+
+# Разверните функции
+supabase functions deploy ai-assistant
+supabase functions deploy analyze-artworks
+supabase functions deploy analyze-collaboration
+supabase functions deploy analyze-task-drawing
+supabase functions deploy generate-learning-path
+```
+
+### 6. Запустите приложение
+
+```bash
+# Development mode
+npm run dev
+
+# Build для продакшена
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+Приложение будет доступно по адресу `http://localhost:8080`
+
+## Структура базы данных
+
+### Основные таблицы
+
+- **user_roles** - роли пользователей (parent/child)
+- **profiles** - профили пользователей
+- **parent_child_links** - связи родитель-ребёнок
+- **artworks** - созданные рисунки
+- **art_tasks** - задания для рисования
+- **user_tasks** - прогресс заданий
+- **adaptive_assessments** - адаптивная диагностика
+- **learning_paths** - персональные программы обучения
+- **drawing_sessions** - сессии совместного рисования
+- **drawing_strokes** - штрихи в совместном рисовании
+- **emotion_tokens** - система наград
+- **session_analytics** - аналитика сессий
+- **progress_tracking** - отслеживание прогресса
+- **sensory_settings** - сенсорные настройки
+
+### Storage Buckets
+
+- **artworks** - хранилище рисунков пользователей
+
+## Развёртывание
+
+### Vercel
+
+```bash
+# Установите Vercel CLI
+npm install -g vercel
+
+# Разверните
+vercel
+```
+
+Не забудьте добавить environment variables в Vercel Dashboard!
+
+### Netlify
+
+```bash
+# Установите Netlify CLI
+npm install -g netlify-cli
+
+# Разверните
+netlify deploy --prod
+```
+
+### Docker
+
+```bash
+# Build image
+docker build -t inme-app .
+
+# Run container
+docker run -p 8080:8080 inme-app
+```
+
+## PWA - Установка на устройства
+
+### iOS (iPhone/iPad)
+
+1. Откройте сайт в Safari
+2. Нажмите кнопку "Поделиться" (квадрат со стрелкой)
+3. Выберите "На экран «Домой»"
+4. Нажмите "Добавить"
+
+### Android
+
+1. Откройте сайт в Chrome
+2. Нажмите меню (три точки)
+3. Выберите "Добавить на главный экран"
+4. Подтвердите установку
+
+### Desktop (Chrome/Edge)
+
+1. Откройте сайт
+2. Нажмите иконку установки в адресной строке
+3. Подтвердите установку
+
+## Разработка
+
+### Структура проекта
+
+```
+INME-by-Ceolina/
+├── public/              # Статические файлы
+│   ├── manifest.json    # PWA манифест
+│   └── icon-*.png       # Иконки приложения
+├── src/
+│   ├── components/      # React компоненты
+│   │   ├── ui/          # UI компоненты (shadcn)
+│   │   ├── Dashboard.tsx
+│   │   ├── Gallery.tsx
+│   │   ├── ArtTherapy.tsx
+│   │   └── ...
+│   ├── lib/             # Утилиты
+│   │   ├── responsive.ts    # Адаптивные утилиты
+│   │   ├── storage.ts       # Supabase Storage
+│   │   ├── auth-helpers.ts  # Аутентификация
+│   │   └── utils.ts
+│   ├── hooks/           # Custom hooks
+│   ├── integrations/    # Интеграции
+│   │   └── supabase/    # Supabase клиент и типы
+│   ├── pages/           # Страницы
+│   ├── App.tsx
+│   └── main.tsx
+├── supabase/
+│   ├── setup.sql        # SQL скрипт настройки
+│   └── functions/       # Edge Functions
+├── .env.example         # Пример переменных окружения
+└── package.json
+```
+
+### Добавление новых компонентов
+
+```bash
+# shadcn/ui компоненты
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add card
+# и т.д.
+```
+
+### Тестирование
+
+```bash
+# Lint
+npm run lint
+
+# Type check
+npm run type-check
+```
+
+## Настройка для продакшена
+
+### 1. Оптимизация изображений
+
+Добавьте оптимизированные PWA иконки в папку `public/`:
+- icon-72x72.png
+- icon-96x96.png
+- icon-128x128.png
+- icon-144x144.png
+- icon-152x152.png
+- icon-192x192.png
+- icon-384x384.png
+- icon-512x512.png
+
+### 2. Environment Variables
+
+Убедитесь, что все переменные окружения установлены в продакшен окружении.
+
+### 3. Supabase RLS
+
+Все Row Level Security политики уже настроены в `setup.sql`. Проверьте их в Supabase Dashboard.
+
+### 4. CORS
+
+Настройте CORS для Edge Functions если используете их с другого домена.
+
+## Поддержка
+
+- 📧 Email: support@inme.app
+- 🐛 Issues: [GitHub Issues](https://github.com/your-username/inme-app/issues)
+- 📖 Документация: [Wiki](https://github.com/your-username/inme-app/wiki)
+
+## Лицензия
+
+MIT License - см. файл [LICENSE](LICENSE)
+
+## Благодарности
+
+- shadcn/ui за отличные компоненты
+- Supabase за backend-as-a-service
+- Сообщество React за поддержку
+
+---
+
+Сделано с ❤️ для детей и их развития

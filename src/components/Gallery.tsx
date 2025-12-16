@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Image as ImageIcon, Trash2, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Image as ImageIcon,
+  Trash2,
+  Filter,
+  Download,
+  Maximize2,
+  Heart,
+  Calendar,
+  Palette,
+  X,
+  Grid3x3,
+  List
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
@@ -12,8 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { responsiveText, responsiveGrid, mobileSpacing, touchSizes } from "@/lib/responsive";
+import { deleteArtwork as deleteFromStorage } from "@/lib/storage";
 
 interface GalleryProps {
   onBack: () => void;
@@ -25,9 +42,9 @@ interface Artwork {
   image_url: string | null;
   storage_path: string | null;
   created_at: string;
-  emotions_used: any; // Json type from database
-  colors_used: any; // Json type from database
-  metadata: any; // Json type from database
+  emotions_used: any;
+  colors_used: any;
+  metadata: any;
 }
 
 export const Gallery = ({ onBack, childName }: GalleryProps) => {
@@ -35,6 +52,8 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<string>("date");
   const [filterEmotion, setFilterEmotion] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
 
   useEffect(() => {
     loadArtworks();
@@ -43,9 +62,8 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
   const loadArtworks = async () => {
     try {
       const isAuth = await isUserAuthenticated();
-      
+
       if (!isAuth) {
-        // Demo mode: load from localStorage
         const stored = localStorage.getItem('ceolinaArtworks');
         if (stored) {
           setArtworks(JSON.parse(stored));
@@ -54,7 +72,6 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
         return;
       }
 
-      // Authenticated mode: load from Supabase
       const userId = await getCurrentUserId();
       if (!userId) return;
 
@@ -74,12 +91,11 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
     }
   };
 
-  const deleteArtwork = async (id: string, storagePath: string) => {
+  const handleDelete = async (id: string, storagePath: string | null) => {
     try {
       const isAuth = await isUserAuthenticated();
-      
+
       if (!isAuth) {
-        // Demo mode: delete from localStorage
         const stored = localStorage.getItem('ceolinaArtworks');
         if (stored) {
           const artworks = JSON.parse(stored);
@@ -91,12 +107,9 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
         return;
       }
 
-      // Authenticated mode: delete from Supabase
-      const { error: storageError } = await supabase.storage
-        .from("artworks")
-        .remove([storagePath]);
-
-      if (storageError) throw storageError;
+      if (storagePath) {
+        await deleteFromStorage(storagePath);
+      }
 
       const { error: dbError } = await supabase
         .from("artworks")
@@ -113,163 +126,312 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
     }
   };
 
+  const downloadArtwork = async (artwork: Artwork) => {
+    if (!artwork.image_url) return;
+
+    try {
+      const response = await fetch(artwork.image_url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `artwork_${artwork.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Рисунок скачан!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Ошибка при скачивании");
+    }
+  };
+
   const getPrimaryEmotion = (emotions: Record<string, number>) => {
     if (!emotions || Object.keys(emotions).length === 0) return "другое";
     return Object.keys(emotions).sort((a, b) => emotions[b] - emotions[a])[0];
   };
 
-  const getColorTone = (colors: string[]) => {
-    if (!colors || colors.length === 0) return "neutral";
-    // Simple warm/cool detection based on color values
-    const warmColors = ["#FFD93D", "#FF6B6B", "#FFB4D6"];
-    const coolColors = ["#6BCB77", "#4D96FF", "#C68FE6"];
-    const warmCount = colors.filter((c) => warmColors.includes(c)).length;
-    const coolCount = colors.filter((c) => coolColors.includes(c)).length;
-    return warmCount > coolCount ? "warm" : coolCount > warmCount ? "cool" : "neutral";
+  const getEmotionColor = (emotion: string) => {
+    const colors: Record<string, string> = {
+      радость: "from-yellow-400 to-orange-500",
+      спокойствие: "from-blue-400 to-cyan-500",
+      грусть: "from-blue-500 to-indigo-600",
+      удивление: "from-purple-400 to-pink-500",
+      другое: "from-gray-400 to-slate-500",
+    };
+    return colors[emotion] || colors.другое;
   };
 
-  // Filter and sort artworks
+  const getEmotionEmoji = (emotion: string) => {
+    const emojis: Record<string, string> = {
+      радость: "😊",
+      спокойствие: "😌",
+      грусть: "😢",
+      удивление: "😲",
+      другое: "🎨",
+    };
+    return emojis[emotion] || emojis.другое;
+  };
+
   const processedArtworks = artworks
     .filter((art) => {
       if (filterEmotion === "all") return true;
       return getPrimaryEmotion(art.emotions_used) === filterEmotion;
     })
     .sort((a, b) => {
-      switch (sortBy) {
-        case "date":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "emotion":
-          return getPrimaryEmotion(a.emotions_used).localeCompare(
-            getPrimaryEmotion(b.emotions_used)
-          );
-        case "tone":
-          return getColorTone(a.colors_used).localeCompare(getColorTone(b.colors_used));
-        default:
-          return 0;
+      if (sortBy === "date") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
+      return 0;
     });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50 dark:from-slate-950 dark:via-purple-950/30 dark:to-pink-950">
       {/* Header */}
-      <header className="bg-card shadow-soft border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft size={24} />
-            </Button>
+      <header className="sticky top-0 z-40 backdrop-blur-lg bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+        <div className={`${mobileSpacing.screenPadding} py-4`}>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-warm rounded-full flex items-center justify-center">
-                <ImageIcon className="text-white" size={24} />
-              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className={touchSizes.icon}
+              >
+                <ArrowLeft size={20} />
+              </Button>
               <div>
-                <h1 className="text-xl font-bold">Твоя галерея</h1>
-                <p className="text-sm text-muted-foreground">Все твои творения, {childName}</p>
+                <h1 className={responsiveText.h3}>Твоя Галерея</h1>
+                <p className="text-xs sm:text-sm text-slate-500">{artworks.length} рисунков</p>
               </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+                className="hidden sm:flex"
+              >
+                {viewMode === "grid" ? <List size={20} /> : <Grid3x3 size={20} />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">По дате</SelectItem>
+                <SelectItem value="emotion">По эмоции</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterEmotion} onValueChange={setFilterEmotion}>
+              <SelectTrigger className="w-full sm:w-40">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все эмоции</SelectItem>
+                <SelectItem value="радость">😊 Радость</SelectItem>
+                <SelectItem value="спокойствие">😌 Спокойствие</SelectItem>
+                <SelectItem value="грусть">😢 Грусть</SelectItem>
+                <SelectItem value="удивление">😲 Удивление</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Filters */}
-        {artworks.length > 0 && (
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Filter size={18} className="text-muted-foreground" />
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Сортировка" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">По дате</SelectItem>
-                  <SelectItem value="emotion">По эмоции</SelectItem>
-                  <SelectItem value="tone">По тону</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Select value={filterEmotion} onValueChange={setFilterEmotion}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Эмоция" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все эмоции</SelectItem>
-                <SelectItem value="joy">Радость</SelectItem>
-                <SelectItem value="calm">Спокойствие</SelectItem>
-                <SelectItem value="sadness">Грусть</SelectItem>
-                <SelectItem value="energy">Энергия</SelectItem>
-                <SelectItem value="creative">Творчество</SelectItem>
-                <SelectItem value="gentle">Нежность</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
+      <main className={`${mobileSpacing.screenPadding} py-6`}>
         {loading ? (
-          <Card className="p-12 text-center border-0 bg-card">
-            <p className="text-muted-foreground">Загрузка...</p>
-          </Card>
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          </div>
         ) : processedArtworks.length === 0 ? (
-          <Card className="p-12 text-center border-0 bg-card">
-            <ImageIcon className="mx-auto mb-4 text-muted-foreground" size={64} />
-            <h2 className="text-xl font-semibold mb-2">
-              {artworks.length === 0 ? "Пока пусто" : "Нет рисунков с такими параметрами"}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {artworks.length === 0
-                ? "Создай свой первый рисунок в разделе АРТ-Терапия"
-                : "Попробуй изменить фильтры"}
+          <Card className="p-12 text-center border-0 bg-white/80 dark:bg-slate-900/80">
+            <ImageIcon className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+            <h3 className={`${responsiveText.h3} mb-2 text-slate-700 dark:text-slate-300`}>
+              Галерея пуста
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400">
+              Создай свой первый рисунок и он появится здесь!
             </p>
-            <Button onClick={onBack}>Вернуться назад</Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {processedArtworks.map((artwork) => (
-              <Card
-                key={artwork.id}
-                className="group overflow-hidden border-0 bg-card hover:shadow-float transition-all"
-              >
-                <div className="relative aspect-square bg-muted">
-                  <img
-                    src={artwork.image_url}
-                    alt="Artwork"
-                    className="w-full h-full object-cover"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => deleteArtwork(artwork.id, artwork.storage_path)}
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                : "space-y-4"
+            }
+          >
+            {processedArtworks.map((artwork) => {
+              const emotion = getPrimaryEmotion(artwork.emotions_used);
+              const emotionColor = getEmotionColor(emotion);
+              const emoji = getEmotionEmoji(emotion);
+
+              return (
+                <Card
+                  key={artwork.id}
+                  className="group relative overflow-hidden border-0 bg-white dark:bg-slate-900 shadow-lg hover:shadow-2xl transition-all duration-300"
+                >
+                  {/* Image */}
+                  <div
+                    className="relative aspect-square overflow-hidden cursor-pointer"
+                    onClick={() => setSelectedArtwork(artwork)}
                   >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    {artwork.colors_used?.slice(0, 3).map((color, i) => (
-                      <div
-                        key={i}
-                        className="w-4 h-4 rounded-full border border-border"
-                        style={{ backgroundColor: color }}
+                    {artwork.image_url ? (
+                      <img
+                        src={artwork.image_url}
+                        alt="Artwork"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                    ))}
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {getPrimaryEmotion(artwork.emotions_used)}
-                    </span>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center">
+                        <ImageIcon className="w-16 h-16 text-purple-300 dark:text-purple-700" />
+                      </div>
+                    )}
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedArtwork(artwork);
+                        }}
+                      >
+                        <Maximize2 size={20} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadArtwork(artwork);
+                        }}
+                      >
+                        <Download size={20} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(artwork.id, artwork.storage_path);
+                        }}
+                      >
+                        <Trash2 size={20} />
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(artwork.created_at), {
-                      addSuffix: true,
-                      locale: ru,
-                    })}
-                  </p>
-                </div>
-              </Card>
-            ))}
+
+                  {/* Info */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge className={`bg-gradient-to-r ${emotionColor} text-white border-0`}>
+                        <span className="mr-1">{emoji}</span>
+                        {emotion}
+                      </Badge>
+                      <span className="text-xs text-slate-500">
+                        {formatDistanceToNow(new Date(artwork.created_at), {
+                          addSuffix: true,
+                          locale: ru,
+                        })}
+                      </span>
+                    </div>
+
+                    {artwork.colors_used && Array.isArray(artwork.colors_used) && (
+                      <div className="flex gap-1">
+                        {artwork.colors_used.slice(0, 5).map((color: string, i: number) => (
+                          <div
+                            key={i}
+                            className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
+
+      {/* Full Screen Dialog */}
+      <Dialog open={!!selectedArtwork} onOpenChange={() => setSelectedArtwork(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-black border-0">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20 text-white"
+              onClick={() => setSelectedArtwork(null)}
+            >
+              <X size={24} />
+            </Button>
+
+            {selectedArtwork?.image_url && (
+              <div className="relative">
+                <img
+                  src={selectedArtwork.image_url}
+                  alt="Artwork"
+                  className="w-full max-h-[80vh] object-contain"
+                />
+
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge className={`bg-gradient-to-r ${getEmotionColor(getPrimaryEmotion(selectedArtwork.emotions_used))} border-0`}>
+                      {getEmotionEmoji(getPrimaryEmotion(selectedArtwork.emotions_used))}{" "}
+                      {getPrimaryEmotion(selectedArtwork.emotions_used)}
+                    </Badge>
+                    <span className="text-sm">
+                      {formatDistanceToNow(new Date(selectedArtwork.created_at), {
+                        addSuffix: true,
+                        locale: ru,
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => selectedArtwork && downloadArtwork(selectedArtwork)}
+                    >
+                      <Download size={16} className="mr-2" />
+                      Скачать
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedArtwork) {
+                          handleDelete(selectedArtwork.id, selectedArtwork.storage_path);
+                          setSelectedArtwork(null);
+                        }
+                      }}
+                    >
+                      <Trash2 size={16} className="mr-2" />
+                      Удалить
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

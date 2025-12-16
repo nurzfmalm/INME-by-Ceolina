@@ -26,28 +26,12 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
-
-        // Check if role exists, if not create it
-        if (data.user) {
-          const { data: existingRole } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", data.user.id)
-            .maybeSingle();
-
-          if (!existingRole) {
-            await supabase.from("user_roles").insert({
-              user_id: data.user.id,
-              role: "parent",
-            });
-          }
-        }
 
         toast.success("Вход выполнен!");
       } else {
@@ -68,6 +52,7 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               child_name: childName,
+              child_age: childAge,
             },
           },
         });
@@ -75,36 +60,15 @@ export const ParentAuth = ({ onBack }: ParentAuthProps) => {
         if (error) throw error;
 
         if (data.user) {
-          // Set parent role
-          const { error: roleError } = await supabase.from("user_roles").insert({
-            user_id: data.user.id,
-            role: "parent",
-          });
-
-          if (roleError) {
-            console.error("Error creating role:", roleError);
-            toast.error("Ошибка создания роли");
-            return;
+          // Profile and role are auto-created by database trigger
+          if (data.session) {
+            toast.success("Аккаунт создан!");
+            // User is already logged in, page will reload
+          } else {
+            // Email confirmation required
+            toast.success("Аккаунт создан! Проверьте email для подтверждения и войдите.");
+            setIsLogin(true);
           }
-          
-          // Update profile with child data
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .update({ 
-              child_name: childName,
-              child_age: parseInt(childAge),
-              parent_email: email
-            })
-            .eq("id", data.user.id);
-
-          if (profileError) {
-            console.error("Error updating profile:", profileError);
-            toast.error("Ошибка обновления профиля");
-            return;
-          }
-          
-          toast.success("Аккаунт создан! Войдите в систему.");
-          setIsLogin(true);
         }
       }
     } catch (error: any) {

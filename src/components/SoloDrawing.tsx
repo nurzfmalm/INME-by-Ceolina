@@ -594,7 +594,12 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            className="w-full h-[400px] bg-white rounded-2xl cursor-crosshair border-2 border-muted touch-none"
+            className="w-full h-[400px] bg-white rounded-2xl border-2 border-muted touch-none"
+            style={{
+              cursor: isEraser
+                ? `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><rect x="2" y="2" width="${lineWidth}" height="${lineWidth}" fill="white" stroke="gray" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
+                : `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><circle cx="${(lineWidth + 4) / 2}" cy="${(lineWidth + 4) / 2}" r="${lineWidth / 2}" fill="${encodeURIComponent(currentColor)}" stroke="black" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
+            }}
           />
         </Card>
 
