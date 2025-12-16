@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.analyze-image-clip]
 verify_jwt = false
+
+[functions.analyze-drawing-deep]
+verify_jwt = false

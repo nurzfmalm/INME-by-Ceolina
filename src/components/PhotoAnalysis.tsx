@@ -1,9 +1,12 @@
-import { useState, useRef } from "react";
-import { Camera, Upload, X, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Upload, X, Loader2, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DrawingObservationForm } from "./DrawingObservationForm";
+import { AnalysisReportComponent } from "./AnalysisReport";
+import type { DrawingObservation, AnalysisReport } from "@/lib/analysis-types";
 
 interface PhotoAnalysisProps {
   onBack: () => void;
@@ -11,12 +14,50 @@ interface PhotoAnalysisProps {
   childName: string;
 }
 
+type AnalysisStep = "upload" | "observation" | "analyzing" | "result";
+
 export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [step, setStep] = useState<AnalysisStep>("upload");
+  const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [previousDrawings, setPreviousDrawings] = useState<any[]>([]);
+  const [childAge, setChildAge] = useState<number>(7);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Load previous drawings and child age
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Get child profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('child_age')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (profile?.child_age) {
+          setChildAge(profile.child_age);
+        }
+
+        // Get previous drawings
+        const { data: artworks } = await supabase
+          .from('artworks')
+          .select('id, created_at, metadata')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (artworks) {
+          setPreviousDrawings(artworks);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
+  }, [userId]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -24,22 +65,23 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedImage(e.target?.result as string);
+        setStep("observation");
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const analyzePhoto = async () => {
+  const handleObservationSubmit = async (observation: DrawingObservation) => {
     if (!selectedImage) return;
 
-    setIsAnalyzing(true);
+    setStep("analyzing");
+    
     try {
       // Upload to Supabase Storage
       const fileName = `${userId}/${Date.now()}.png`;
-      const base64Data = selectedImage.split(',')[1];
       const blob = await fetch(selectedImage).then(r => r.blob());
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('artworks')
         .upload(fileName, blob, {
           contentType: 'image/png',
@@ -52,69 +94,96 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
         .from('artworks')
         .getPublicUrl(fileName);
 
-      // Call CLIP AI analysis
-      const { data: clipAnalysisData, error: clipError } = await supabase.functions.invoke('analyze-image-clip', {
+      // Call deep analysis
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-drawing-deep', {
         body: {
           imageData: selectedImage,
-          taskContext: `Анализ рисунка ребенка ${childName} для арт-терапии`
+          observation,
+          previousDrawings: previousDrawings.length > 0 ? previousDrawings : undefined
         }
       });
 
-      if (clipError) {
-        console.error("CLIP analysis error:", clipError);
-        throw clipError;
+      if (analysisError) {
+        console.error("Analysis error:", analysisError);
+        throw new Error(analysisError.message || "Ошибка анализа");
       }
 
-      const analysisResult = clipAnalysisData?.analysis;
+      if (!analysisData?.report) {
+        throw new Error("Не удалось получить результаты анализа");
+      }
 
-      // Save to database
+      const analysisReport = analysisData.report;
+
+      // Save to database - use JSON parse/stringify to ensure Json compatibility
       const { error: saveError } = await supabase
         .from('artworks')
-        .insert({
+        .insert([{
           user_id: userId,
           image_url: publicUrl,
           storage_path: fileName,
-          metadata: {
+          metadata: JSON.parse(JSON.stringify({
             source: 'photo_upload',
-            clip_analysis: analysisResult,
+            deep_analysis: analysisReport,
+            observation_data: observation,
+            visual_validation: analysisData.visualValidation,
             analyzed_at: new Date().toISOString(),
-            top_labels: analysisResult?.labels?.slice(0, 5) || []
-          },
-          colors_used: analysisResult?.labels?.filter((l: any) =>
-            l.label.includes('color') || l.label === 'colorful'
-          ).map((l: any) => l.label) || [],
-          emotions_used: analysisResult?.emotions?.map((e: any) => e.emotion) || []
-        });
+          })),
+          colors_used: analysisReport.visual_description?.colors_used?.map((c: any) => c.color) || [],
+          emotions_used: analysisReport.interpretation?.emotional_themes?.map((t: any) => t.theme) || []
+        }]);
 
       if (saveError) throw saveError;
 
-      setAnalysis(analysisResult);
-      toast.success("Анализ завершён! Результаты сохранены.");
+      setReport(analysisReport);
+      setStep("result");
+      toast.success("Глубокий анализ завершён!");
     } catch (error: any) {
       console.error("Ошибка анализа:", error);
-      toast.error("Ошибка при анализе фото: " + (error.message || "Неизвестная ошибка"));
-    } finally {
-      setIsAnalyzing(false);
+      toast.error("Ошибка при анализе: " + (error.message || "Неизвестная ошибка"));
+      setStep("observation");
     }
+  };
+
+  const resetAnalysis = () => {
+    setSelectedImage(null);
+    setReport(null);
+    setStep("upload");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent/20 p-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={onBack}>
-            ← Назад
+          <Button variant="outline" onClick={step === "upload" ? onBack : resetAnalysis}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {step === "upload" ? "Назад" : "Новый анализ"}
           </Button>
-          <h1 className="text-2xl font-bold">📸 Анализ фото рисунка</h1>
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            <h1 className="text-xl font-bold">Глубокий анализ рисунка</h1>
+          </div>
         </div>
 
-        {!selectedImage ? (
+        {/* Step indicator */}
+        {step !== "result" && (
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className={`h-2 w-16 rounded-full ${step === "upload" ? "bg-primary" : "bg-primary/30"}`} />
+            <div className={`h-2 w-16 rounded-full ${step === "observation" ? "bg-primary" : step === "analyzing" ? "bg-primary" : "bg-muted"}`} />
+            <div className={`h-2 w-16 rounded-full ${step === "analyzing" ? "bg-primary animate-pulse" : "bg-muted"}`} />
+          </div>
+        )}
+
+        {/* Upload Step */}
+        {step === "upload" && (
           <Card className="p-8">
             <div className="text-center space-y-6">
-              <h2 className="text-xl font-semibold">Загрузите фото рисунка</h2>
-              <p className="text-muted-foreground">
-                Сделайте снимок или выберите фото из галереи для AI-анализа
-              </p>
+              <div>
+                <h2 className="text-xl font-semibold mb-2">Шаг 1: Загрузите рисунок</h2>
+                <p className="text-muted-foreground">
+                  Сделайте снимок или выберите фото рисунка {childName} для глубокого AI-анализа
+                </p>
+              </div>
 
               <div className="grid gap-4">
                 <Button
@@ -137,6 +206,15 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
                 </Button>
               </div>
 
+              {previousDrawings.length > 0 && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    У вас есть {previousDrawings.length} предыдущих рисунков. 
+                    Анализ будет включать сравнение с прогрессом.
+                  </p>
+                </div>
+              )}
+
               <input
                 ref={cameraInputRef}
                 type="file"
@@ -155,154 +233,93 @@ export const PhotoAnalysis = ({ onBack, userId, childName }: PhotoAnalysisProps)
               />
             </div>
           </Card>
-        ) : (
+        )}
+
+        {/* Observation Step */}
+        {step === "observation" && selectedImage && (
           <div className="space-y-4">
             <Card className="p-4">
               <div className="relative">
                 <img
                   src={selectedImage}
                   alt="Выбранный рисунок"
-                  className="w-full h-auto rounded-lg"
+                  className="w-full h-auto max-h-64 object-contain rounded-lg bg-muted"
                 />
                 <Button
                   size="icon"
                   variant="destructive"
                   className="absolute top-2 right-2"
-                  onClick={() => {
-                    setSelectedImage(null);
-                    setAnalysis(null);
-                  }}
+                  onClick={resetAnalysis}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </Card>
 
-            {!analysis && (
-              <Button
-                size="lg"
-                onClick={analyzePhoto}
-                disabled={isAnalyzing}
-                className="w-full"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Анализирую...
-                  </>
-                ) : (
-                  "🧠 Анализировать рисунок"
-                )}
-              </Button>
-            )}
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Шаг 2: Форма наблюдений</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Заполните данные о процессе рисования для качественного анализа
+              </p>
+            </div>
 
-            {analysis && (
-              <Card className="p-6 space-y-4">
-                <h3 className="text-xl font-bold">Результаты AI-анализа (CLIP)</h3>
+            <DrawingObservationForm
+              childId={userId}
+              childAge={childAge}
+              onSubmit={handleObservationSubmit}
+              strokeCount={0}
+              averagePressure={5}
+              eraserUsage={0}
+              durationSeconds={0}
+              isPhotoUpload={true}
+            />
+          </div>
+        )}
 
-                {/* Overall Score */}
-                {analysis.overallScore && (
-                  <div className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg">
-                    <h4 className="font-semibold mb-2">📊 Общая оценка</h4>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                          style={{ width: `${analysis.overallScore}%` }}
-                        />
-                      </div>
-                      <span className="font-bold text-lg">{analysis.overallScore}%</span>
-                    </div>
-                  </div>
-                )}
+        {/* Analyzing Step */}
+        {step === "analyzing" && (
+          <Card className="p-12">
+            <div className="text-center space-y-6">
+              <Loader2 className="h-16 w-16 animate-spin mx-auto text-primary" />
+              <div>
+                <h2 className="text-xl font-semibold mb-2">Глубокий анализ...</h2>
+                <p className="text-muted-foreground">
+                  AI анализирует рисунок с учётом данных наблюдений
+                </p>
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>1. Валидация визуального распознавания</p>
+                <p>2. Мультифакторный анализ</p>
+                <p>3. Сравнение с предыдущими рисунками</p>
+                <p>4. Формирование рекомендаций</p>
+              </div>
+            </div>
+          </Card>
+        )}
 
-                {/* Top Labels */}
-                {analysis.labels && analysis.labels.length > 0 && (
-                  <div className="p-4 bg-blue-500/10 rounded-lg">
-                    <h4 className="font-semibold mb-3">🏷️ Что видит AI</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {analysis.labels.slice(0, 8).map((label: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="px-3 py-1 bg-white/50 rounded-full text-sm flex items-center gap-2"
-                        >
-                          <span>{label.label}</span>
-                          <span className="text-xs text-gray-500">
-                            {Math.round(label.score * 100)}%
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Emotions */}
-                {analysis.emotions && analysis.emotions.length > 0 && (
-                  <div className="p-4 bg-pink-500/10 rounded-lg">
-                    <h4 className="font-semibold mb-3">❤️ Обнаруженные эмоции</h4>
-                    <div className="space-y-2">
-                      {analysis.emotions.map((emotion: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between">
-                          <span className="capitalize">{emotion.emotion}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-pink-500 transition-all"
-                                style={{ width: `${emotion.confidence * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-gray-500 w-10">
-                              {Math.round(emotion.confidence * 100)}%
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <div className="p-4 bg-primary/10 rounded-lg">
-                    <h4 className="font-semibold mb-2">🌈 Анализ цвета</h4>
-                    <p className="text-sm">{analysis.colorAnalysis || "Нейтральная цветовая палитра"}</p>
-                  </div>
-
-                  <div className="p-4 bg-secondary/10 rounded-lg">
-                    <h4 className="font-semibold mb-2">🎨 Композиция</h4>
-                    <p className="text-sm">{analysis.compositionInsights || "Сбалансированная композиция"}</p>
-                  </div>
-
-                  {analysis.therapeuticRecommendations && analysis.therapeuticRecommendations.length > 0 && (
-                    <div className="p-4 bg-green-500/10 rounded-lg">
-                      <h4 className="font-semibold mb-2">💡 Рекомендации</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
-                        {analysis.therapeuticRecommendations.map((rec: string, idx: number) => (
-                          <li key={idx}>{rec}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {analysis.ceolinaFeedback && (
-                    <div className="p-4 bg-yellow-500/10 rounded-lg border-2 border-yellow-500/20">
-                      <h4 className="font-semibold mb-2">✨ Сообщение от Ceolina</h4>
-                      <p className="text-sm italic">{analysis.ceolinaFeedback}</p>
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setSelectedImage(null);
-                    setAnalysis(null);
-                  }}
-                >
-                  Загрузить ещё фото
-                </Button>
+        {/* Result Step */}
+        {step === "result" && report && (
+          <div className="space-y-4">
+            {selectedImage && (
+              <Card className="p-4">
+                <img
+                  src={selectedImage}
+                  alt="Проанализированный рисунок"
+                  className="w-full h-auto max-h-48 object-contain rounded-lg bg-muted"
+                />
               </Card>
             )}
+            
+            <AnalysisReportComponent report={report} />
+
+            <div className="flex gap-4">
+              <Button onClick={resetAnalysis} className="flex-1">
+                Загрузить другой рисунок
+              </Button>
+              <Button variant="outline" onClick={onBack} className="flex-1">
+                Вернуться в меню
+              </Button>
+            </div>
           </div>
         )}
       </div>
