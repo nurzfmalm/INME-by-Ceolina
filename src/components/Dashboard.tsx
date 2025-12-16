@@ -4,6 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Palette,
   Brain,
   Image,
@@ -279,10 +285,20 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
 
             {/* Tokens & Actions */}
             <div className="flex items-center gap-2">
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-3 py-1.5">
-                <Star className="w-3 h-3 mr-1" fill="currentColor" />
-                {tokenCount}
-              </Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-3 py-1.5 cursor-help">
+                      <Star className="w-3 h-3 mr-1" fill="currentColor" />
+                      {tokenCount}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="font-semibold mb-1">⭐ Токены награды</p>
+                    <p className="text-sm">Зарабатывай токены, выполняя задания и создавая рисунки. Обменивай их на новые кисти, фоны и цвета в магазине наград!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
               <Button
                 variant="ghost"

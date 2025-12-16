@@ -7,6 +7,12 @@ import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { Badge } from "@/components/ui/badge";
 import { FloatingAssistant } from "./FloatingAssistant";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TasksProps {
   onBack: () => void;
@@ -209,11 +215,21 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-gradient-warm px-4 py-2 rounded-full">
-              <Star className="text-white" size={20} />
-              <span className="font-bold text-white">{totalTokens}</span>
-              <span className="text-xs text-white/80">токенов</span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 bg-gradient-warm px-4 py-2 rounded-full cursor-help">
+                    <Star className="text-white" size={20} />
+                    <span className="font-bold text-white">{totalTokens}</span>
+                    <span className="text-xs text-white/80">токенов</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="font-semibold mb-1">⭐ Токены награды</p>
+                  <p className="text-sm">Зарабатывай токены, выполняя задания и создавая рисунки. Обменивай их на новые кисти, фоны и цвета в магазине наград!</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </header>
