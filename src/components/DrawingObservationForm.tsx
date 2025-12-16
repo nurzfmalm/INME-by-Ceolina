@@ -31,10 +31,11 @@ interface DrawingObservationFormProps {
   childAge: number;
   onSubmit: (observation: DrawingObservation) => void;
   initialData?: Partial<DrawingObservation>;
-  strokeCount: number;
-  averagePressure: number;
-  eraserUsage: number;
-  durationSeconds: number;
+  strokeCount?: number;
+  averagePressure?: number;
+  eraserUsage?: number;
+  durationSeconds?: number;
+  isPhotoUpload?: boolean;
 }
 
 export const DrawingObservationForm = ({
@@ -42,10 +43,11 @@ export const DrawingObservationForm = ({
   childAge,
   onSubmit,
   initialData,
-  strokeCount,
-  averagePressure,
-  eraserUsage,
-  durationSeconds,
+  strokeCount = 0,
+  averagePressure = 5,
+  eraserUsage = 0,
+  durationSeconds = 0,
+  isPhotoUpload = false,
 }: DrawingObservationFormProps) => {
   const [taskType, setTaskType] = useState<TaskType>(
     initialData?.task_type || "free_drawing"
@@ -74,6 +76,8 @@ export const DrawingObservationForm = ({
   const [additionalNotes, setAdditionalNotes] = useState(
     initialData?.additional_notes || ""
   );
+  const [manualDuration, setManualDuration] = useState(durationSeconds || 0);
+  const [manualPressure, setManualPressure] = useState(averagePressure || 5);
 
   const toggleEmotionalState = (state: EmotionalState) => {
     setEmotionalStates((prev) =>
@@ -114,10 +118,10 @@ export const DrawingObservationForm = ({
       verbal_comments: verbalComments || undefined,
       materials_used: materialsUsed,
       colors_count: colorsCount,
-      drawing_duration_seconds: durationSeconds,
+      drawing_duration_seconds: isPhotoUpload ? manualDuration * 60 : durationSeconds,
       pause_frequency: pauseFrequency,
       stroke_count: strokeCount,
-      average_pressure: averagePressure,
+      average_pressure: isPhotoUpload ? manualPressure : averagePressure,
       eraser_usage: eraserUsage,
       additional_notes: additionalNotes || undefined,
     };
@@ -304,16 +308,48 @@ export const DrawingObservationForm = ({
         />
       </div>
 
-      {/* Автоматически собранные метрики */}
-      <div className="bg-muted p-4 rounded-lg space-y-2">
-        <h3 className="font-semibold text-sm">Автоматически собранные данные:</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>Длительность: {Math.floor(durationSeconds / 60)} мин {durationSeconds % 60} сек</div>
-          <div>Количество штрихов: {strokeCount}</div>
-          <div>Средний нажим: {averagePressure.toFixed(1)}/10</div>
-          <div>Использование ластика: {eraserUsage} раз</div>
+      {/* Метрики сессии */}
+      {isPhotoUpload ? (
+        <div className="space-y-4 p-4 bg-muted rounded-lg">
+          <h3 className="font-semibold text-sm">Данные о сессии рисования (укажите примерно):</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Длительность (минуты)</Label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={manualDuration}
+                onChange={(e) => setManualDuration(Number(e.target.value))}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="15"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Нажим (1-10)</Label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={manualPressure}
+                onChange={(e) => setManualPressure(Number(e.target.value))}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="5"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-muted p-4 rounded-lg space-y-2">
+          <h3 className="font-semibold text-sm">Автоматически собранные данные:</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>Длительность: {Math.floor(durationSeconds / 60)} мин {durationSeconds % 60} сек</div>
+            <div>Количество штрихов: {strokeCount}</div>
+            <div>Средний нажим: {averagePressure.toFixed(1)}/10</div>
+            <div>Использование ластика: {eraserUsage} раз</div>
+          </div>
+        </div>
+      )}
 
       <Button onClick={handleSubmit} size="lg" className="w-full">
         Сохранить и проанализировать
