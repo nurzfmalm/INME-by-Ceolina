@@ -17,6 +17,7 @@ export type Database = {
       adaptive_assessments: {
         Row: {
           assessment_data: Json
+          child_id: string | null
           completed: boolean | null
           completed_at: string | null
           created_at: string | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           assessment_data: Json
+          child_id?: string | null
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           assessment_data?: Json
+          child_id?: string | null
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
@@ -45,7 +48,15 @@ export type Database = {
           total_steps?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "adaptive_assessments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       art_tasks: {
         Row: {
@@ -82,33 +93,116 @@ export type Database = {
       }
       artworks: {
         Row: {
+          child_id: string | null
           colors_used: Json | null
           created_at: string | null
+          development_indicators: Json | null
+          emotional_analysis: Json | null
           emotions_used: Json | null
           id: string
           image_url: string | null
           metadata: Json | null
+          reference_image_url: string | null
+          reference_storage_path: string | null
           storage_path: string | null
           user_id: string
         }
         Insert: {
+          child_id?: string | null
           colors_used?: Json | null
           created_at?: string | null
+          development_indicators?: Json | null
+          emotional_analysis?: Json | null
           emotions_used?: Json | null
           id?: string
           image_url?: string | null
           metadata?: Json | null
+          reference_image_url?: string | null
+          reference_storage_path?: string | null
           storage_path?: string | null
           user_id: string
         }
         Update: {
+          child_id?: string | null
           colors_used?: Json | null
           created_at?: string | null
+          development_indicators?: Json | null
+          emotional_analysis?: Json | null
           emotions_used?: Json | null
           id?: string
           image_url?: string | null
           metadata?: Json | null
+          reference_image_url?: string | null
+          reference_storage_path?: string | null
           storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artworks_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      centers: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      children: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          created_at: string
+          development_notes: string | null
+          emotional_state: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          development_notes?: string | null
+          emotional_state?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          development_notes?: string | null
+          emotional_state?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -178,6 +272,7 @@ export type Database = {
       emotion_tokens: {
         Row: {
           amount: number
+          child_id: string | null
           created_at: string | null
           id: string
           source: string | null
@@ -185,6 +280,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          child_id?: string | null
           created_at?: string | null
           id?: string
           source?: string | null
@@ -192,15 +288,25 @@ export type Database = {
         }
         Update: {
           amount?: number
+          child_id?: string | null
           created_at?: string | null
           id?: string
           source?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "emotion_tokens_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       learning_paths: {
         Row: {
+          child_id: string | null
           completion_percentage: number | null
           current_week: number | null
           id: string
@@ -211,6 +317,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          child_id?: string | null
           completion_percentage?: number | null
           current_week?: number | null
           id?: string
@@ -221,6 +328,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          child_id?: string | null
           completion_percentage?: number | null
           current_week?: number | null
           id?: string
@@ -230,7 +338,15 @@ export type Database = {
           total_weeks?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "learning_paths_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parent_child_links: {
         Row: {
@@ -318,6 +434,7 @@ export type Database = {
       }
       progress_tracking: {
         Row: {
+          child_id: string | null
           id: string
           metric_type: string
           metric_value: number
@@ -326,6 +443,7 @@ export type Database = {
           week_number: number
         }
         Insert: {
+          child_id?: string | null
           id?: string
           metric_type: string
           metric_value: number
@@ -334,6 +452,7 @@ export type Database = {
           week_number: number
         }
         Update: {
+          child_id?: string | null
           id?: string
           metric_type?: string
           metric_value?: number
@@ -341,7 +460,15 @@ export type Database = {
           user_id?: string
           week_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "progress_tracking_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sensory_settings: {
         Row: {
@@ -461,24 +588,35 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          center_id: string | null
           created_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          center_id?: string | null
           created_at?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          center_id?: string | null
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_tasks: {
         Row: {

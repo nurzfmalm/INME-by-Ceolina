@@ -15,8 +15,9 @@ import { LearningPath } from "@/components/LearningPath";
 import { ParentDashboard } from "@/components/ParentDashboard";
 import { SensorySettings } from "@/components/SensorySettings";
 import { RoleSelection } from "@/components/RoleSelection";
-import { ParentAuth } from "@/components/ParentAuth";
+import { CenterAuth } from "@/components/CenterAuth";
 import { ChildAuth } from "@/components/ChildAuth";
+import { ChildrenManager } from "@/components/ChildrenManager";
 import { PhotoAnalysis } from "@/components/PhotoAnalysis";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
@@ -25,7 +26,7 @@ const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const { role, loading: roleLoading } = useUserRole();
-  const [selectedRole, setSelectedRole] = useState<"parent" | "child" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"center" | "child" | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [diagnosticComplete, setDiagnosticComplete] = useState(false);
   const [childData, setChildData] = useState<OnboardingData | null>(null);
@@ -33,60 +34,55 @@ const Index = () => {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  
+  // New: selected child for specialists
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [selectedChildName, setSelectedChildName] = useState<string>("Ребёнок");
 
   const loadUserData = async () => {
     setDataLoading(true);
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user!.id)
-        .maybeSingle();
+      // For specialists (parent role), check if they have children
+      if (role === "parent") {
+        const { data: children } = await supabase
+          .from("children")
+          .select("id, name")
+          .eq("user_id", user!.id)
+          .limit(1);
 
-      if (profile) {
-        // Check if this is a child with parent data
-        if (role === "child" && profile.parent_user_id) {
-          // Load parent's profile to get child data
-          const { data: parentProfile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", profile.parent_user_id)
-            .single();
-
-          if (parentProfile) {
-            // Use parent's data for the child
-            const userData: OnboardingData = {
-              childName: profile.child_name || parentProfile.child_name || "Ребёнок",
-              childAge: String(profile.child_age || parentProfile.child_age || ""),
-              communicationLevel: "",
-              emotionalLevel: "",
-              goals: ""
-            };
-            setChildData(userData);
-
-            // Check if assessment exists
-            const { data: assessment } = await supabase
-              .from("adaptive_assessments")
-              .select("*")
-              .eq("user_id", profile.parent_user_id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (assessment && assessment.completed) {
-              setOnboardingComplete(true);
-              setDiagnosticComplete(true);
-              toast.success(`Добро пожаловать, ${userData.childName}!`);
-            }
+        if (children && children.length > 0) {
+          // Auto-select first child if none selected
+          if (!selectedChildId) {
+            setSelectedChildId(children[0].id);
+            setSelectedChildName(children[0].name);
           }
-        } else if (role === "parent" && profile.child_name) {
-          // Parent with existing data
+          setOnboardingComplete(true);
+          setDiagnosticComplete(true);
+          
+          // Set child data for display
+          setChildData({
+            childName: selectedChildName,
+            childAge: "",
+            communicationLevel: "",
+            emotionalLevel: "",
+            goals: "",
+          });
+        }
+      } else if (role === "child") {
+        // Child role - load from profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user!.id)
+          .maybeSingle();
+
+        if (profile) {
           const userData: OnboardingData = {
-            childName: profile.child_name,
+            childName: profile.child_name || "Ребёнок",
             childAge: String(profile.child_age || ""),
             communicationLevel: "",
             emotionalLevel: "",
-            goals: ""
+            goals: "",
           };
           setChildData(userData);
 
@@ -131,12 +127,25 @@ const Index = () => {
     if (user && !roleLoading && role) {
       loadUserData();
     } else if (user && !roleLoading && !role) {
-      // User has no role yet
       setDataLoading(false);
     } else if (!user) {
       setDataLoading(false);
     }
-  }, [user, roleLoading, role]);
+  }, [user, roleLoading, role, selectedChildId]);
+
+  const handleChildSelect = (childId: string, childName: string) => {
+    setSelectedChildId(childId);
+    setSelectedChildName(childName);
+    setChildData({
+      childName,
+      childAge: "",
+      communicationLevel: "",
+      emotionalLevel: "",
+      goals: "",
+    });
+    setCurrentSection("dashboard");
+    toast.success(`Выбран профиль: ${childName}`);
+  };
 
   const handleOnboardingComplete = (data: OnboardingData) => {
     setChildData(data);
@@ -144,74 +153,67 @@ const Index = () => {
   };
 
   const handleDiagnosticComplete = async (assessmentId: string) => {
-  console.log("Diagnostic completed:", assessmentId);
+    console.log("Diagnostic completed:", assessmentId);
 
-  // Generate learning path with Gemini AI
-  try {
-    const loadingToast = toast.loading('🤖 Gemini AI создаёт персональную программу обучения...');
+    try {
+      const loadingToast = toast.loading('🤖 Gemini AI создаёт персональную программу обучения...');
 
-    // Получить данные assessment из базы
-    const { data: assessment, error: assessmentError } = await supabase
-      .from("adaptive_assessments")
-      .select("*")
-      .eq("id", assessmentId)
-      .single();
+      const { data: assessment, error: assessmentError } = await supabase
+        .from("adaptive_assessments")
+        .select("*")
+        .eq("id", assessmentId)
+        .single();
 
-    if (assessmentError) {
-      console.error("Error fetching assessment:", assessmentError);
-      toast.dismiss(loadingToast);
-      toast.error('Не удалось получить данные диагностики');
-      setDiagnosticComplete(true);
-      return;
-    }
-
-    // Генерация программы обучения с Gemini
-    const learningPath = await generateLearningPath(
-      assessment as any, // assessment_data is Json type from DB
-      childData?.childName || 'ребёнок',
-      childData?.childAge ? parseInt(childData.childAge) : 6
-    );
-
-    toast.dismiss(loadingToast);
-
-    console.log("Learning path generated with Gemini:", learningPath);
-    toast.success('✨ Персональная программа готова!');
-
-    // Save to database
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-
-    if (userId) {
-      const { error: saveError } = await supabase
-        .from("learning_paths")
-        .upsert({
-          user_id: userId,
-          path_data: learningPath as any, // Convert to Json type for DB
-          total_weeks: learningPath.weeks?.length || 12,
-          current_week: 1,
-          completion_percentage: 0
-        }, {
-          onConflict: 'user_id'
-        });
-
-      if (saveError) {
-        console.error("Error saving learning path:", saveError);
-      } else {
-        console.log("Learning path saved to database");
+      if (assessmentError) {
+        console.error("Error fetching assessment:", assessmentError);
+        toast.dismiss(loadingToast);
+        toast.error('Не удалось получить данные диагностики');
+        setDiagnosticComplete(true);
+        return;
       }
+
+      const learningPath = await generateLearningPath(
+        assessment as any,
+        childData?.childName || 'ребёнок',
+        childData?.childAge ? parseInt(childData.childAge) : 6
+      );
+
+      toast.dismiss(loadingToast);
+
+      console.log("Learning path generated with Gemini:", learningPath);
+      toast.success('✨ Персональная программа готова!');
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+
+      if (userId) {
+        const { error: saveError } = await supabase
+          .from("learning_paths")
+          .upsert({
+            user_id: userId,
+            child_id: selectedChildId,
+            path_data: learningPath as any,
+            total_weeks: learningPath.weeks?.length || 12,
+            current_week: 1,
+            completion_percentage: 0
+          }, {
+            onConflict: 'user_id'
+          });
+
+        if (saveError) {
+          console.error("Error saving learning path:", saveError);
+        }
+      }
+
+      localStorage.setItem('learningPath', JSON.stringify(learningPath));
+
+    } catch (error) {
+      console.error("Error generating learning path:", error);
+      toast.error('Ошибка создания программы. Попробуйте ещё раз.');
     }
 
-    // Save to localStorage as backup
-    localStorage.setItem('learningPath', JSON.stringify(learningPath));
-    console.log("Learning path saved to localStorage");
-
-  } catch (error) {
-    console.error("Error generating learning path:", error);
-    toast.error('Ошибка создания программы. Попробуйте ещё раз.');
-  }
-
-  setDiagnosticComplete(true);
-};
+    setDiagnosticComplete(true);
+  };
 
   const handleNavigate = (section: string) => {
     setCurrentSection(section);
@@ -238,8 +240,8 @@ const Index = () => {
   }
 
   // Show auth screens based on selected role
-  if (!user && selectedRole === "parent") {
-    return <ParentAuth onBack={() => setSelectedRole(null)} />;
+  if (!user && selectedRole === "center") {
+    return <CenterAuth onBack={() => setSelectedRole(null)} />;
   }
 
   if (!user && selectedRole === "child") {
@@ -255,65 +257,63 @@ const Index = () => {
     );
   }
 
-  // Parent role can access everything
+  // Specialist (parent) role - show children manager if no child selected
   if (role === "parent") {
+    if (currentSection === "children") {
+      return (
+        <ChildrenManager
+          onBack={() => setCurrentSection("dashboard")}
+          onSelectChild={handleChildSelect}
+          selectedChildId={selectedChildId}
+        />
+      );
+    }
+
+    // If no children exist, show children manager
+    if (!selectedChildId && !dataLoading) {
+      return (
+        <ChildrenManager
+          onBack={() => {}}
+          onSelectChild={handleChildSelect}
+          selectedChildId={null}
+        />
+      );
+    }
+
     if (currentSection === "parent-dashboard") {
       return (
         <ParentDashboard
           onBack={() => setCurrentSection("dashboard")}
-          childName={childData?.childName || "Ребёнок"}
+          childName={selectedChildName}
         />
       );
     }
   }
 
-  // If user is authenticated but has no role, show role selection (after data loading)
-  if (user && !roleLoading && !role && !dataLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background flex flex-col items-center justify-center p-4">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold mb-2">Добро пожаловать!</h2>
-          <p className="text-muted-foreground">Выберите свою роль для продолжения</p>
-        </div>
-        <RoleSelection onSelectRole={async (selectedRole) => {
-          try {
-            const { error } = await supabase.from("user_roles").upsert({
-              user_id: user.id,
-              role: selectedRole,
-            }, {
-              onConflict: 'user_id'
-            });
-            
-            if (error) {
-              console.error("Error setting role:", error);
-              toast.error("Ошибка установки роли");
-            } else {
-              toast.success("Роль установлена!");
-              window.location.reload();
-            }
-          } catch (error) {
-            console.error("Error:", error);
-            toast.error("Ошибка");
-          }
-        }} />
-      </div>
-    );
-  }
-
   // Child role restrictions
   if (role === "child") {
-    // Block access to parent dashboard, settings, analytics, learning path, photo-analysis
-    if (["parent-dashboard", "settings", "analytics", "learning-path", "photo-analysis"].includes(currentSection)) {
+    if (["parent-dashboard", "settings", "analytics", "learning-path", "photo-analysis", "children"].includes(currentSection)) {
       toast.error("Доступ запрещён");
       setCurrentSection("dashboard");
     }
   }
 
+  // For specialists without completed setup or children without onboarding
   if (!onboardingComplete || !childData) {
+    if (role === "parent") {
+      // Specialists don't need onboarding, redirect to children manager
+      return (
+        <ChildrenManager
+          onBack={() => {}}
+          onSelectChild={handleChildSelect}
+          selectedChildId={null}
+        />
+      );
+    }
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
-  if (!diagnosticComplete) {
+  if (!diagnosticComplete && role === "child") {
     return (
       <AdaptiveDiagnostic
         onComplete={handleDiagnosticComplete}
@@ -410,7 +410,13 @@ const Index = () => {
     );
   }
 
-  return <Dashboard childData={childData} onNavigate={handleNavigate} userRole={role} />;
+  return (
+    <Dashboard
+      childData={childData}
+      onNavigate={handleNavigate}
+      userRole={role}
+    />
+  );
 };
 
 export default Index;

@@ -1,10 +1,10 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Users, Heart } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
 
 interface RoleSelectionProps {
-  onSelectRole: (role: "parent" | "child") => void;
+  onSelectRole: (role: "center" | "child") => void;
 }
 
 export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
@@ -19,30 +19,29 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
           />
           <h1 className="text-4xl font-bold mb-2">Добро пожаловать!</h1>
           <p className="text-muted-foreground text-lg">
-            Кто вы? Выберите свою роль
+            Выберите способ входа
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           <Card
             className="p-8 hover:shadow-float transition-all cursor-pointer border-2 hover:border-primary group"
-            onClick={() => onSelectRole("parent")}
+            onClick={() => onSelectRole("center")}
           >
             <div className="text-center">
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-warm flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Heart className="w-10 h-10 text-white" />
+                <Building2 className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Я Родитель</h2>
+              <h2 className="text-2xl font-bold mb-2">Специалист</h2>
               <p className="text-muted-foreground mb-4">
-                Создам профиль ребёнка и буду следить за его развитием
+                Вход по коду центра для работы с детьми
               </p>
               <ul className="text-sm text-left space-y-2 text-muted-foreground">
-                <li>✓ Создание профиля ребёнка (имя, возраст, интересы)</li>
-                <li>✓ Аналитика активности и прогресса</li>
-                <li>✓ Галерея всех работ ребёнка</li>
-                <li>✓ Наблюдение за арт-терапией</li>
-                <li>✓ Настройка контроля и ограничений</li>
-                <li>✓ Генерация кодов доступа для ребёнка</li>
+                <li>✓ Создание профилей детей</li>
+                <li>✓ Отслеживание прогресса и состояния</li>
+                <li>✓ Анализ рисунков и диагностика</li>
+                <li>✓ Арт-терапевтические сессии</li>
+                <li>✓ Отчёты и аналитика</li>
               </ul>
             </div>
           </Card>
@@ -55,15 +54,15 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-creative flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Users className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Я Ребёнок</h2>
+              <h2 className="text-2xl font-bold mb-2">Ребёнок</h2>
               <p className="text-muted-foreground mb-4">
-                У меня есть код от родителя для входа
+                У меня есть код от специалиста
               </p>
               <ul className="text-sm text-left space-y-2 text-muted-foreground">
                 <li>✓ Арт-терапия и творческие задания</li>
-                <li>✓ Челленджи и увлекательные задания</li>
+                <li>✓ Увлекательные челленджи</li>
                 <li>✓ Совместное рисование с друзьями</li>
-                <li>✓ Награды и достижения за успехи</li>
+                <li>✓ Награды и достижения</li>
                 <li>✓ Безопасная игровая среда</li>
               </ul>
             </div>
