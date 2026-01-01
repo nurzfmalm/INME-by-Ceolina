@@ -415,6 +415,8 @@ const Index = () => {
       childData={childData}
       onNavigate={handleNavigate}
       userRole={role}
+      selectedChildId={selectedChildId}
+      onChangeChild={() => setCurrentSection("children")}
     />
   );
 };
