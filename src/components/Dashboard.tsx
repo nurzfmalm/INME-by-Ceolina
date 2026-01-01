@@ -39,9 +39,11 @@ interface DashboardProps {
   childData: OnboardingData;
   onNavigate: (section: string) => void;
   userRole?: UserRole;
+  selectedChildId?: string | null;
+  onChangeChild?: () => void;
 }
 
-export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) => {
+export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, onChangeChild }: DashboardProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const [stats, setStats] = useState({
@@ -248,17 +250,28 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
     },
     {
       id: "parent-dashboard",
-      title: "Родителю",
+      title: "Аналитика",
       icon: Heart,
       gradient: "from-rose-500 via-pink-500 to-red-500",
       description: "Детальная аналитика",
       color: "text-rose-600",
       bgColor: "bg-rose-50 dark:bg-rose-950",
     },
+    {
+      id: "children",
+      title: "Профили детей",
+      icon: Users,
+      gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+      description: "Управление профилями",
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-50 dark:bg-cyan-950",
+    },
   ];
 
   const menuItems = userRole === "child"
-    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path", "photo-analysis"].includes(item.id))
+    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path", "photo-analysis", "children"].includes(item.id))
+    : userRole === "parent"
+    ? allMenuItems.filter(item => !["dual-drawing"].includes(item.id))
     : allMenuItems;
 
   return (
@@ -276,10 +289,25 @@ export const Dashboard = ({ childData, onNavigate, userRole }: DashboardProps) =
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Привет!</p>
-                <p className={`${responsiveText.h4} bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent`}>
-                  {childData.childName || "Друг"}
-                </p>
+                {userRole === "parent" ? (
+                  <>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Профиль:</p>
+                    <button 
+                      onClick={onChangeChild}
+                      className={`${responsiveText.h4} bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity flex items-center gap-1`}
+                    >
+                      {childData.childName || "Ребёнок"}
+                      <Users size={14} className="text-purple-600" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Привет!</p>
+                    <p className={`${responsiveText.h4} bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent`}>
+                      {childData.childName || "Друг"}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
