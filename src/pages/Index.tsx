@@ -38,6 +38,7 @@ const Index = () => {
   // New: selected child for specialists
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [selectedChildName, setSelectedChildName] = useState<string>("Ребёнок");
+  const [selectedChildAge, setSelectedChildAge] = useState<number | null>(null);
 
   const loadUserData = async () => {
     setDataLoading(true);
@@ -270,12 +271,37 @@ const Index = () => {
     }
 
     // If no children exist, show children manager
-    if (!selectedChildId && !dataLoading) {
+    if (currentSection === "children" || (!selectedChildId && !dataLoading)) {
       return (
         <ChildrenManager
-          onBack={() => {}}
+          onBack={() => setCurrentSection("dashboard")}
           onSelectChild={handleChildSelect}
-          selectedChildId={null}
+          selectedChildId={selectedChildId}
+          onStartDiagnostic={(childId, childName, childAge) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setSelectedChildAge(childAge);
+            setCurrentSection("diagnostic");
+          }}
+          onViewLearningPath={(childId, childName) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setCurrentSection("learning-path");
+          }}
+        />
+      );
+    }
+
+    if (currentSection === "diagnostic") {
+      return (
+        <AdaptiveDiagnostic
+          onComplete={() => {
+            setCurrentSection("learning-path");
+          }}
+          onBack={() => setCurrentSection("children")}
+          childId={selectedChildId || undefined}
+          childName={selectedChildName}
+          childAge={selectedChildAge}
         />
       );
     }
@@ -388,7 +414,13 @@ const Index = () => {
   }
 
   if (currentSection === "learning-path") {
-    return <LearningPath onBack={() => setCurrentSection("dashboard")} />;
+    return (
+      <LearningPath 
+        onBack={() => setCurrentSection("dashboard")} 
+        childId={selectedChildId || undefined}
+        childName={selectedChildName}
+      />
+    );
   }
 
   if (currentSection === "parent-dashboard") {

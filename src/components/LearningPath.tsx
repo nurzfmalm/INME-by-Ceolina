@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, Circle, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, CheckCircle, Circle, TrendingUp, TrendingDown, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface LearningPathProps {
   onBack: () => void;
+  childId?: string;
+  childName?: string;
 }
 
 interface Activity {
@@ -48,25 +50,32 @@ interface LearningPath {
   completion_percentage: number;
 }
 
-export const LearningPath = ({ onBack }: LearningPathProps) => {
+export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) => {
   const [path, setPath] = useState<LearningPath | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdaptation, setShowAdaptation] = useState<'faster' | 'slower' | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     loadLearningPath();
-  }, []);
+  }, [childId]);
 
   const loadLearningPath = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       
       if (userData.user) {
-        // Load from database for authenticated users
-        const { data, error } = await supabase
+        // Build query - filter by child_id if provided
+        let query = supabase
           .from("learning_paths")
           .select("*")
-          .eq("user_id", userData.user.id)
+          .eq("user_id", userData.user.id);
+        
+        if (childId) {
+          query = query.eq("child_id", childId);
+        }
+        
+        const { data, error } = await query
           .order("started_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -79,6 +88,9 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
         if (data) {
           console.log("Loaded learning path from database:", data.id);
           setPath(data as any);
+        } else if (childId) {
+          // No learning path for this child - will show generate button
+          console.log("No learning path for child:", childId);
         } else {
           console.log("No learning path in database, checking localStorage");
           // Try localStorage as fallback
@@ -93,8 +105,6 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
               completion_percentage: 0,
             });
             console.log("Loaded learning path from localStorage");
-          } else {
-            toast.error("Программа не найдена. Пройдите диагностику заново.");
           }
         }
       } else {
@@ -123,6 +133,54 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
     }
   };
 
+  const generateLearningPath = async () => {
+    setGenerating(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast.error("Необходима авторизация");
+        return;
+      }
+
+      // Get assessment data for this child
+      let assessmentData = {};
+      if (childId) {
+        const { data: assessment } = await supabase
+          .from("adaptive_assessments")
+          .select("assessment_data")
+          .eq("child_id", childId)
+          .eq("completed", true)
+          .order("completed_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (assessment) {
+          assessmentData = assessment.assessment_data;
+        }
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-learning-path', {
+        body: {
+          userId: userData.user.id,
+          childId,
+          childName,
+          assessmentData,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.learningPath) {
+        setPath(data.learningPath);
+        toast.success("Программа терапии создана!");
+      }
+    } catch (error: any) {
+      console.error("Error generating learning path:", error);
+      toast.error("Ошибка создания программы");
+    } finally {
+      setGenerating(false);
+    }
+  };
   const updateProgress = async (weekNum: number, activityDay: number) => {
     if (!path || !path.path_data?.weeks) return;
 
@@ -190,7 +248,32 @@ export const LearningPath = ({ onBack }: LearningPathProps) => {
         </Button>
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground">Программа обучения не найдена</p>
+            {childId ? (
+              <>
+                <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-xl font-semibold mb-2">
+                  Программа для {childName || "ребёнка"} не найдена
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Создайте персональную программу терапии на основе результатов диагностики
+                </p>
+                <Button onClick={generateLearningPath} disabled={generating}>
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Создание программы...
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      Создать программу терапии
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Программа обучения не найдена</p>
+            )}
           </CardContent>
         </Card>
       </div>
