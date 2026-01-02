@@ -22,9 +22,9 @@ serve(async (req) => {
       }
     );
 
-    const { assessmentId, userId, assessmentData: providedData, childName, childAge } = await req.json();
+    const { assessmentId, userId, assessmentData: providedData, childName, childAge, childId } = await req.json();
     
-    console.log('Generating learning path for assessment:', assessmentId, 'user:', userId);
+    console.log('Generating learning path for assessment:', assessmentId, 'user:', userId, 'child:', childId);
 
     // Fetch assessment data from DB or use provided data
     let assessmentData: any = providedData;
@@ -76,6 +76,10 @@ serve(async (req) => {
         messages: [{
           role: 'user',
           content: `Ты эксперт по разработке индивидуальных программ арт-терапии для детей с аутизмом.
+
+Информация о ребёнке:
+- Имя: ${childName || 'Ребёнок'}
+- Возраст: ${childAge || 'не указан'} лет
 
 На основе диагностических ответов (по шкале от 1 до 5, где 1 - низкий уровень, 5 - высокий) создай 6-недельную персональную программу:
 
@@ -174,15 +178,21 @@ ${JSON.stringify(assessmentData, null, 2)}
     let learningPath = null;
     
     if (userId) {
+      const insertData: any = {
+        user_id: userId,
+        path_data: pathData,
+        current_week: 1,
+        total_weeks: 6,
+        started_at: new Date().toISOString(),
+      };
+      
+      if (childId) {
+        insertData.child_id = childId;
+      }
+      
       const { data: path, error: pathError } = await supabaseClient
         .from('learning_paths')
-        .insert({
-          user_id: userId,
-          path_data: pathData,
-          current_week: 1,
-          total_weeks: 6,
-          started_at: new Date().toISOString(),
-        })
+        .insert(insertData)
         .select()
         .single();
 

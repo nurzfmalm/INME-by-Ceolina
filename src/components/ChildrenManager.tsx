@@ -16,7 +16,9 @@ import {
   Heart,
   TrendingUp,
   Check,
-  X,
+  BookOpen,
+  ClipboardCheck,
+  Play,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { formatDistanceToNow } from "date-fns";
@@ -26,6 +28,21 @@ interface ChildrenManagerProps {
   onBack: () => void;
   onSelectChild: (childId: string, childName: string) => void;
   selectedChildId?: string | null;
+  onStartDiagnostic?: (childId: string, childName: string, childAge: number | null) => void;
+  onViewLearningPath?: (childId: string, childName: string) => void;
+}
+
+interface LearningPathInfo {
+  id: string;
+  completion_percentage: number;
+  current_week: number;
+  total_weeks: number;
+}
+
+interface AssessmentInfo {
+  id: string;
+  completed: boolean;
+  completed_at: string | null;
 }
 
 interface Child {
@@ -51,6 +68,8 @@ export const ChildrenManager = ({
   onBack,
   onSelectChild,
   selectedChildId,
+  onStartDiagnostic,
+  onViewLearningPath,
 }: ChildrenManagerProps) => {
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +77,8 @@ export const ChildrenManager = ({
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [formData, setFormData] = useState({ name: "", age: "" });
   const [saving, setSaving] = useState(false);
+  const [childLearningPaths, setChildLearningPaths] = useState<Record<string, LearningPathInfo>>({});
+  const [childAssessments, setChildAssessments] = useState<Record<string, AssessmentInfo>>({});
 
   useEffect(() => {
     loadChildren();
@@ -78,6 +99,51 @@ export const ChildrenManager = ({
 
       if (error) throw error;
       setChildren(data || []);
+
+      // Load learning paths for each child
+      if (data && data.length > 0) {
+        const childIds = data.map(c => c.id);
+        
+        const { data: paths } = await supabase
+          .from("learning_paths")
+          .select("id, child_id, completion_percentage, current_week, total_weeks")
+          .in("child_id", childIds);
+        
+        if (paths) {
+          const pathMap: Record<string, LearningPathInfo> = {};
+          paths.forEach(p => {
+            if (p.child_id) {
+              pathMap[p.child_id] = {
+                id: p.id,
+                completion_percentage: p.completion_percentage || 0,
+                current_week: p.current_week || 1,
+                total_weeks: p.total_weeks || 6,
+              };
+            }
+          });
+          setChildLearningPaths(pathMap);
+        }
+
+        // Load assessments for each child
+        const { data: assessments } = await supabase
+          .from("adaptive_assessments")
+          .select("id, child_id, completed, completed_at")
+          .in("child_id", childIds);
+        
+        if (assessments) {
+          const assessmentMap: Record<string, AssessmentInfo> = {};
+          assessments.forEach(a => {
+            if (a.child_id) {
+              assessmentMap[a.child_id] = {
+                id: a.id,
+                completed: a.completed || false,
+                completed_at: a.completed_at,
+              };
+            }
+          });
+          setChildAssessments(assessmentMap);
+        }
+      }
     } catch (error) {
       console.error("Error loading children:", error);
       toast.error("Ошибка загрузки профилей");
@@ -300,6 +366,75 @@ export const ChildrenManager = ({
                         })}
                       </p>
                     </div>
+                  </div>
+
+                  {/* Therapy Program Section */}
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    {childLearningPaths[child.id] ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm">
+                            <BookOpen className="w-4 h-4 text-primary" />
+                            <span className="font-medium">Программа терапии</span>
+                          </div>
+                          <Badge variant="secondary">
+                            Неделя {childLearningPaths[child.id].current_week}/{childLearningPaths[child.id].total_weeks}
+                          </Badge>
+                        </div>
+                        <div className="bg-secondary/30 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-primary h-full transition-all"
+                            style={{ width: `${childLearningPaths[child.id].completion_percentage}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Прогресс: {childLearningPaths[child.id].completion_percentage}%</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onViewLearningPath?.(child.id, child.name);
+                            }}
+                          >
+                            <Play className="w-3 h-3 mr-1" />
+                            Продолжить
+                          </Button>
+                        </div>
+                      </div>
+                    ) : childAssessments[child.id]?.completed ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ClipboardCheck className="w-4 h-4 text-green-500" />
+                          <span>Диагностика пройдена</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewLearningPath?.(child.id, child.name);
+                          }}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Создать программу терапии
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStartDiagnostic?.(child.id, child.name, child.age);
+                        }}
+                      >
+                        <ClipboardCheck className="w-4 h-4 mr-2" />
+                        Пройти диагностику
+                      </Button>
+                    )}
                   </div>
 
                   {child.development_notes && (

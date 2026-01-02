@@ -12,6 +12,9 @@ import ceolinaCharacter from "@/assets/ceolina-character.png";
 interface AdaptiveDiagnosticProps {
   onComplete: (assessmentId: string) => void;
   onBack: () => void;
+  childId?: string;
+  childName?: string;
+  childAge?: number | null;
 }
 
 interface Question {
@@ -108,7 +111,7 @@ const questions: Question[] = [
   },
 ];
 
-export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticProps) => {
+export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName, childAge }: AdaptiveDiagnosticProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
@@ -116,6 +119,8 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
   const currentQuestion = questions[currentStep];
   const progress = ((currentStep + 1) / questions.length) * 100;
   const totalQuestions = questions.length;
+  
+  const displayName = childName || "ребёнка";
 
   const handleAnswer = (value: any) => {
     if (!currentQuestion) return;
@@ -148,22 +153,28 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
       
       if (userData.user) {
         // Authenticated user - save to database
+        const insertData: any = {
+          user_id: userData.user.id,
+          assessment_data: answers,
+          completed: true,
+          current_step: questions.length,
+          total_steps: questions.length,
+          completed_at: new Date().toISOString(),
+        };
+        
+        if (childId) {
+          insertData.child_id = childId;
+        }
+        
         const { data, error } = await supabase
           .from("adaptive_assessments")
-          .insert({
-            user_id: userData.user.id,
-            assessment_data: answers,
-            completed: true,
-            current_step: questions.length,
-            total_steps: questions.length,
-            completed_at: new Date().toISOString(),
-          })
+          .insert(insertData)
           .select()
           .single();
 
         if (error) throw error;
         
-        toast.success("Диагностика завершена!");
+        toast.success(`Диагностика для ${displayName} завершена!`);
         onComplete(data.id);
       } else {
         // Guest user - save to localStorage
@@ -203,7 +214,7 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack }: AdaptiveDiagnosticPro
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={onBack} disabled={currentStep === 0}>
-            <ArrowLeft className="mr-2" /> Назад к регистрации
+            <ArrowLeft className="mr-2" /> {childId ? "К профилям" : "Назад к регистрации"}
           </Button>
           <div className="text-sm font-medium text-primary">
             Вопрос {currentStep + 1} из {totalQuestions}
