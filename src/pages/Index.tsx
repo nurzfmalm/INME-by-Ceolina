@@ -19,7 +19,7 @@ import { CenterAuth } from "@/components/CenterAuth";
 import { ChildAuth } from "@/components/ChildAuth";
 import { ChildrenManager } from "@/components/ChildrenManager";
 import { PhotoAnalysis } from "@/components/PhotoAnalysis";
-import { TracingDrawing } from "@/components/TracingDrawing";
+import { GuidedDrawing } from "@/components/GuidedDrawing";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
 
@@ -403,7 +403,7 @@ const Index = () => {
 
   if (currentSection === "tracing") {
     return (
-      <TracingDrawing
+      <GuidedDrawing
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
         childId={selectedChildId || undefined}
