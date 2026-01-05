@@ -26,7 +26,8 @@ import {
   Flame,
   Star,
   Menu,
-  X
+  X,
+  PenTool
 } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
@@ -193,6 +194,15 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
       description: "Персональный план",
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950",
+    },
+    {
+      id: "tracing",
+      title: "Трафареты",
+      icon: PenTool,
+      gradient: "from-cyan-500 via-sky-500 to-blue-500",
+      description: "Учись рисовать фигуры",
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-50 dark:bg-cyan-950",
     },
     {
       id: "dual-drawing",
