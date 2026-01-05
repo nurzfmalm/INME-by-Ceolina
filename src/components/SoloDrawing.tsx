@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { FloatingAssistant } from "./FloatingAssistant";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 interface SoloDrawingProps {
   onBack: () => void;
   childName: string;
@@ -172,6 +173,10 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     
     lastPointRef.current = { x, y };
 
+    // Set up stroke style
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(x, y);
 
@@ -196,10 +201,6 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     const { x, y } = getCoordinates(e);
     const lastPoint = lastPointRef.current;
 
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
     if (isEraser) {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
@@ -208,20 +209,22 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
       ctx.strokeStyle = currentColor;
     }
 
-    // Плавное рисование с использованием квадратичных кривых Безье
-    ctx.beginPath();
-    ctx.moveTo(lastPoint.x, lastPoint.y);
-    
+    // Smooth continuous line drawing
     const midX = (lastPoint.x + x) / 2;
     const midY = (lastPoint.y + y) / 2;
+    
     ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
     ctx.stroke();
+    
+    // Continue path for next segment
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
 
     if (!isEraser) {
-      // Применяем эффект кисти
+      // Apply brush effect
       applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
       
-      // Применяем текстуру если активна
+      // Apply texture if active
       if (currentTexture !== "none") {
         applyTexture(ctx, x, y, currentTexture, currentColor);
       }
@@ -762,77 +765,222 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
         {showAnalysis && analysis && (
           <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
-            <h3 className="font-semibold text-primary-foreground mb-4 text-xl">
-              Анализ твоего рисунка
-            </h3>
-            
-            {analysis.simple ? (
-              // Fallback simple analysis
-              <div className="space-y-3 text-primary-foreground/90">
-                <p className="text-sm">✨ Использовано цветов: {analysis.colorsUsed?.length || 0}</p>
-                <p className="text-sm">✨ Время рисования: {Math.floor((analysis.sessionDuration || 0) / 60)} мин</p>
-                <p className="text-sm">✨ Количество штрихов: {analysis.totalStrokes || 0}</p>
-              </div>
-            ) : (
-              // Deep analysis
-              <div className="space-y-4 text-primary-foreground/90">
-                {/* What's on the drawing */}
-                {analysis.visual_description?.objects_identified?.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">🎨 Что изображено:</h4>
-                    <p className="text-sm">{analysis.visual_description.objects_identified.join(', ')}</p>
-                  </div>
-                )}
+            <Tabs defaultValue="main" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/20">
+                <TabsTrigger value="main" className="text-primary-foreground data-[state=active]:bg-white/30">
+                  Анализ
+                </TabsTrigger>
+                <TabsTrigger value="dev" className="text-primary-foreground data-[state=active]:bg-white/30">
+                  Dev Tools
+                </TabsTrigger>
+              </TabsList>
 
-                {/* Composition */}
-                {analysis.visual_description?.composition_analysis && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">📐 Композиция:</h4>
-                    <p className="text-sm">{analysis.visual_description.composition_analysis}</p>
-                  </div>
-                )}
+              <TabsContent value="main" className="space-y-4 text-primary-foreground/90">
+                <h3 className="font-semibold text-primary-foreground text-xl">
+                  Анализ твоего рисунка
+                </h3>
 
-                {/* Emotional themes */}
-                {analysis.interpretation?.emotional_themes?.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">💭 Эмоциональные темы:</h4>
-                    {analysis.interpretation.emotional_themes.map((theme: any, idx: number) => (
-                      <div key={idx} className="mb-2">
-                        <p className="text-sm font-medium">{theme.theme}</p>
-                        {theme.supporting_evidence?.length > 0 && (
-                          <ul className="text-xs opacity-80 ml-4">
-                            {theme.supporting_evidence.map((e: string, i: number) => (
-                              <li key={i}>• {e}</li>
-                            ))}
-                          </ul>
+                {analysis.simple ? (
+                  <p className="text-sm">Базовый анализ недоступен. Попробуй позже.</p>
+                ) : (
+                  <>
+                    {/* Emotional State - Main focus */}
+                    <div className="p-4 bg-white/20 rounded-lg">
+                      <h4 className="font-medium text-lg mb-2">💭 Эмоциональное состояние</h4>
+                      {analysis.interpretation?.emotional_themes?.length > 0 ? (
+                        <div className="space-y-2">
+                          {analysis.interpretation.emotional_themes.map((theme: any, idx: number) => (
+                            <div key={idx}>
+                              <p className="font-medium">{theme.theme}</p>
+                              <p className="text-sm opacity-80">{theme.therapeutic_significance || ''}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm">Ребёнок выражает себя через творчество</p>
+                      )}
+                    </div>
+
+                    {/* Behavior indicators */}
+                    {analysis.process_analysis && (
+                      <div className="p-4 bg-white/20 rounded-lg">
+                        <h4 className="font-medium text-lg mb-2">🎯 Поведение при рисовании</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {analysis.process_analysis.engagement_level && (
+                            <p>Вовлечённость: {analysis.process_analysis.engagement_level}</p>
+                          )}
+                          {analysis.process_analysis.focus_areas?.length > 0 && (
+                            <p>Фокус: {analysis.process_analysis.focus_areas.join(', ')}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations for parents */}
+                    {analysis.recommendations?.for_parents?.length > 0 && (
+                      <div className="p-4 bg-white/20 rounded-lg">
+                        <h4 className="font-medium text-lg mb-2">💡 Рекомендации</h4>
+                        <ul className="text-sm space-y-1">
+                          {analysis.recommendations.for_parents.slice(0, 3).map((rec: string, idx: number) => (
+                            <li key={idx}>• {rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Next activities */}
+                    {analysis.recommendations?.next_activities?.length > 0 && (
+                      <div className="p-4 bg-white/20 rounded-lg">
+                        <h4 className="font-medium text-lg mb-2">🎨 Следующие активности</h4>
+                        <ul className="text-sm space-y-1">
+                          {analysis.recommendations.next_activities.slice(0, 2).map((act: string, idx: number) => (
+                            <li key={idx}>• {act}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="dev" className="space-y-4 text-primary-foreground/90">
+                <h3 className="font-semibold text-primary-foreground text-xl">
+                  Dev Tools - Детальный анализ
+                </h3>
+
+                {analysis.simple ? (
+                  <div className="space-y-3">
+                    <p className="text-sm">✨ Использовано цветов: {analysis.colorsUsed?.length || 0}</p>
+                    <p className="text-sm">✨ Время рисования: {Math.floor((analysis.sessionDuration || 0) / 60)} мин</p>
+                    <p className="text-sm">✨ Количество штрихов: {analysis.totalStrokes || 0}</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Visual description */}
+                    {analysis.visual_description && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
+                          <span>🎨 Визуальное описание</span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
+                          {analysis.visual_description.objects_identified?.length > 0 && (
+                            <p><strong>Объекты:</strong> {analysis.visual_description.objects_identified.join(', ')}</p>
+                          )}
+                          {analysis.visual_description.color_palette?.dominant_colors?.length > 0 && (
+                            <p><strong>Доминирующие цвета:</strong> {analysis.visual_description.color_palette.dominant_colors.join(', ')}</p>
+                          )}
+                          {analysis.visual_description.color_palette?.color_harmony && (
+                            <p><strong>Гармония:</strong> {analysis.visual_description.color_palette.color_harmony}</p>
+                          )}
+                          {analysis.visual_description.composition_analysis && (
+                            <p><strong>Композиция:</strong> {analysis.visual_description.composition_analysis}</p>
+                          )}
+                          {analysis.visual_description.line_quality && (
+                            <p><strong>Качество линий:</strong> {analysis.visual_description.line_quality}</p>
+                          )}
+                          {analysis.visual_description.space_usage && (
+                            <p><strong>Использование пространства:</strong> {analysis.visual_description.space_usage}</p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Process analysis */}
+                    {analysis.process_analysis && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
+                          <span>📊 Процесс рисования</span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
+                          {analysis.process_analysis.engagement_level && (
+                            <p><strong>Уровень вовлечённости:</strong> {analysis.process_analysis.engagement_level}</p>
+                          )}
+                          {analysis.process_analysis.motor_control_indicators && (
+                            <p><strong>Моторика:</strong> {analysis.process_analysis.motor_control_indicators}</p>
+                          )}
+                          {analysis.process_analysis.planning_evidence && (
+                            <p><strong>Планирование:</strong> {analysis.process_analysis.planning_evidence}</p>
+                          )}
+                          {analysis.process_analysis.emotional_regulation_signs?.length > 0 && (
+                            <p><strong>Саморегуляция:</strong> {analysis.process_analysis.emotional_regulation_signs.join(', ')}</p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Interpretation */}
+                    {analysis.interpretation && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
+                          <span>💭 Интерпретация</span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
+                          {analysis.interpretation.emotional_themes?.map((theme: any, idx: number) => (
+                            <div key={idx} className="border-l-2 border-white/30 pl-2 mb-2">
+                              <p className="font-medium">{theme.theme}</p>
+                              {theme.supporting_evidence?.length > 0 && (
+                                <p className="text-xs opacity-70">Признаки: {theme.supporting_evidence.join(', ')}</p>
+                              )}
+                              {theme.therapeutic_significance && (
+                                <p className="text-xs">Значение: {theme.therapeutic_significance}</p>
+                              )}
+                            </div>
+                          ))}
+                          {analysis.interpretation.developmental_observations && (
+                            <p><strong>Развитие:</strong> {analysis.interpretation.developmental_observations}</p>
+                          )}
+                          {analysis.interpretation.communication_attempts?.length > 0 && (
+                            <p><strong>Коммуникация:</strong> {analysis.interpretation.communication_attempts.join(', ')}</p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Progress */}
+                    {analysis.progress_tracking && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
+                          <span>📈 Прогресс</span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
+                          {analysis.progress_tracking.skills_demonstrated?.length > 0 && (
+                            <p><strong>Навыки:</strong> {analysis.progress_tracking.skills_demonstrated.join(', ')}</p>
+                          )}
+                          {analysis.progress_tracking.areas_for_support?.length > 0 && (
+                            <p><strong>Нужна поддержка:</strong> {analysis.progress_tracking.areas_for_support.join(', ')}</p>
+                          )}
+                          {analysis.progress_tracking.comparison_notes && (
+                            <p><strong>Сравнение:</strong> {analysis.progress_tracking.comparison_notes}</p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Metadata */}
+                    {analysis.analysis_metadata && (
+                      <div className="p-3 bg-white/10 rounded-lg text-xs space-y-1">
+                        <p>Уверенность: {analysis.analysis_metadata.confidence_score}%</p>
+                        {analysis.analysis_metadata.limitations?.length > 0 && (
+                          <p>Ограничения: {analysis.analysis_metadata.limitations.join(', ')}</p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {/* Recommendations */}
-                {analysis.recommendations?.for_parents?.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">💡 Рекомендации:</h4>
-                    <ul className="text-sm space-y-1">
-                      {analysis.recommendations.for_parents.slice(0, 3).map((rec: string, idx: number) => (
-                        <li key={idx}>• {rec}</li>
-                      ))}
-                    </ul>
-                  </div>
+                    {/* Raw JSON */}
+                    <Collapsible>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
+                        <span>📝 Raw JSON</span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1">
+                        <pre className="text-xs overflow-x-auto max-h-60 overflow-y-auto">
+                          {JSON.stringify(analysis, null, 2)}
+                        </pre>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </>
                 )}
-
-                {/* Confidence indicator */}
-                {analysis.analysis_metadata?.confidence_score && (
-                  <div className="pt-2 border-t border-primary-foreground/20">
-                    <p className="text-xs opacity-70">
-                      Уверенность анализа: {analysis.analysis_metadata.confidence_score}%
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
           </Card>
         )}
 

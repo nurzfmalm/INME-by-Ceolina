@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.analyze-drawing-deep]
 verify_jwt = false
+
+[functions.analyze-tracing]
+verify_jwt = false
