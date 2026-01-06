@@ -298,6 +298,9 @@ export const GuidedDrawing = ({ onBack, childName, childId }: GuidedDrawingProps
       if (currentIndex >= points.length - 1) {
         setIsAnimating(false);
         setShowNextButton(true);
+        
+        // После анимации оставляем трафарет видимым как образец
+        drawTemplateAsReference();
         return;
       }
 
@@ -342,6 +345,26 @@ export const GuidedDrawing = ({ onBack, childName, childId }: GuidedDrawingProps
 
     animationRef.current = requestAnimationFrame(animate);
   }, [scenario, clearCanvas]);
+
+  // Трафарет как образец после анимации - остаётся видимым
+  const drawTemplateAsReference = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const points = scenario.getPoints(canvas.width, canvas.height);
+
+    // Чёткий но не отвлекающий трафарет
+    ctx.strokeStyle = "rgba(180, 180, 180, 0.5)";
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+  }, [scenario]);
 
   // Очень бледный гид для этапа "ДЕЛАЙ"
   const drawVeryFaintGuide = useCallback(() => {
