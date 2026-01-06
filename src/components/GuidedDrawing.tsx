@@ -334,9 +334,10 @@ export const GuidedDrawing = ({ onBack, childName, childId }: GuidedDrawingProps
         }
         ctx.stroke();
         
-        // Следующий кадр с реальной паузой
+        // Следующий кадр - ОЧЕНЬ МЕДЛЕННО (10+ секунд общая длительность)
+        // ~200ms между точками для плавной, спокойной анимации
         animationRef.current = requestAnimationFrame(animate);
-      }, 60); // Медленная скорость
+      }, 200);
     };
 
     animationRef.current = requestAnimationFrame(animate);
