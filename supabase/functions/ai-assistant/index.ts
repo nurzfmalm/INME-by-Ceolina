@@ -70,7 +70,7 @@ serve(async (req) => {
       ? recentReactionTimes.reduce((a, b) => a + b, 0) / recentReactionTimes.length
       : 0;
 
-    const systemPrompt = `Ты — Цеолина, добрый и мудрый ИИ-помощник для арт-терапии детей с особенностями развития.
+    const systemPrompt = `Ты — Star, добрый и мудрый ИИ-помощник для арт-терапии детей с особенностями развития.
 
 ДАННЫЕ РЕБЁНКА:
 - Имя: ${profile?.child_name || "Ребёнок"}

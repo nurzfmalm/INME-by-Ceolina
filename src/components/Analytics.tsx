@@ -54,7 +54,7 @@ interface AIAnalysis {
   recommendations_parents?: string[];
   recommendations_therapists?: string[];
   recommendations?: string[]; // legacy support
-  ceolina_feedback?: string;
+  star_feedback?: string;
   primary_emotion: string;
   emotion_balance?: string;
   stability_score: number;
@@ -236,7 +236,7 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
         "Интегрировать арт-терапию с другими методами для комплексного подхода"
       ],
       
-      ceolina_feedback: colorDiversity > 12 
+      star_feedback: colorDiversity > 12 
         ? "Вау! Ты используешь так много цветов! Твои рисунки полны жизни и эмоций! 🌈✨" 
         : avgDuration > 120 
         ? "Я вижу, как ты увлечённо рисуешь! Твоё терпение и старание замечательны! 🎨💫"
@@ -474,9 +474,9 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
           </Card>
         </div>
 
-        {/* Ceolina Feedback */}
-        {aiAnalysis?.ceolina_feedback && (
-          <CeolinaFeedback message={aiAnalysis.ceolina_feedback} />
+        {/* Star Feedback */}
+        {aiAnalysis?.star_feedback && (
+          <CeolinaFeedback message={aiAnalysis.star_feedback} />
         )}
         
         {/* AI Analysis Section */}
@@ -564,8 +564,8 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
                 )}
               </div>
 
-              {aiAnalysis.ceolina_feedback && (
-                <CeolinaFeedback message={aiAnalysis.ceolina_feedback} />
+              {aiAnalysis.star_feedback && (
+                <CeolinaFeedback message={aiAnalysis.star_feedback} />
               )}
 
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">

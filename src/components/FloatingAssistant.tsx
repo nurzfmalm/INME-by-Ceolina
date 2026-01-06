@@ -28,7 +28,7 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
     if (contextType === "drawing" && taskPrompt) {
       return `Привет! Я помогу тебе с заданием: "${taskPrompt}". Спрашивай, если нужна подсказка! 🎨`;
     }
-    return "Привет! Я Цеолина, твой помощник. Могу подсказать что делать! 💡";
+    return "Привет! Я Star, твой помощник. Могу подсказать что делать! 💡";
   };
 
   const getAutoHint = () => {
@@ -174,7 +174,7 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
         >
           <img
             src={ceolinaCharacter}
-            alt="Цеолина"
+            alt="Star"
             className="w-full h-full object-cover"
           />
         </button>
@@ -185,11 +185,11 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
         <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-float z-50 flex flex-col animate-scale-in bg-gradient-to-br from-background to-secondary/20">
           <div className="p-4 border-b flex items-center justify-between bg-gradient-creative">
             <div className="flex items-center gap-2">
-              <img src={ceolinaCharacter} alt="Цеолина" className="w-10 h-10" />
+              <img src={ceolinaCharacter} alt="Star" className="w-10 h-10" />
               <div>
                 <h3 className="font-bold text-white flex items-center gap-1">
                   <Sparkles className="w-4 h-4" />
-                  Цеолина
+                  Star
                 </h3>
                 <p className="text-xs text-white/80">Твой помощник</p>
               </div>

@@ -6,7 +6,7 @@ export interface UnlockedReward {
 
 export const getUnlockedRewards = (): string[] => {
   try {
-    const stored = localStorage.getItem("ceolinaUnlockedRewards");
+    const stored = localStorage.getItem("starUnlockedRewards");
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];

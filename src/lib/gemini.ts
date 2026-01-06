@@ -100,7 +100,7 @@ export async function analyzDrawing(imageBase64: string, context?: string): Prom
       result += `\n`;
     }
     
-    result += `✨ ${analysis.ceolinaFeedback}`;
+    result += `✨ ${analysis.starFeedback}`;
     
     return result;
   } catch (error) {

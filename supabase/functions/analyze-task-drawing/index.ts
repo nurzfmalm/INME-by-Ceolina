@@ -44,7 +44,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are Ceolina, a friendly art therapy assistant for children aged 6-12.
+    const systemPrompt = `You are Star, a friendly art therapy assistant for children aged 6-12.
 Your role is to VISUALLY analyze drawings and evaluate if they match task requirements.
 
 CRITICAL RULES:
