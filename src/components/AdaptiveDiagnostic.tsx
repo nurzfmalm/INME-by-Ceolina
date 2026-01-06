@@ -186,7 +186,7 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName, chi
           completed_at: new Date().toISOString(),
         };
         
-        localStorage.setItem('ceolinaAssessment', JSON.stringify(assessment));
+        localStorage.setItem('starAssessment', JSON.stringify(assessment));
         toast.success("Диагностика завершена!");
         onComplete(assessmentId);
       }
@@ -194,7 +194,7 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName, chi
       console.error("Assessment error:", error);
       // Even on error, complete the onboarding flow
       const fallbackId = `assessment-${Date.now()}`;
-      localStorage.setItem('ceolinaAssessment', JSON.stringify({ 
+      localStorage.setItem('starAssessment', JSON.stringify({ 
         id: fallbackId, 
         answers, 
         completed_at: new Date().toISOString() 
@@ -232,7 +232,7 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName, chi
           <div className="flex items-start gap-4">
             <img
               src={ceolinaCharacter}
-              alt="Ceolina"
+              alt="Star"
               className="w-20 h-20 animate-gentle-float"
             />
             <div className="flex-1 space-y-4">

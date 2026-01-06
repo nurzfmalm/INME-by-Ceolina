@@ -63,7 +63,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
       }
 
       // Also store in localStorage as backup
-      localStorage.setItem('ceolinaUserData', JSON.stringify(formData));
+      localStorage.setItem('starUserData', JSON.stringify(formData));
       onComplete(formData);
     }
   };
@@ -76,11 +76,11 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
         <div className="text-center space-y-6">
           <img
             src={ceolinaCharacter}
-            alt="Ceolina"
+            alt="Star"
             className="w-40 h-40 mx-auto animate-gentle-float"
           />
           <p className="text-lg text-foreground/80">
-            Я Ceolina, и я помогу вашему ребенку познавать мир через творчество и игру
+            Я Star, и я помогу вашему ребенку познавать мир через творчество и игру
           </p>
         </div>
       ),
@@ -137,7 +137,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
         <div className="text-center space-y-6">
           <img
             src={ceolinaCharacter}
-            alt="Ceolina"
+            alt="Star"
             className="w-40 h-40 mx-auto animate-calm-scale"
           />
           <p className="text-lg text-foreground/80">

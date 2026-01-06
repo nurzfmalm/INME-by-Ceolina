@@ -119,7 +119,7 @@ export const Rewards = ({ onBack, childName }: RewardsProps) => {
       const isAuth = await isUserAuthenticated();
 
       if (!isAuth) {
-        const stored = localStorage.getItem("ceolinaTokens");
+        const stored = localStorage.getItem("starTokens");
         setTotalTokens(stored ? parseInt(stored) : 0);
         setLoading(false);
         return;
@@ -147,7 +147,7 @@ export const Rewards = ({ onBack, childName }: RewardsProps) => {
 
   const loadUnlockedRewards = async () => {
     try {
-      const stored = localStorage.getItem("ceolinaUnlockedRewards");
+      const stored = localStorage.getItem("starUnlockedRewards");
       if (stored) {
         setUnlockedRewards(new Set(JSON.parse(stored)));
       }
@@ -168,9 +168,9 @@ export const Rewards = ({ onBack, childName }: RewardsProps) => {
       newUnlocked.add(reward.id);
 
       // Update localStorage
-      localStorage.setItem("ceolinaTokens", newTotal.toString());
+      localStorage.setItem("starTokens", newTotal.toString());
       localStorage.setItem(
-        "ceolinaUnlockedRewards",
+        "starUnlockedRewards",
         JSON.stringify(Array.from(newUnlocked))
       );
 

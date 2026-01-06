@@ -18,7 +18,7 @@ interface CLIPAnalysisResult {
   colorAnalysis: string;
   compositionInsights: string;
   therapeuticRecommendations: string[];
-  ceolinaFeedback: string;
+  starFeedback: string;
   overallScore: number;
 }
 
@@ -201,12 +201,12 @@ serve(async (req) => {
       recommendations.push('Попробуйте структурированные задания для развития организации мышления');
     }
 
-    // Generate Ceolina feedback
-    let ceolinaFeedback = '';
+    // Generate Star feedback
+    let starFeedback = '';
     if (taskContext) {
-      ceolinaFeedback = `Замечательная работа! Я вижу, что ты выразил(а) ${topEmotion === 'happy' ? 'радость' : topEmotion === 'calm' ? 'спокойствие' : 'свои чувства'} через рисунок. `;
+      starFeedback = `Замечательная работа! Я вижу, что ты выразил(а) ${topEmotion === 'happy' ? 'радость' : topEmotion === 'calm' ? 'спокойствие' : 'свои чувства'} через рисунок. `;
     }
-    ceolinaFeedback += sortedLabels[0]?.score > 0.6
+    starFeedback += sortedLabels[0]?.score > 0.6
       ? 'Твой рисунок очень выразительный! Продолжай творить!'
       : 'Отличное начало! Каждый рисунок помогает тебе лучше выражать себя!';
 
@@ -219,7 +219,7 @@ serve(async (req) => {
       colorAnalysis,
       compositionInsights,
       therapeuticRecommendations: recommendations,
-      ceolinaFeedback,
+      starFeedback,
       overallScore,
     };
 

@@ -77,9 +77,9 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
           },
           {
             id: "2",
-            title: "Помоги Ceolina найти друга",
-            description: "Нарисуй друга для персонажа Ceolina",
-            prompt: "Нарисуй друга для Ceolina",
+            title: "Помоги Star найти друга",
+            description: "Нарисуй друга для персонажа Star",
+            prompt: "Нарисуй друга для Star",
             difficulty: "easy",
             tokens_reward: 10,
             category: "social",
@@ -136,7 +136,7 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
       const isAuth = await isUserAuthenticated();
 
       if (!isAuth) {
-        const stored = localStorage.getItem("ceolinaCompletedTasks");
+        const stored = localStorage.getItem("starCompletedTasks");
         if (stored) {
           setCompletedTasks(new Set(JSON.parse(stored)));
         }
@@ -165,7 +165,7 @@ export const Tasks = ({ onBack, onStartTask, childName }: TasksProps) => {
       const isAuth = await isUserAuthenticated();
 
       if (!isAuth) {
-        const stored = localStorage.getItem("ceolinaTokens");
+        const stored = localStorage.getItem("starTokens");
         setTotalTokens(stored ? parseInt(stored) : 0);
         return;
       }

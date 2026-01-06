@@ -59,7 +59,7 @@ export const ArtTherapy = ({ onBack, childName, taskId, taskPrompt }: ArtTherapy
           <div className="flex flex-col md:flex-row items-center gap-6">
             <img
               src={ceolinaCharacter}
-              alt="Ceolina"
+              alt="Star"
               className="w-24 h-24 animate-gentle-float"
             />
             <div className="flex-1 text-center md:text-left">

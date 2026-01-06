@@ -654,7 +654,7 @@ export const GuidedDrawing = ({ onBack, childName, childId }: GuidedDrawingProps
       >
         <img
           src={ceolinaCharacter}
-          alt="Ceolina"
+          alt="Star"
           className="w-14 h-14"
         />
         <p 

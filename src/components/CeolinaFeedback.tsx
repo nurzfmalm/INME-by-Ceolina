@@ -16,7 +16,7 @@ export const CeolinaFeedback = ({ message, visible = true }: CeolinaFeedbackProp
         <div className="relative">
           <img
             src={ceolinaCharacter}
-            alt="Ceolina"
+            alt="Star"
             className="w-24 h-24 animate-gentle-float"
           />
           <div className="absolute -top-2 -right-2 bg-white rounded-full p-2 shadow-soft">
@@ -26,7 +26,7 @@ export const CeolinaFeedback = ({ message, visible = true }: CeolinaFeedbackProp
         <div className="flex-1 text-center md:text-left">
           <h3 className="font-bold text-primary-foreground mb-2 text-lg flex items-center justify-center md:justify-start gap-2">
             <Sparkles size={18} />
-            Ceolina говорит:
+            Star говорит:
           </h3>
           <p className="text-primary-foreground/90 italic text-lg leading-relaxed">
             "{message}"

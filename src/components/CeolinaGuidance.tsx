@@ -21,11 +21,11 @@ export const CeolinaGuidance = ({ message, visible, onClose }: CeolinaGuidancePr
         <div className="flex items-start gap-4">
           <img
             src={ceolinaCharacter}
-            alt="Ceolina"
+            alt="Star"
             className="w-16 h-16 animate-gentle-float"
           />
           <div className="flex-1">
-            <p className="font-semibold text-primary mb-1">Ceolina говорит:</p>
+            <p className="font-semibold text-primary mb-1">Star говорит:</p>
             <p className="text-sm">{message}</p>
           </div>
         </div>
