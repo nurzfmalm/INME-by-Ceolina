@@ -9,12 +9,13 @@ import {
   Filter,
   Download,
   Maximize2,
-  Heart,
-  Calendar,
-  Palette,
   X,
   Grid3x3,
-  List
+  List,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  Brain
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,10 +28,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { responsiveText, responsiveGrid, mobileSpacing, touchSizes } from "@/lib/responsive";
+import { responsiveText, mobileSpacing, touchSizes } from "@/lib/responsive";
 import { deleteArtwork as deleteFromStorage } from "@/lib/storage";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface GalleryProps {
   onBack: () => void;
@@ -368,68 +371,258 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
         )}
       </main>
 
-      {/* Full Screen Dialog */}
+      {/* Full Screen Preview Dialog */}
       <Dialog open={!!selectedArtwork} onOpenChange={() => setSelectedArtwork(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-black border-0">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20 text-white"
-              onClick={() => setSelectedArtwork(null)}
-            >
-              <X size={24} />
-            </Button>
+        <DialogContent className="max-w-6xl max-h-[95vh] p-0 bg-background border-0 overflow-hidden">
+          {selectedArtwork && (
+            <div className="flex flex-col lg:flex-row h-full max-h-[95vh]">
+              {/* Image Section */}
+              <div className="relative flex-1 bg-black flex items-center justify-center min-h-[300px] lg:min-h-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20 text-white"
+                  onClick={() => setSelectedArtwork(null)}
+                >
+                  <X size={24} />
+                </Button>
 
-            {selectedArtwork?.image_url && (
-              <div className="relative">
-                <img
-                  src={selectedArtwork.image_url}
-                  alt="Artwork"
-                  className="w-full max-h-[80vh] object-contain"
-                />
+                {/* Navigation */}
+                {processedArtworks.length > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white"
+                      onClick={() => {
+                        const currentIndex = processedArtworks.findIndex(a => a.id === selectedArtwork.id);
+                        const prevIndex = (currentIndex - 1 + processedArtworks.length) % processedArtworks.length;
+                        setSelectedArtwork(processedArtworks[prevIndex]);
+                      }}
+                    >
+                      <ChevronLeft size={24} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white"
+                      onClick={() => {
+                        const currentIndex = processedArtworks.findIndex(a => a.id === selectedArtwork.id);
+                        const nextIndex = (currentIndex + 1) % processedArtworks.length;
+                        setSelectedArtwork(processedArtworks[nextIndex]);
+                      }}
+                    >
+                      <ChevronRight size={24} />
+                    </Button>
+                  </>
+                )}
 
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge className={`bg-gradient-to-r ${getEmotionColor(getPrimaryEmotion(selectedArtwork.emotions_used))} border-0`}>
+                {selectedArtwork.image_url ? (
+                  <img
+                    src={selectedArtwork.image_url}
+                    alt="Artwork"
+                    className="max-w-full max-h-[50vh] lg:max-h-[90vh] object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-64 flex items-center justify-center">
+                    <ImageIcon className="w-16 h-16 text-slate-600" />
+                  </div>
+                )}
+              </div>
+
+              {/* Details Section */}
+              <div className="w-full lg:w-96 bg-background border-l border-border flex flex-col max-h-[45vh] lg:max-h-[95vh]">
+                <div className="p-4 border-b">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className={`bg-gradient-to-r ${getEmotionColor(getPrimaryEmotion(selectedArtwork.emotions_used))} text-white border-0`}>
                       {getEmotionEmoji(getPrimaryEmotion(selectedArtwork.emotions_used))}{" "}
                       {getPrimaryEmotion(selectedArtwork.emotions_used)}
                     </Badge>
-                    <span className="text-sm">
-                      {formatDistanceToNow(new Date(selectedArtwork.created_at), {
-                        addSuffix: true,
-                        locale: ru,
-                      })}
+                    <span className="text-sm text-muted-foreground">
+                      {format(new Date(selectedArtwork.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
                     </span>
                   </div>
+                  
+                  {/* Colors */}
+                  {selectedArtwork.colors_used && Array.isArray(selectedArtwork.colors_used) && selectedArtwork.colors_used.length > 0 && (
+                    <div className="flex gap-1 mt-2">
+                      {selectedArtwork.colors_used.map((color: string, i: number) => (
+                        <div
+                          key={i}
+                          className="w-6 h-6 rounded-full border-2 border-background shadow-sm"
+                          style={{ backgroundColor: color }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => selectedArtwork && downloadArtwork(selectedArtwork)}
-                    >
-                      <Download size={16} className="mr-2" />
-                      Скачать
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (selectedArtwork) {
-                          handleDelete(selectedArtwork.id, selectedArtwork.storage_path);
-                          setSelectedArtwork(null);
-                        }
-                      }}
-                    >
-                      <Trash2 size={16} className="mr-2" />
-                      Удалить
-                    </Button>
-                  </div>
+                <ScrollArea className="flex-1 p-4">
+                  <Tabs defaultValue="analysis" className="w-full">
+                    <TabsList className="w-full mb-4">
+                      <TabsTrigger value="analysis" className="flex-1">
+                        <Brain className="w-4 h-4 mr-2" />
+                        Анализ
+                      </TabsTrigger>
+                      <TabsTrigger value="info" className="flex-1">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Инфо
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="analysis" className="space-y-4">
+                      {selectedArtwork.metadata?.deep_analysis ? (
+                        <div className="space-y-4 text-sm">
+                          {/* Visual Description */}
+                          {selectedArtwork.metadata.deep_analysis.visual_description && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-primary">Визуальное описание</h4>
+                              <p className="text-muted-foreground">
+                                {selectedArtwork.metadata.deep_analysis.visual_description.overall_description}
+                              </p>
+                              {selectedArtwork.metadata.deep_analysis.visual_description.elements_identified?.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedArtwork.metadata.deep_analysis.visual_description.elements_identified.map((el: any, i: number) => (
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {el.element || el}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Interpretation */}
+                          {selectedArtwork.metadata.deep_analysis.interpretation && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-primary">Интерпретация</h4>
+                              {selectedArtwork.metadata.deep_analysis.interpretation.emotional_themes?.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Эмоциональные темы:</p>
+                                  <div className="space-y-1">
+                                    {selectedArtwork.metadata.deep_analysis.interpretation.emotional_themes.map((theme: any, i: number) => (
+                                      <div key={i} className="text-muted-foreground">
+                                        • <span className="font-medium">{theme.theme}</span>: {theme.explanation}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Recommendations */}
+                          {selectedArtwork.metadata.deep_analysis.recommendations && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-primary">Рекомендации</h4>
+                              {selectedArtwork.metadata.deep_analysis.recommendations.therapeutic_strategies?.length > 0 && (
+                                <ul className="text-muted-foreground space-y-1">
+                                  {selectedArtwork.metadata.deep_analysis.recommendations.therapeutic_strategies.slice(0, 3).map((rec: string, i: number) => (
+                                    <li key={i}>• {rec}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Progress */}
+                          {selectedArtwork.metadata.deep_analysis.progress && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-primary">Прогресс</h4>
+                              <p className="text-muted-foreground">
+                                {selectedArtwork.metadata.deep_analysis.progress.comparison_summary}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Brain className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p>Нет данных анализа</p>
+                          <p className="text-xs mt-1">Загрузите рисунок через "Глубокий анализ" для получения AI-анализа</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="info" className="space-y-4">
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Создано:</span>
+                          <p className="font-medium">
+                            {format(new Date(selectedArtwork.created_at), "d MMMM yyyy 'в' HH:mm", { locale: ru })}
+                          </p>
+                        </div>
+
+                        {selectedArtwork.metadata?.source && (
+                          <div>
+                            <span className="text-muted-foreground">Источник:</span>
+                            <p className="font-medium">
+                              {selectedArtwork.metadata.source === 'photo_upload' ? 'Загружено фото' : 
+                               selectedArtwork.metadata.source === 'solo_drawing' ? 'Свободное рисование' :
+                               selectedArtwork.metadata.source === 'guided_drawing' ? 'Рисование по трафарету' :
+                               selectedArtwork.metadata.source === 'task' ? 'Задание' :
+                               selectedArtwork.metadata.source}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedArtwork.metadata?.observation_data && (
+                          <div>
+                            <span className="text-muted-foreground">Наблюдения при создании:</span>
+                            <div className="mt-1 space-y-1">
+                              {selectedArtwork.metadata.observation_data.task_type && (
+                                <p>Тип: {selectedArtwork.metadata.observation_data.task_type}</p>
+                              )}
+                              {selectedArtwork.metadata.observation_data.emotional_states?.length > 0 && (
+                                <p>Эмоции: {selectedArtwork.metadata.observation_data.emotional_states.join(', ')}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedArtwork.emotions_used && Object.keys(selectedArtwork.emotions_used).length > 0 && (
+                          <div>
+                            <span className="text-muted-foreground">Эмоции:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {Object.entries(selectedArtwork.emotions_used).map(([emotion, count]) => (
+                                <Badge key={emotion} variant="outline" className="text-xs">
+                                  {emotion}: {String(count)}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </ScrollArea>
+
+                {/* Actions */}
+                <div className="p-4 border-t flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => downloadArtwork(selectedArtwork)}
+                  >
+                    <Download size={16} className="mr-2" />
+                    Скачать
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      handleDelete(selectedArtwork.id, selectedArtwork.storage_path);
+                      setSelectedArtwork(null);
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
