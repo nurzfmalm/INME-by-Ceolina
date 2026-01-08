@@ -20,6 +20,8 @@ import { ChildAuth } from "@/components/ChildAuth";
 import { ChildrenManager } from "@/components/ChildrenManager";
 import { PhotoAnalysis } from "@/components/PhotoAnalysis";
 import { GuidedDrawing } from "@/components/GuidedDrawing";
+import SymmetryDrawing from "@/components/SymmetryDrawing";
+import HalfTracingDrawing from "@/components/HalfTracingDrawing";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
 
@@ -406,6 +408,24 @@ const Index = () => {
       <GuidedDrawing
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
+        childId={selectedChildId || undefined}
+      />
+    );
+  }
+
+  if (currentSection === "symmetry-drawing") {
+    return (
+      <SymmetryDrawing
+        onBack={() => setCurrentSection("dashboard")}
+        childId={selectedChildId || undefined}
+      />
+    );
+  }
+
+  if (currentSection === "half-tracing") {
+    return (
+      <HalfTracingDrawing
+        onBack={() => setCurrentSection("dashboard")}
         childId={selectedChildId || undefined}
       />
     );
