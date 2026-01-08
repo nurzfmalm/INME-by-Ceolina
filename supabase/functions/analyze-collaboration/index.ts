@@ -1,11 +1,32 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const participantSchema = z.object({
+  strokeCount: z.number().min(0).max(100000),
+  activityRate: z.number().min(0).max(100),
+  colors: z.array(z.string().max(50)).max(100),
+  inactivePeriods: z.number().min(0).max(10000),
+});
+
+const requestSchema = z.object({
+  sessionData: z.object({
+    duration: z.number().min(0).max(86400), // Max 24 hours
+    participants: z.number().min(1).max(10),
+    taskType: z.string().min(1).max(200),
+  }),
+  participantData: z.object({
+    user1: participantSchema,
+    user2: participantSchema,
+  }),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,7 +57,29 @@ serve(async (req) => {
       );
     }
 
-    const { sessionData, participantData } = await req.json();
+    // Parse and validate input
+    let rawBody;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const parseResult = requestSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parseResult.error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { sessionData, participantData } = parseResult.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -153,9 +196,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in analyze-collaboration function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred during analysis' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
