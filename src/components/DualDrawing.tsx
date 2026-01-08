@@ -2,36 +2,18 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Palette, Save, Trash2, Users, Copy, Check, Sparkles, MousePointer2, Activity, Clock } from "lucide-react";
+import { Home, Save, Trash2, Users, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/lib/auth-helpers";
-import { CeolinaGuidance } from "./CeolinaGuidance";
-import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
-import { 
-  getUnlockedRewards, 
-  REWARD_COLORS, 
-  getBrushType, 
-  getAvailableTextures, 
-  getAvailableBackgrounds,
-  applyBrushEffect,
-  applyTexture,
-  type BrushType,
-  type TextureType,
-  type Background
-} from "@/lib/rewards-system";
+import { SimpleColorPalette, THERAPEUTIC_COLORS } from "./drawing/SimpleColorPalette";
 
 interface DualDrawingProps {
   onBack: () => void;
   childName: string;
 }
 
-const BASE_COLORS = EMOTION_COLOR_PALETTE.slice(0, 24).map(c => ({
-  name: c.name,
-  color: c.hex,
-  emotion: c.emotion
-}));
+const COLORS = THERAPEUTIC_COLORS;
 
 interface PartnerCursor {
   x: number;
@@ -40,93 +22,51 @@ interface PartnerCursor {
   timestamp: number;
 }
 
-interface Stroke {
-  id: string;
-  user_id: string;
-  x: number;
-  y: number;
-  color: string;
-  size: number;
-  timestamp: number;
-}
-
-interface DrawingSession {
-  id: string;
-  created_at: string;
-  created_by: string;
-  is_active: boolean;
-}
-
 export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].color);
-  const [lineWidth, setLineWidth] = useState(5);
-  const [brushType, setBrushType] = useState<BrushType>("normal");
-  const [currentTexture, setCurrentTexture] = useState<TextureType>("none");
-  const [currentBackground, setCurrentBackground] = useState<Background>(getAvailableBackgrounds()[0]);
-  const [availableColors, setAvailableColors] = useState(BASE_COLORS);
+  const [currentColor, setCurrentColor] = useState(COLORS[0].hex);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCode, setSessionCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [connectedUsers, setConnectedUsers] = useState<number>(1);
   const [isHost, setIsHost] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
-  const [partnerActivity, setPartnerActivity] = useState<Date | null>(null);
   const [partnerCursor, setPartnerCursor] = useState<PartnerCursor | null>(null);
-  const [showCeolinaMessage, setShowCeolinaMessage] = useState(false);
-  const [ceolinaMessage, setCeolinaMessage] = useState("");
-  const [taskProgress, setTaskProgress] = useState({ user1: 0, user2: 0 });
-  const [cooperativeTask, setCooperativeTask] = useState<any>(null);
-  const [sessionStartTime] = useState(Date.now());
-  const [myStrokeCount, setMyStrokeCount] = useState(0);
-  const [partnerStrokeCount, setPartnerStrokeCount] = useState(0);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
-  useEffect(() => {
-    // Загружаем разблокированные награды
-    const unlocked = getUnlockedRewards();
-    
-    const colors = [...BASE_COLORS];
-    REWARD_COLORS.forEach(rewardColor => {
-      if (unlocked.includes(rewardColor.id)) {
-        colors.push(rewardColor);
-      }
-    });
-    setAvailableColors(colors);
-    
-    setBrushType(getBrushType());
-  }, []);
-
+  // Инициализация холста — 75% экрана
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const resize = () => {
+      const rect = container.getBoundingClientRect();
+      const minHeight = window.innerHeight * 0.6;
+      const canvasHeight = Math.max(minHeight, rect.height);
+      
+      canvas.width = rect.width;
+      canvas.height = canvasHeight;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#FFFEF7";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+    };
 
-    if (currentBackground.gradient.startsWith('linear-gradient')) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, '#667eea');
-      gradient.addColorStop(1, '#764ba2');
-      ctx.fillStyle = gradient;
-    } else {
-      ctx.fillStyle = currentBackground.gradient;
-    }
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-  }, [currentBackground]);
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
 
-    // Subscribe to drawing strokes and cursor movements
     const channel = supabase
       .channel(`drawing:${sessionId}`)
       .on(
@@ -140,11 +80,8 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
         async (payload) => {
           const stroke = payload.new as any;
           const userId = await getCurrentUserId();
-          
           if (stroke.user_id !== userId) {
-            drawStroke(stroke);
-            setPartnerActivity(new Date());
-            setPartnerStrokeCount(prev => prev + 1);
+            drawStroke(stroke.stroke_data);
           }
         }
       )
@@ -160,23 +97,6 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           });
         }
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "session_activity",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          const activity = payload.new as any;
-          const userId = await getCurrentUserId();
-          
-          if (activity.user_id !== userId) {
-            setPartnerActivity(new Date(activity.last_active));
-          }
-        }
-      )
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         setConnectedUsers(Object.keys(state).length);
@@ -184,10 +104,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           const userId = await getCurrentUserId();
-          await channel.track({
-            user_id: userId,
-            online_at: new Date().toISOString(),
-          });
+          await channel.track({ user_id: userId, online_at: new Date().toISOString() });
         }
       });
 
@@ -196,164 +113,70 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     };
   }, [sessionId]);
 
-  // Monitor partner inactivity
-  useEffect(() => {
-    if (!partnerActivity || connectedUsers < 2) return;
-
-    const checkInactivity = setInterval(() => {
-      const timeSinceActivity = Date.now() - partnerActivity.getTime();
-      
-      if (timeSinceActivity > 15000) { // 15 seconds
-        setCeolinaMessage("Давайте подождём вашего партнёра! Может быть, он думает над следующим штрихом 😊");
-        setShowCeolinaMessage(true);
-      } else {
-        setShowCeolinaMessage(false);
-      }
-    }, 5000);
-
-    return () => clearInterval(checkInactivity);
-  }, [partnerActivity, connectedUsers]);
-
-  // Update activity tracker
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const updateActivity = setInterval(async () => {
-      const userId = await getCurrentUserId();
-      if (!userId) return;
-
-      await supabase
-        .from("session_activity")
-        .upsert({
-          session_id: sessionId,
-          user_id: userId,
-          last_active: new Date().toISOString(),
-          stroke_count: myStrokeCount,
-        });
-    }, 3000);
-
-    return () => clearInterval(updateActivity);
-  }, [sessionId, myStrokeCount]);
-
   const createSession = async () => {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        toast.error("Не удалось определить пользователя");
+        toast.error("Ошибка");
         return;
       }
 
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const sessionId = `session-${Date.now()}`;
-      
-      // Try database first, fallback to localStorage
-      try {
+
       const { data, error } = await supabase
         .from("drawing_sessions")
-        .insert({
-          session_code: code,
-          host_user_id: userId,
-          status: 'waiting',
-        })
+        .insert({ session_code: code, host_user_id: userId, status: 'waiting' })
         .select()
         .single();
 
-        if (error) throw error;
-        
-        setSessionId(data.id);
-        setSessionCode(code);
-        setIsHost(true);
-        toast.success(`Сессия создана! Код: ${code}`);
-      } catch (dbError) {
-        console.log("Database not available, using localStorage", dbError);
-        
-        // Store session in localStorage as fallback
-        const session = {
-          id: sessionId,
-          code,
-          created_by: userId,
-          created_at: new Date().toISOString(),
-          is_active: true,
-          strokes: []
-        };
-        
-        const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
-        sessions[code] = session;
-        localStorage.setItem('ceolinaSessions', JSON.stringify(sessions));
-        
-        setSessionId(sessionId);
-        setSessionCode(code);
-        setIsHost(true);
-        toast.success(`Сессия создана локально! Код: ${code}`);
-      }
+      if (error) throw error;
+
+      setSessionId(data.id);
+      setSessionCode(code);
+      setIsHost(true);
+      toast.success(`Код: ${code}`);
     } catch (error) {
-      console.error("Error creating session:", error);
-      toast.error("Ошибка при создании сессии");
+      console.error("Error:", error);
+      toast.error("Ошибка");
     }
   };
 
   const joinSession = async () => {
     if (!joinCode.trim()) {
-      toast.error("Введите код сессии");
+      toast.error("Введите код");
       return;
     }
 
     try {
-      // Try database first
-      try {
-        const { data, error } = await supabase
-          .from("drawing_sessions")
-          .select("*")
-          .eq("session_code", joinCode.toUpperCase())
-          .eq("status", "waiting")
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("drawing_sessions")
+        .select("*")
+        .eq("session_code", joinCode.toUpperCase())
+        .eq("status", "waiting")
+        .maybeSingle();
 
-        if (!error && data) {
-          setSessionId(data.id);
-          setSessionCode(joinCode.toUpperCase());
-          setIsHost(false);
-          toast.success("Подключено к сессии!");
-          return;
-        }
-      } catch (dbError) {
-        console.log("Database not available, checking localStorage", dbError);
+      if (error || !data) {
+        toast.error("Не найдено");
+        return;
       }
-      
-      // Fallback to localStorage
-      const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
-      const session = sessions[joinCode.toUpperCase()];
-      
-      if (session && session.is_active) {
-        setSessionId(session.id);
-        setSessionCode(joinCode.toUpperCase());
-        setIsHost(false);
-        
-        // Load existing strokes
-        if (session.strokes && session.strokes.length > 0) {
-          session.strokes.forEach((stroke: any) => {
-            drawStroke(stroke);
-          });
-        }
-        
-        toast.success("Подключено к локальной сессии!");
-      } else {
-        toast.error("Сессия не найдена");
-      }
+
+      setSessionId(data.id);
+      setSessionCode(joinCode.toUpperCase());
+      setIsHost(false);
+      toast.success("Подключено!");
     } catch (error) {
-      console.error("Error joining session:", error);
-      toast.error("Ошибка при подключении");
+      console.error("Error:", error);
+      toast.error("Ошибка");
     }
   };
 
   const drawStroke = (stroke: any) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
     ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.size;
+    ctx.lineWidth = 8;
     
     if (stroke.is_start) {
       ctx.beginPath();
@@ -364,59 +187,83 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     }
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
-    if (!canvas || !sessionId) return;
-
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    setIsDrawing(true);
-    setLastPoint({ x, y });
-
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
+    
+    if ('touches' in e && e.touches.length > 0) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
     }
-
-    saveStroke(x, y, true);
-    setMyStrokeCount(c => c + 1);
+    if ('clientX' in e) {
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    return { x: 0, y: 0 };
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!sessionId) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    const { x, y } = getCoordinates(e);
+    setIsDrawing(true);
+    lastPointRef.current = { x, y };
+
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    saveStroke(x, y, true);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing || !sessionId) return;
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const { x, y } = getCoordinates(e);
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
-    ctx.lineWidth = lineWidth;
     ctx.lineTo(x, y);
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
 
-    if (currentTexture !== "none") {
-      applyTexture(ctx, x, y, currentTexture, currentColor);
-    }
-
-    setLastPoint({ x, y });
+    lastPointRef.current = { x, y };
     saveStroke(x, y, false);
-    
-    // Broadcast cursor position
     broadcastCursor(x, y);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    lastPointRef.current = null;
+  };
+
+  const saveStroke = async (x: number, y: number, isStart: boolean) => {
+    const userId = await getCurrentUserId();
+    if (!userId || !sessionId) return;
+
+    try {
+      await supabase.from("drawing_strokes").insert([{
+        session_id: sessionId,
+        user_id: userId,
+        stroke_data: { x, y, color: currentColor, size: 8, is_start: isStart },
+      }]);
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   const broadcastCursor = async (x: number, y: number) => {
     if (!sessionId) return;
-    
     const channel = supabase.channel(`drawing:${sessionId}`);
     await channel.send({
       type: 'broadcast',
@@ -425,66 +272,16 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     });
   };
 
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    setLastPoint(null);
-  };
-
-  const saveStroke = async (x: number, y: number, isStart: boolean) => {
-    if (!sessionId || !sessionCode) return;
-
-    try {
-      const userId = await getCurrentUserId();
-      if (!userId) return;
-
-      const strokeData = {
-        session_id: sessionId,
-        user_id: userId,
-        stroke_data: {
-          x,
-          y,
-          color: currentColor,
-          size: lineWidth,
-          is_start: isStart,
-        },
-      };
-
-      // Try database first
-      try {
-        await supabase.from("drawing_strokes").insert([strokeData]);
-      } catch (dbError) {
-        // Fallback to localStorage
-        const sessions = JSON.parse(localStorage.getItem('ceolinaSessions') || '{}');
-        if (sessions[sessionCode]) {
-          if (!sessions[sessionCode].strokes) {
-            sessions[sessionCode].strokes = [];
-          }
-          sessions[sessionCode].strokes.push(strokeData);
-          localStorage.setItem('ceolinaSessions', JSON.stringify(sessions));
-        }
-      }
-    } catch (error) {
-      console.error("Error saving stroke:", error);
-      // Silently fail to avoid disrupting drawing experience
-    }
-  };
-
   const clearCanvas = async () => {
     const canvas = canvasRef.current;
-    if (!canvas || !sessionId) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !isHost) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = "#FFFEF7";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Clear strokes from database
-    if (isHost) {
-      await supabase
-        .from("drawing_strokes")
-        .delete()
-        .eq("session_id", sessionId);
+    if (sessionId) {
+      await supabase.from("drawing_strokes").delete().eq("session_id", sessionId);
     }
   };
 
@@ -496,354 +293,168 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       const userId = await getCurrentUserId();
       if (!userId) return;
 
-      // Analyze collaboration before saving
-      await analyzeCollaboration();
-
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((blob) => resolve(blob!), "image/png");
       });
 
       const fileName = `${userId}/${Date.now()}-collab.png`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("artworks")
-        .upload(fileName, blob);
+      await supabase.storage.from("artworks").upload(fileName, blob);
 
-      if (uploadError) throw uploadError;
-
-      // Get signed URL (bucket is private for security)
-      const { data: signedData, error: signedError } = await supabase.storage
+      const { data: signedData } = await supabase.storage
         .from("artworks")
         .createSignedUrl(fileName, 3600);
 
-      if (signedError || !signedData?.signedUrl) {
-        throw new Error("Failed to create signed URL");
-      }
-
       await supabase.from("artworks").insert({
         user_id: userId,
-        image_url: signedData.signedUrl,
+        image_url: signedData?.signedUrl || "",
         storage_path: fileName,
-        emotions_used: {},
-        colors_used: [currentColor],
-        metadata: {
-          session_id: sessionId,
-          session_type: "collaborative",
-          participants: connectedUsers,
-        },
+        metadata: { session_id: sessionId, session_type: "collaborative", participants: connectedUsers },
       });
 
-      // Track collaboration session
-      await supabase.from("progress_sessions").insert({
-        user_id: userId,
-        session_type: "dual_drawing",
-        emotional_analysis: {},
-        behavioral_metrics: {
-          collaboration_level: connectedUsers,
-          synchronicity: "high",
-        },
-      });
-
-      toast.success("Совместный рисунок сохранён! 🎨");
+      toast.success("Сохранено! 🎨");
     } catch (error) {
-      console.error("Error saving drawing:", error);
-      toast.error("Ошибка при сохранении");
-    }
-  };
-
-  const analyzeCollaboration = async () => {
-    if (!sessionId || connectedUsers < 2) return;
-
-    try {
-      const userId = await getCurrentUserId();
-      
-      // Get session activity data
-      const { data: activities, error } = await supabase
-        .from("session_activity")
-        .select("*")
-        .eq("session_id", sessionId);
-
-      if (error) throw error;
-
-      if (!activities || activities.length < 2) return;
-
-      const user1Data = activities[0];
-      const user2Data = activities[1];
-
-      const sessionDuration = Math.floor((Date.now() - sessionStartTime) / 1000);
-
-      const sessionData = {
-        duration: sessionDuration,
-        participants: connectedUsers,
-        taskType: "collaborative_drawing"
-      };
-
-      const participantData = {
-        user1: {
-          strokeCount: user1Data.stroke_count,
-          activityRate: Math.round((user1Data.stroke_count / sessionDuration) * 100),
-          colors: [currentColor],
-          inactivePeriods: 0
-        },
-        user2: {
-          strokeCount: user2Data.stroke_count,
-          activityRate: Math.round((user2Data.stroke_count / sessionDuration) * 100),
-          colors: [currentColor],
-          inactivePeriods: 0
-        }
-      };
-
-      const { data, error: analyzeError } = await supabase.functions.invoke(
-        "analyze-collaboration",
-        {
-          body: { sessionData, participantData }
-        }
-      );
-
-      if (analyzeError) throw analyzeError;
-
-      setAnalysisResult(data.analysis);
-      
-      if (data.analysis.encouragement) {
-        setCeolinaMessage(data.analysis.encouragement);
-        setShowCeolinaMessage(true);
-      }
-
-      toast.success("Анализ сотрудничества завершён! 🤝");
-    } catch (error) {
-      console.error("Error analyzing collaboration:", error);
+      console.error("Error:", error);
+      toast.error("Ошибка");
     }
   };
 
   const copyCode = () => {
     navigator.clipboard.writeText(sessionCode);
     setCopied(true);
-    toast.success("Код скопирован!");
+    toast.success("Скопировано!");
     setTimeout(() => setCopied(false), 2000);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <CeolinaGuidance
-        message={ceolinaMessage}
-        visible={showCeolinaMessage}
-        onClose={() => setShowCeolinaMessage(false)}
-      />
-      <header className="bg-card shadow-soft border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft size={24} />
+  if (!sessionId) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
+        <header className="flex items-center px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
+          <Button variant="ghost" size="icon" onClick={onBack} className="w-14 h-14 rounded-2xl">
+            <Home size={28} />
+          </Button>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="w-full max-w-md space-y-6">
+            <Card className="p-6 rounded-3xl border-0 shadow-lg">
+              <div className="text-center mb-4">
+                <Users size={48} className="mx-auto text-primary mb-2" />
+                <h2 className="text-xl font-bold">Создать сессию</h2>
+              </div>
+              <Button onClick={createSession} className="w-full h-14 text-lg rounded-2xl">
+                Создать
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Совместное рисование</h1>
-                <p className="text-sm text-muted-foreground">
-                  Рисуйте вместе в реальном времени, {childName}
-                </p>
+            </Card>
+
+            <Card className="p-6 rounded-3xl border-0 shadow-lg">
+              <div className="text-center mb-4">
+                <h2 className="text-xl font-bold">Присоединиться</h2>
               </div>
-            </div>
-            {sessionId && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-gradient-calm px-3 py-1 rounded-full">
-                  <Users className="text-white" size={16} />
-                  <span className="text-sm font-semibold text-white">
-                    {connectedUsers} участник{connectedUsers > 1 ? "а" : ""}
-                  </span>
-                </div>
+              <div className="space-y-3">
+                <Input
+                  placeholder="Код сессии"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  className="h-14 text-lg text-center uppercase rounded-2xl"
+                  maxLength={6}
+                />
+                <Button onClick={joinSession} className="w-full h-14 text-lg rounded-2xl">
+                  Подключиться
+                </Button>
               </div>
-            )}
+            </Card>
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
+      {/* Шапка с кодом сессии */}
+      <header className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
+        <Button variant="ghost" size="icon" onClick={onBack} className="w-14 h-14 rounded-2xl">
+          <Home size={28} />
+        </Button>
+
+        <button
+          onClick={copyCode}
+          className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-2xl"
+        >
+          <span className="text-lg font-bold">{sessionCode}</span>
+          {copied ? <Check size={20} /> : <Copy size={20} />}
+        </button>
+
+        <div className="flex items-center gap-2 px-3 py-2 bg-primary/20 rounded-2xl">
+          <Users size={20} />
+          <span className="font-bold">{connectedUsers}</span>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        {!sessionId ? (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <Card className="p-8 border-0 bg-card shadow-soft">
-              <h2 className="text-xl font-bold mb-4">Создать новую сессию</h2>
-              <p className="text-muted-foreground mb-4">
-                Создайте сессию и поделитесь кодом с другом
-              </p>
-              <Button onClick={createSession} className="w-full" size="lg">
-                <Users className="mr-2" size={20} />
-                Создать сессию
-              </Button>
-            </Card>
+      {/* ХОЛСТ */}
+      <div 
+        ref={containerRef}
+        className="flex-1 mx-2 my-2 rounded-3xl overflow-hidden relative"
+        style={{ backgroundColor: "#FFFEF7", minHeight: "55vh" }}
+      >
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          className="w-full h-full touch-none"
+          style={{ cursor: "crosshair" }}
+        />
 
-            <Card className="p-8 border-0 bg-card shadow-soft">
-              <h2 className="text-xl font-bold mb-4">Присоединиться к сессии</h2>
-              <p className="text-muted-foreground mb-4">
-                Введите код сессии для подключения
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Введите код"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="uppercase"
-                  maxLength={6}
-                />
-                <Button onClick={joinSession}>Подключиться</Button>
-              </div>
-            </Card>
-          </div>
-        ) : (
-          <>
-            {/* Session Info */}
-            <Card className="p-4 border-0 bg-gradient-calm shadow-soft">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white/80">Код сессии</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold text-white">{sessionCode}</p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={copyCode}
-                      className="text-white hover:bg-white/20"
-                    >
-                      {copied ? <Check size={18} /> : <Copy size={18} />}
-                    </Button>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-white/80">Роль</p>
-                  <p className="text-lg font-semibold text-white">
-                    {isHost ? "Организатор" : "Участник"}
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            {/* Color Palette */}
-            <Card className="p-4 border-0 bg-card shadow-soft">
-              <div className="flex items-center gap-2 mb-3">
-                <Palette className="text-primary" size={20} />
-                <h3 className="font-semibold">Выбери цвет</h3>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {availableColors.map((item) => (
-                  <button
-                    key={item.color}
-                    onClick={() => setCurrentColor(item.color)}
-                    className={`relative group transition-transform hover:scale-110 ${
-                      currentColor === item.color ? "scale-110" : ""
-                    }`}
-                  >
-                    <div
-                      className="w-12 h-12 rounded-full shadow-soft"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    {currentColor === item.color && (
-                      <div className="absolute inset-0 rounded-full border-4 border-primary" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            {/* Canvas */}
-            <Card className="p-4 border-0 bg-card shadow-soft">
-              <div className="relative">
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={(e) => startDrawing(e.touches[0] as any)}
-                  onTouchMove={(e) => draw(e.touches[0] as any)}
-                  onTouchEnd={stopDrawing}
-                  className="w-full h-[400px] bg-white rounded-2xl border-2 border-muted touch-none"
-                  style={{
-                    cursor: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><circle cx="${(lineWidth + 4) / 2}" cy="${(lineWidth + 4) / 2}" r="${lineWidth / 2}" fill="${currentColor}" stroke="black" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
-                  }}
-                />
-
-                {/* Partner cursor indicator */}
-                {partnerCursor && Date.now() - partnerCursor.timestamp < 2000 && (
-                  <div
-                    className="absolute w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none transition-all duration-100"
-                    style={{
-                      backgroundColor: partnerCursor.color,
-                      left: `${partnerCursor.x}px`,
-                      top: `${partnerCursor.y}px`,
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  />
-                )}
-              </div>
-            </Card>
-
-            {/* Collaboration Analysis */}
-            {analysisResult && (
-              <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="text-white" size={20} />
-                    <h3 className="font-bold text-white text-lg">Анализ сотрудничества</h3>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                      <p className="text-xs text-white/70 mb-1">Сотрудничество</p>
-                      <p className="text-2xl font-bold text-white">{analysisResult.collaboration_score}%</p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                      <p className="text-xs text-white/70 mb-1">Синхронность</p>
-                      <p className="text-2xl font-bold text-white">{analysisResult.emotional_sync}%</p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                      <p className="text-xs text-white/70 mb-1">Баланс</p>
-                      <p className="text-2xl font-bold text-white">{analysisResult.balance_score}%</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <p className="text-sm font-semibold text-white mb-2">Сильные стороны:</p>
-                    <ul className="space-y-1">
-                      {analysisResult.strengths?.map((strength: string, i: number) => (
-                        <li key={i} className="text-sm text-white/90">✓ {strength}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {analysisResult.therapist_notes && (
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                      <p className="text-sm font-semibold text-white mb-2">Для терапевта:</p>
-                      <p className="text-sm text-white/90">{analysisResult.therapist_notes}</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Tools */}
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={clearCanvas} disabled={!isHost}>
-                <Trash2 size={18} className="mr-2" />
-                {isHost ? "Очистить" : "Только организатор"}
-              </Button>
-              <Button variant="default" onClick={saveDrawing}>
-                <Save size={18} className="mr-2" />
-                Сохранить
-              </Button>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm text-muted-foreground">Размер:</span>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={lineWidth}
-                  onChange={(e) => setLineWidth(Number(e.target.value))}
-                  className="w-24"
-                />
-                <span className="text-sm font-semibold">{lineWidth}px</span>
-              </div>
-            </div>
-          </>
+        {partnerCursor && Date.now() - partnerCursor.timestamp < 2000 && (
+          <div
+            className="absolute w-5 h-5 rounded-full border-2 border-white shadow-lg pointer-events-none"
+            style={{
+              backgroundColor: partnerCursor.color,
+              left: `${partnerCursor.x}px`,
+              top: `${partnerCursor.y}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          />
         )}
-      </main>
+      </div>
+
+      {/* Панель управления */}
+      <div className="px-3 pb-4 space-y-3">
+        <SimpleColorPalette
+          colors={COLORS}
+          currentColor={currentColor}
+          onColorChange={setCurrentColor}
+        />
+
+        <div className="flex justify-center gap-4">
+          {isHost && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={clearCanvas}
+              className="w-16 h-16 rounded-2xl p-0"
+              aria-label="Очистить"
+            >
+              <Trash2 size={28} />
+            </Button>
+          )}
+          
+          <Button
+            variant="default"
+            size="lg"
+            onClick={saveDrawing}
+            className="w-16 h-16 rounded-2xl p-0"
+            aria-label="Сохранить"
+          >
+            <Save size={28} />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

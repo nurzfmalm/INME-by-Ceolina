@@ -1,13 +1,18 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ArrowLeft, Palette, Save, Trash2, BarChart3, Sparkles, Eraser, Undo } from "lucide-react";
+import { ArrowLeft, Save, Trash2, BarChart3, Eraser, Undo, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
-import { FloatingAssistant } from "./FloatingAssistant";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SimpleColorPalette, THERAPEUTIC_COLORS } from "./drawing/SimpleColorPalette";
+import { 
+  getUnlockedRewards, 
+  REWARD_COLORS, 
+  getBrushType, 
+  applyBrushEffect,
+  type BrushType,
+} from "@/lib/rewards-system";
+
 interface SoloDrawingProps {
   onBack: () => void;
   childName: string;
@@ -15,108 +20,69 @@ interface SoloDrawingProps {
   taskPrompt?: string | null;
 }
 
-import { EMOTION_COLOR_PALETTE } from "@/lib/emotion-colors";
-import { 
-  getUnlockedRewards, 
-  REWARD_COLORS, 
-  getBrushType, 
-  getAvailableTextures, 
-  getAvailableBackgrounds,
-  applyBrushEffect,
-  applyTexture,
-  type BrushType,
-  type TextureType,
-  type Background
-} from "@/lib/rewards-system";
-
-const BASE_COLORS = EMOTION_COLOR_PALETTE.map(c => ({
-  name: c.name,
-  color: c.hex,
-  emotion: c.emotion,
-  category: c.emotionCategory,
-  note: c.therapeuticNote
-}));
+const BASE_COLORS = THERAPEUTIC_COLORS;
 
 export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].color);
-  const [lineWidth, setLineWidth] = useState(5);
+  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].hex);
+  const [lineWidth] = useState(8);
   const [brushType, setBrushType] = useState<BrushType>("normal");
-  const [currentTexture, setCurrentTexture] = useState<TextureType>("none");
-  const [currentBackground, setCurrentBackground] = useState<Background>(getAvailableBackgrounds()[0]);
   const [availableColors, setAvailableColors] = useState(BASE_COLORS);
   const [emotionStats, setEmotionStats] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [sessionStart] = useState(Date.now());
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [taskAnalysis, setTaskAnalysis] = useState<any>(null);
-  const [showTaskResult, setShowTaskResult] = useState(false);
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    // Загружаем разблокированные награды
     const unlocked = getUnlockedRewards();
-    
-    // Добавляем цвета наград если разблокированы
     const colors = [...BASE_COLORS];
     REWARD_COLORS.forEach(rewardColor => {
       if (unlocked.includes(rewardColor.id)) {
-        colors.push(rewardColor);
+        colors.push({ hex: rewardColor.color, name: rewardColor.name });
       }
     });
     setAvailableColors(colors);
-    
-    // Устанавливаем тип кисти
     setBrushType(getBrushType());
   }, []);
 
+  // Инициализация холста — 75-80% экрана
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const resize = () => {
+      const containerRect = container.getBoundingClientRect();
+      const minHeight = window.innerHeight * 0.7;
+      const canvasHeight = Math.max(minHeight, containerRect.height);
+      
+      canvas.width = containerRect.width;
+      canvas.height = canvasHeight;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    // Применяем фон
-    if (currentBackground.gradient.startsWith('linear-gradient')) {
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (tempCtx) {
-        const gradient = tempCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        // Парсим градиент (упрощенно)
-        gradient.addColorStop(0, '#667eea');
-        gradient.addColorStop(1, '#764ba2');
-        tempCtx.fillStyle = gradient;
-        tempCtx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(tempCanvas, 0, 0);
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#FFFEF7";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
       }
-    } else {
-      ctx.fillStyle = currentBackground.gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    
-    // Сохраняем начальное состояние в историю
-    if (history.length === 0) {
-      const dataUrl = canvas.toDataURL();
-      setHistory([dataUrl]);
-      setHistoryStep(0);
-    }
-  }, [currentBackground]);
+      
+      if (history.length === 0) {
+        const dataUrl = canvas.toDataURL();
+        setHistory([dataUrl]);
+        setHistoryStep(0);
+      }
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   const saveToHistory = () => {
     const canvas = canvasRef.current;
@@ -149,31 +115,30 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     
-    if ('touches' in e) {
+    if ('touches' in e && e.touches.length > 0) {
       return {
         x: e.touches[0].clientX - rect.left,
         y: e.touches[0].clientY - rect.top
       };
     }
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
+    if ('clientX' in e) {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+    return { x: 0, y: 0 };
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
     setIsDrawing(true);
     const { x, y } = getCoordinates(e);
-    
     lastPointRef.current = { x, y };
 
-    // Set up stroke style
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -181,7 +146,8 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     ctx.moveTo(x, y);
 
     if (!isEraser) {
-      const emotion = availableColors.find((c) => c.color === currentColor)?.emotion || "other";
+      const colorItem = availableColors.find((c) => c.hex === currentColor);
+      const emotion = colorItem?.name || "other";
       setEmotionStats((prev) => ({
         ...prev,
         [emotion]: (prev[emotion] || 0) + 1,
@@ -193,13 +159,10 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (!isDrawing || !lastPointRef.current) return;
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
     const { x, y } = getCoordinates(e);
-    const lastPoint = lastPointRef.current;
 
     if (isEraser) {
       ctx.globalCompositeOperation = "destination-out";
@@ -209,25 +172,13 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
       ctx.strokeStyle = currentColor;
     }
 
-    // Smooth continuous line drawing
-    const midX = (lastPoint.x + x) / 2;
-    const midY = (lastPoint.y + y) / 2;
-    
-    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
+    ctx.lineTo(x, y);
     ctx.stroke();
-    
-    // Continue path for next segment
     ctx.beginPath();
-    ctx.moveTo(midX, midY);
+    ctx.moveTo(x, y);
 
     if (!isEraser) {
-      // Apply brush effect
       applyBrushEffect(ctx, x, y, currentColor, brushType, lineWidth);
-      
-      // Apply texture if active
-      if (currentTexture !== "none") {
-        applyTexture(ctx, x, y, currentTexture, currentColor);
-      }
     }
 
     lastPointRef.current = { x, y };
@@ -243,134 +194,16 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = currentBackground.gradient;
+    ctx.fillStyle = "#FFFEF7";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Сохраняем очищенное состояние в историю
     const dataUrl = canvas.toDataURL();
     setHistory([dataUrl]);
     setHistoryStep(0);
     setEmotionStats({});
-  };
-
-  const generateAnalysis = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    setIsAnalyzing(true);
-    setShowAnalysis(false);
-
-    try {
-      const imageData = canvas.toDataURL('image/png');
-      const durationSeconds = Math.floor((Date.now() - sessionStart) / 1000);
-      const colorsUsed = availableColors.filter((c) => emotionStats[c.emotion]);
-      const strokeCount = Object.values(emotionStats).reduce((a, b) => a + b, 0);
-
-      // Get user profile for age
-      const userId = await getCurrentUserId();
-      let childAge = 7;
-      
-      if (userId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('child_age')
-          .eq('id', userId)
-          .maybeSingle();
-        if (profile?.child_age) childAge = profile.child_age;
-      }
-
-      // Create observation data from session
-      const observation = {
-        child_id: userId || 'anonymous',
-        child_age: childAge,
-        session_date: new Date().toISOString(),
-        task_type: taskPrompt ? 'custom' : 'free_drawing',
-        task_description: taskPrompt || undefined,
-        emotional_states: ['neutral'], // Default for now
-        behaviors: strokeCount > 50 ? ['focused'] : ['slow_drawing'],
-        materials_used: colorsUsed.length > 5 ? ['many_colors'] : colorsUsed.length === 1 ? ['one_color'] : [],
-        colors_count: colorsUsed.length,
-        drawing_duration_seconds: durationSeconds,
-        pause_frequency: 'low' as const,
-        stroke_count: strokeCount,
-        average_pressure: lineWidth / 2, // Approximate from line width
-        eraser_usage: 0
-      };
-
-      // Call deep analysis
-      const { data: analysisData, error } = await supabase.functions.invoke('analyze-drawing-deep', {
-        body: {
-          imageData,
-          observation
-        }
-      });
-
-      if (error) {
-        console.error('Analysis error:', error);
-        throw error;
-      }
-
-      if (analysisData?.report) {
-        setAnalysis(analysisData.report);
-        setShowAnalysis(true);
-      } else {
-        throw new Error('No report returned');
-      }
-    } catch (error) {
-      console.error('Error generating analysis:', error);
-      toast.error('Не удалось провести анализ. Попробуйте позже.');
-      
-      // Fallback to simple analysis
-      const colorsUsed = availableColors
-        .filter((c) => emotionStats[c.emotion])
-        .map((c) => c.name);
-      
-      setAnalysis({
-        simple: true,
-        colorsUsed,
-        sessionDuration: Math.floor((Date.now() - sessionStart) / 1000),
-        totalStrokes: Object.values(emotionStats).reduce((a, b) => a + b, 0),
-      });
-      setShowAnalysis(true);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const analyzeTaskCompletion = async () => {
-    if (!taskId || !taskPrompt) return null;
-
-    try {
-      const colorsUsed = availableColors
-        .filter((c) => emotionStats[c.emotion])
-        .map((c) => c.color);
-
-      const { data, error } = await supabase.functions.invoke('analyze-task-drawing', {
-        body: {
-          imageData: canvasRef.current?.toDataURL(),
-          taskPrompt,
-          emotionStats,
-          colorsUsed
-        }
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error("Error analyzing task:", error);
-      return {
-        taskCompleted: true,
-        score: 70,
-        feedback: "Отличная работа! Продолжай рисовать!",
-        tokensAwarded: 10,
-        suggestions: []
-      };
-    }
   };
 
   const saveDrawing = async () => {
@@ -392,13 +225,13 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         canvas.toBlob((blob) => resolve(blob!), "image/png");
       });
 
+      const colorsUsed = availableColors
+        .filter((c) => emotionStats[c.name])
+        .map((c) => c.hex);
+
       if (!isAuth) {
         const dataUrl = canvas.toDataURL("image/png");
-        const artworks = JSON.parse(localStorage.getItem('ceolinaArtworks') || '[]');
-        
-        const colorsUsed = availableColors
-          .filter((c) => emotionStats[c.emotion])
-          .map((c) => c.color);
+        const artworks = JSON.parse(localStorage.getItem('starArtworks') || '[]');
         
         artworks.push({
           id: Date.now().toString(),
@@ -413,36 +246,14 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
           },
         });
         
-        localStorage.setItem('ceolinaArtworks', JSON.stringify(artworks));
-        
-        // Analyze task for demo mode
-        if (taskId && taskPrompt) {
-          const analysis = await analyzeTaskCompletion();
-          setTaskAnalysis(analysis);
-          setShowTaskResult(true);
-          
-          if (analysis?.taskCompleted) {
-            const completed = JSON.parse(
-              localStorage.getItem("ceolinaCompletedTasks") || "[]"
-            );
-            completed.push(taskId);
-            localStorage.setItem("ceolinaCompletedTasks", JSON.stringify(completed));
-
-            const currentTokens = parseInt(localStorage.getItem("ceolinaTokens") || "0");
-            localStorage.setItem("ceolinaTokens", (currentTokens + analysis.tokensAwarded).toString());
-            toast.success(`Задание выполнено! Получено ${analysis.tokensAwarded} токенов! 🎉`);
-          } else {
-            toast.info("Попробуй ещё раз! " + analysis?.feedback);
-          }
-        } else {
-          toast.success("Рисунок сохранён в галерею! 🎨");
-        }
+        localStorage.setItem('starArtworks', JSON.stringify(artworks));
+        toast.success("Рисунок сохранён! 🎨");
         clearCanvas();
         return;
       }
 
       const fileName = `${userId}/${Date.now()}.png`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("artworks")
         .upload(fileName, blob, {
           contentType: "image/png",
@@ -451,7 +262,6 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
       if (uploadError) throw uploadError;
 
-      // Get signed URL (bucket is private for security)
       const { data: signedData, error: signedError } = await supabase.storage
         .from("artworks")
         .createSignedUrl(fileName, 3600);
@@ -460,53 +270,18 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         throw new Error("Failed to create signed URL");
       }
 
-      const colorsUsed = availableColors
-        .filter((c) => emotionStats[c.emotion])
-        .map((c) => c.color);
-
-      const { error: dbError } = await supabase
-        .from("artworks")
-        .insert({
-          user_id: userId,
-          image_url: signedData.signedUrl,
-          storage_path: fileName,
-          emotions_used: emotionStats,
-          colors_used: colorsUsed,
-          metadata: {
-            line_width: lineWidth,
-            session_duration: Math.floor((Date.now() - sessionStart) / 1000),
-            task_id: taskId || null,
-          },
-        });
-
-      if (dbError) throw dbError;
-
-      // Analyze task completion with AI
-      if (taskId && taskPrompt) {
-        const analysis = await analyzeTaskCompletion();
-        setTaskAnalysis(analysis);
-        setShowTaskResult(true);
-
-        if (analysis?.taskCompleted) {
-          const { error: taskError } = await supabase
-            .from("user_tasks")
-            .insert({
-              user_id: userId,
-              task_id: taskId,
-            });
-
-          if (!taskError) {
-            await supabase.from("emotion_tokens").insert({
-              user_id: userId,
-              amount: analysis.tokensAwarded,
-              source: `Task completed: ${taskPrompt}`,
-            });
-            toast.success(`Задание выполнено! Получено ${analysis.tokensAwarded} токенов! 🎉`);
-          }
-        } else {
-          toast.info("Попробуй ещё раз! " + analysis?.feedback);
-        }
-      }
+      await supabase.from("artworks").insert({
+        user_id: userId,
+        image_url: signedData.signedUrl,
+        storage_path: fileName,
+        emotions_used: emotionStats,
+        colors_used: colorsUsed,
+        metadata: {
+          line_width: lineWidth,
+          session_duration: Math.floor((Date.now() - sessionStart) / 1000),
+          task_id: taskId || null,
+        },
+      });
 
       await supabase.from("progress_sessions").insert({
         user_id: userId,
@@ -515,490 +290,118 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         metadata: {
           emotional_analysis: emotionStats,
           colors_count: colorsUsed.length,
-          primary_emotion: Object.keys(emotionStats).sort(
-            (a, b) => emotionStats[b] - emotionStats[a]
-          )[0],
         },
       });
 
-      if (!taskId) {
-        toast.success("Рисунок сохранён в галерею! 🎨");
-      }
+      toast.success("Рисунок сохранён! 🎨");
       clearCanvas();
     } catch (error) {
       console.error("Error saving artwork:", error);
-      toast.error("Ошибка при сохранении рисунка");
+      toast.error("Ошибка при сохранении");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card shadow-soft border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft size={24} />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Рисовать одному</h1>
-              <p className="text-sm text-muted-foreground">
-                {taskPrompt || `Рисуй и выражай свои эмоции, ${childName}`}
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
+      {/* Минимальная шапка — только кнопка назад */}
+      <header className="flex items-center px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onBack}
+          className="w-14 h-14 rounded-2xl"
+        >
+          <Home size={28} />
+        </Button>
+        {taskPrompt && (
+          <p className="flex-1 text-center text-lg font-medium text-muted-foreground px-4 truncate">
+            {taskPrompt}
+          </p>
+        )}
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <Card className="p-4 border-0 bg-card shadow-soft">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Palette className="text-primary" size={20} />
-              <h3 className="font-semibold">Палитра эмоций ({availableColors.length} цветов)</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-2 max-h-48 overflow-y-auto p-2">
-            {availableColors.map((item) => (
-              <button
-                key={item.color}
-                onClick={() => {
-                  setCurrentColor(item.color);
-                  setIsEraser(false);
-                }}
-                className={`relative group transition-all hover:scale-125 ${
-                  currentColor === item.color && !isEraser ? "scale-125 z-10" : ""
-                }`}
-                title={`${item.name} - ${item.note}`}
-              >
-                <div
-                  className="w-8 h-8 rounded-full shadow-soft"
-                  style={{ backgroundColor: item.color }}
-                />
-                {currentColor === item.color && !isEraser && (
-                  <div className="absolute inset-0 rounded-full border-2 border-primary animate-pulse" />
-                )}
-              </button>
-            ))}
-          </div>
-          {currentColor && !isEraser && (
-            <div className="mt-3 text-center">
-              <p className="text-sm font-semibold">
-                {availableColors.find(c => c.color === currentColor)?.name}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {availableColors.find(c => c.color === currentColor)?.note}
-              </p>
-            </div>
-          )}
-        </Card>
+      {/* ХОЛСТ — 75-80% экрана */}
+      <div 
+        ref={containerRef}
+        className="flex-1 mx-2 my-2 rounded-3xl overflow-hidden"
+        style={{ 
+          backgroundColor: "#FFFEF7",
+          minHeight: "70vh"
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          className="w-full h-full touch-none"
+          style={{ cursor: "crosshair" }}
+        />
+      </div>
 
-        {/* Панель инструментов наград */}
-        {(getBrushType() !== "normal" || getAvailableTextures().length > 1 || getAvailableBackgrounds().length > 1) && (
-          <Card className="p-4 border-0 bg-card shadow-soft">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Sparkles className="text-primary" size={20} />
-              Награды
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Кисти */}
-              {getBrushType() !== "normal" && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Кисть: {
-                    brushType === "sparkle" ? "✨ Блестящая" :
-                    brushType === "rainbow" ? "🌈 Радужная" : "Обычная"
-                  }</p>
-                </div>
-              )}
-              
-              {/* Текстуры */}
-              {getAvailableTextures().length > 1 && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Текстура:</p>
-                  <div className="flex gap-2">
-                    {getAvailableTextures().map(texture => (
-                      <Button
-                        key={texture}
-                        size="sm"
-                        variant={currentTexture === texture ? "default" : "outline"}
-                        onClick={() => setCurrentTexture(texture)}
-                      >
-                        {texture === "none" ? "Нет" : 
-                         texture === "stars" ? "⭐ Звёзды" : "❤️ Сердца"}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Фоны */}
-              {getAvailableBackgrounds().length > 1 && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Фон:</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {getAvailableBackgrounds().map(bg => (
-                      <Button
-                        key={bg.id}
-                        size="sm"
-                        variant={currentBackground.id === bg.id ? "default" : "outline"}
-                        onClick={() => setCurrentBackground(bg)}
-                      >
-                        {bg.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
+      {/* Панель управления — минимум элементов */}
+      <div className="px-3 pb-4 space-y-3">
+        {/* Палитра цветов — структурированная */}
+        <SimpleColorPalette
+          colors={availableColors}
+          currentColor={currentColor}
+          onColorChange={(color) => {
+            setCurrentColor(color);
+            setIsEraser(false);
+          }}
+        />
 
-        <Card className="p-4 border-0 bg-card shadow-soft">
-          <canvas
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className="w-full h-[400px] bg-white rounded-2xl border-2 border-muted touch-none"
-            style={{
-              cursor: isEraser
-                ? `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><rect x="2" y="2" width="${lineWidth}" height="${lineWidth}" fill="white" stroke="gray" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
-                : `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${lineWidth + 4}" height="${lineWidth + 4}" viewBox="0 0 ${lineWidth + 4} ${lineWidth + 4}"><circle cx="${(lineWidth + 4) / 2}" cy="${(lineWidth + 4) / 2}" r="${lineWidth / 2}" fill="${encodeURIComponent(currentColor)}" stroke="black" stroke-width="1"/></svg>') ${(lineWidth + 4) / 2} ${(lineWidth + 4) / 2}, crosshair`
-            }}
-          />
-        </Card>
-
-        <div className="flex flex-wrap gap-3">
-          <Button 
-            variant={isEraser ? "default" : "outline"} 
+        {/* Инструменты — крупные кнопки без текста */}
+        <div className="flex justify-center gap-3">
+          <Button
+            variant={isEraser ? "default" : "outline"}
+            size="lg"
             onClick={() => setIsEraser(!isEraser)}
+            className="w-14 h-14 rounded-2xl p-0"
+            aria-label="Ластик"
+          >
+            <Eraser size={26} />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={undo}
+            disabled={historyStep <= 0}
+            className="w-14 h-14 rounded-2xl p-0"
+            aria-label="Отменить"
+          >
+            <Undo size={26} />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={clearCanvas}
+            className="w-14 h-14 rounded-2xl p-0"
+            aria-label="Очистить"
+          >
+            <Trash2 size={26} />
+          </Button>
+          
+          <Button
+            variant="default"
+            size="lg"
+            onClick={saveDrawing}
             disabled={isSaving}
+            className="w-14 h-14 rounded-2xl p-0 bg-primary"
+            aria-label="Сохранить"
           >
-            <Eraser size={18} className="mr-2" />
-            {isEraser ? "Режим ластика" : "Ластик"}
+            <Save size={26} />
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={undo} 
-            disabled={isSaving || historyStep <= 0}
-          >
-            <Undo size={18} className="mr-2" />
-            Отменить
-          </Button>
-          <Button variant="outline" onClick={clearCanvas} disabled={isSaving}>
-            <Trash2 size={18} className="mr-2" />
-            Очистить
-          </Button>
-          <Button variant="default" onClick={saveDrawing} disabled={isSaving}>
-            <Save size={18} className="mr-2" />
-            {isSaving ? "Сохранение..." : "Сохранить в галерею"}
-          </Button>
-          <Button variant="secondary" onClick={generateAnalysis} disabled={isAnalyzing}>
-            <BarChart3 size={18} className="mr-2" />
-            {isAnalyzing ? "Анализирую..." : "Посмотреть анализ"}
-          </Button>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">Размер {isEraser ? "ластика" : "кисти"}:</span>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={lineWidth}
-              onChange={(e) => setLineWidth(Number(e.target.value))}
-              className="w-24"
-            />
-            <span className="text-sm font-semibold">{lineWidth}px</span>
-          </div>
         </div>
-
-        {showTaskResult && taskAnalysis && (
-          <Card className={`p-6 border-0 shadow-soft ${
-            taskAnalysis.taskCompleted ? 'bg-gradient-calm' : 'bg-gradient-warm'
-          }`}>
-            <h3 className="font-semibold text-primary-foreground mb-4 text-xl">
-              {taskAnalysis.taskCompleted ? '✅ Задание выполнено!' : '🎨 Попробуй ещё раз!'}
-            </h3>
-            <div className="space-y-3 text-primary-foreground/90">
-              <p className="text-lg font-semibold">Оценка: {taskAnalysis.score}/100</p>
-              <p className="text-sm mb-3">{taskAnalysis.feedback}</p>
-              
-              {!taskAnalysis.taskCompleted && taskAnalysis.suggestions?.length > 0 && (
-                <div className="mt-4 p-4 bg-white/20 rounded-lg">
-                  <p className="font-semibold mb-2">💡 Подсказки от Ceolina:</p>
-                  <ul className="space-y-2">
-                    {taskAnalysis.suggestions.map((suggestion: string, idx: number) => (
-                      <li key={idx} className="text-sm flex items-start gap-2">
-                        <span className="mt-1">•</span>
-                        <span>{suggestion}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {taskAnalysis.taskCompleted ? (
-                <p className="text-lg font-bold mt-4">
-                  🎉 Получено токенов: {taskAnalysis.tokensAwarded}
-                </p>
-              ) : (
-                <p className="text-sm mt-4 opacity-90">
-                  Получено за старание: {taskAnalysis.tokensAwarded} токенов
-                </p>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {isAnalyzing && (
-          <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-primary-foreground">Анализирую рисунок...</span>
-            </div>
-          </Card>
-        )}
-
-        {showAnalysis && analysis && (
-          <Card className="p-6 border-0 bg-gradient-calm shadow-soft">
-            <Tabs defaultValue="main" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/20">
-                <TabsTrigger value="main" className="text-primary-foreground data-[state=active]:bg-white/30">
-                  Анализ
-                </TabsTrigger>
-                <TabsTrigger value="dev" className="text-primary-foreground data-[state=active]:bg-white/30">
-                  Dev Tools
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="main" className="space-y-4 text-primary-foreground/90">
-                <h3 className="font-semibold text-primary-foreground text-xl">
-                  Анализ твоего рисунка
-                </h3>
-
-                {analysis.simple ? (
-                  <p className="text-sm">Базовый анализ недоступен. Попробуй позже.</p>
-                ) : (
-                  <>
-                    {/* Emotional State - Main focus */}
-                    <div className="p-4 bg-white/20 rounded-lg">
-                      <h4 className="font-medium text-lg mb-2">💭 Эмоциональное состояние</h4>
-                      {analysis.interpretation?.emotional_themes?.length > 0 ? (
-                        <div className="space-y-2">
-                          {analysis.interpretation.emotional_themes.map((theme: any, idx: number) => (
-                            <div key={idx}>
-                              <p className="font-medium">{theme.theme}</p>
-                              <p className="text-sm opacity-80">{theme.therapeutic_significance || ''}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm">Ребёнок выражает себя через творчество</p>
-                      )}
-                    </div>
-
-                    {/* Behavior indicators */}
-                    {analysis.process_analysis && (
-                      <div className="p-4 bg-white/20 rounded-lg">
-                        <h4 className="font-medium text-lg mb-2">🎯 Поведение при рисовании</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          {analysis.process_analysis.engagement_level && (
-                            <p>Вовлечённость: {analysis.process_analysis.engagement_level}</p>
-                          )}
-                          {analysis.process_analysis.focus_areas?.length > 0 && (
-                            <p>Фокус: {analysis.process_analysis.focus_areas.join(', ')}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Recommendations for parents */}
-                    {analysis.recommendations?.for_parents?.length > 0 && (
-                      <div className="p-4 bg-white/20 rounded-lg">
-                        <h4 className="font-medium text-lg mb-2">💡 Рекомендации</h4>
-                        <ul className="text-sm space-y-1">
-                          {analysis.recommendations.for_parents.slice(0, 3).map((rec: string, idx: number) => (
-                            <li key={idx}>• {rec}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Next activities */}
-                    {analysis.recommendations?.next_activities?.length > 0 && (
-                      <div className="p-4 bg-white/20 rounded-lg">
-                        <h4 className="font-medium text-lg mb-2">🎨 Следующие активности</h4>
-                        <ul className="text-sm space-y-1">
-                          {analysis.recommendations.next_activities.slice(0, 2).map((act: string, idx: number) => (
-                            <li key={idx}>• {act}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="dev" className="space-y-4 text-primary-foreground/90">
-                <h3 className="font-semibold text-primary-foreground text-xl">
-                  Dev Tools - Детальный анализ
-                </h3>
-
-                {analysis.simple ? (
-                  <div className="space-y-3">
-                    <p className="text-sm">✨ Использовано цветов: {analysis.colorsUsed?.length || 0}</p>
-                    <p className="text-sm">✨ Время рисования: {Math.floor((analysis.sessionDuration || 0) / 60)} мин</p>
-                    <p className="text-sm">✨ Количество штрихов: {analysis.totalStrokes || 0}</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Visual description */}
-                    {analysis.visual_description && (
-                      <Collapsible>
-                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
-                          <span>🎨 Визуальное описание</span>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
-                          {analysis.visual_description.objects_identified?.length > 0 && (
-                            <p><strong>Объекты:</strong> {analysis.visual_description.objects_identified.join(', ')}</p>
-                          )}
-                          {analysis.visual_description.color_palette?.dominant_colors?.length > 0 && (
-                            <p><strong>Доминирующие цвета:</strong> {analysis.visual_description.color_palette.dominant_colors.join(', ')}</p>
-                          )}
-                          {analysis.visual_description.color_palette?.color_harmony && (
-                            <p><strong>Гармония:</strong> {analysis.visual_description.color_palette.color_harmony}</p>
-                          )}
-                          {analysis.visual_description.composition_analysis && (
-                            <p><strong>Композиция:</strong> {analysis.visual_description.composition_analysis}</p>
-                          )}
-                          {analysis.visual_description.line_quality && (
-                            <p><strong>Качество линий:</strong> {analysis.visual_description.line_quality}</p>
-                          )}
-                          {analysis.visual_description.space_usage && (
-                            <p><strong>Использование пространства:</strong> {analysis.visual_description.space_usage}</p>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-
-                    {/* Process analysis */}
-                    {analysis.process_analysis && (
-                      <Collapsible>
-                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
-                          <span>📊 Процесс рисования</span>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
-                          {analysis.process_analysis.engagement_level && (
-                            <p><strong>Уровень вовлечённости:</strong> {analysis.process_analysis.engagement_level}</p>
-                          )}
-                          {analysis.process_analysis.motor_control_indicators && (
-                            <p><strong>Моторика:</strong> {analysis.process_analysis.motor_control_indicators}</p>
-                          )}
-                          {analysis.process_analysis.planning_evidence && (
-                            <p><strong>Планирование:</strong> {analysis.process_analysis.planning_evidence}</p>
-                          )}
-                          {analysis.process_analysis.emotional_regulation_signs?.length > 0 && (
-                            <p><strong>Саморегуляция:</strong> {analysis.process_analysis.emotional_regulation_signs.join(', ')}</p>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-
-                    {/* Interpretation */}
-                    {analysis.interpretation && (
-                      <Collapsible>
-                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
-                          <span>💭 Интерпретация</span>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
-                          {analysis.interpretation.emotional_themes?.map((theme: any, idx: number) => (
-                            <div key={idx} className="border-l-2 border-white/30 pl-2 mb-2">
-                              <p className="font-medium">{theme.theme}</p>
-                              {theme.supporting_evidence?.length > 0 && (
-                                <p className="text-xs opacity-70">Признаки: {theme.supporting_evidence.join(', ')}</p>
-                              )}
-                              {theme.therapeutic_significance && (
-                                <p className="text-xs">Значение: {theme.therapeutic_significance}</p>
-                              )}
-                            </div>
-                          ))}
-                          {analysis.interpretation.developmental_observations && (
-                            <p><strong>Развитие:</strong> {analysis.interpretation.developmental_observations}</p>
-                          )}
-                          {analysis.interpretation.communication_attempts?.length > 0 && (
-                            <p><strong>Коммуникация:</strong> {analysis.interpretation.communication_attempts.join(', ')}</p>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-
-                    {/* Progress */}
-                    {analysis.progress_tracking && (
-                      <Collapsible>
-                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
-                          <span>📈 Прогресс</span>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1 text-sm space-y-2">
-                          {analysis.progress_tracking.skills_demonstrated?.length > 0 && (
-                            <p><strong>Навыки:</strong> {analysis.progress_tracking.skills_demonstrated.join(', ')}</p>
-                          )}
-                          {analysis.progress_tracking.areas_for_support?.length > 0 && (
-                            <p><strong>Нужна поддержка:</strong> {analysis.progress_tracking.areas_for_support.join(', ')}</p>
-                          )}
-                          {analysis.progress_tracking.comparison_notes && (
-                            <p><strong>Сравнение:</strong> {analysis.progress_tracking.comparison_notes}</p>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-
-                    {/* Metadata */}
-                    {analysis.analysis_metadata && (
-                      <div className="p-3 bg-white/10 rounded-lg text-xs space-y-1">
-                        <p>Уверенность: {analysis.analysis_metadata.confidence_score}%</p>
-                        {analysis.analysis_metadata.limitations?.length > 0 && (
-                          <p>Ограничения: {analysis.analysis_metadata.limitations.join(', ')}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Raw JSON */}
-                    <Collapsible>
-                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-white/10 rounded-lg hover:bg-white/20">
-                        <span>📝 Raw JSON</span>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="p-3 bg-white/5 rounded-b-lg mt-1">
-                        <pre className="text-xs overflow-x-auto max-h-60 overflow-y-auto">
-                          {JSON.stringify(analysis, null, 2)}
-                        </pre>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-          </Card>
-        )}
-
-        {Object.keys(emotionStats).length > 0 && (
-          <Card className="p-4 border-0 bg-gradient-warm shadow-soft">
-            <h3 className="font-semibold text-primary-foreground mb-2">
-              Твои эмоции сегодня
-            </h3>
-            <p className="text-sm text-primary-foreground/80">
-              Сегодня ты выразил{" "}
-              {Object.values(emotionStats).reduce((a, b) => a + b, 0)} эмоций через
-              рисунок. Продолжай творить!
-            </p>
-          </Card>
-        )}
-      </main>
-      
-      <FloatingAssistant taskPrompt={taskPrompt} contextType="drawing" />
+      </div>
     </div>
   );
 };
