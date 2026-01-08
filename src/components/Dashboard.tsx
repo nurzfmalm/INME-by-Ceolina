@@ -27,7 +27,9 @@ import {
   Star,
   Menu,
   X,
-  PenTool
+  PenTool,
+  FlipHorizontal2,
+  SplitSquareHorizontal
 } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
@@ -212,6 +214,24 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
       description: "Рисуй с друзьями",
       color: "text-orange-600",
       bgColor: "bg-orange-50 dark:bg-orange-950",
+    },
+    {
+      id: "symmetry-drawing",
+      title: "Симметрия",
+      icon: FlipHorizontal2,
+      gradient: "from-indigo-500 via-purple-500 to-pink-500",
+      description: "Зеркальное рисование",
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-50 dark:bg-indigo-950",
+    },
+    {
+      id: "half-tracing",
+      title: "Половинки",
+      icon: SplitSquareHorizontal,
+      gradient: "from-teal-500 via-emerald-500 to-green-500",
+      description: "Дорисуй вторую часть",
+      color: "text-teal-600",
+      bgColor: "bg-teal-50 dark:bg-teal-950",
     },
     {
       id: "gallery",
