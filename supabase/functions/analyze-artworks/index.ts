@@ -1,11 +1,26 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const artworkSchema = z.object({
+  created_at: z.string().optional(),
+  emotions_used: z.array(z.string().max(100)).max(50).optional(),
+  colors_used: z.array(z.string().max(50)).max(100).optional(),
+  metadata: z.object({
+    session_duration: z.number().min(0).max(86400).optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
+const requestSchema = z.object({
+  artworks: z.array(artworkSchema).min(1).max(100), // Limit to 100 artworks max
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,7 +51,29 @@ serve(async (req) => {
       );
     }
 
-    const { artworks } = await req.json();
+    // Parse and validate input
+    let rawBody;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const parseResult = requestSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parseResult.error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { artworks } = parseResult.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -44,7 +81,7 @@ serve(async (req) => {
     }
 
     // Prepare analysis data
-    const artworkSummary = artworks.map((art: any) => ({
+    const artworkSummary = artworks.map((art) => ({
       date: art.created_at,
       emotions: art.emotions_used,
       colors: art.colors_used,
@@ -189,9 +226,8 @@ ${JSON.stringify(artworkSummary, null, 2)}
 
   } catch (error) {
     console.error('Error in analyze-artworks function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred during analysis' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

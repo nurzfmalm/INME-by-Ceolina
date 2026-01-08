@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema - CRITICAL for security
+const requestSchema = z.object({
+  imageData: z.string()
+    .refine(val => val.startsWith('data:image/'), { message: 'Image must be a valid data URL' })
+    .refine(val => val.length <= 5 * 1024 * 1024, { message: 'Image size must be less than 5MB' }), // 5MB limit
+  taskPrompt: z.string()
+    .min(1, { message: 'Task prompt is required' })
+    .max(500, { message: 'Task prompt must be less than 500 characters' })
+    .refine(val => !/[<>{}[\]\\]/.test(val), { message: 'Task prompt contains invalid characters' }), // Basic sanitization
+  emotionStats: z.record(z.string().max(50), z.number().min(0).max(1000000)).optional().default({}),
+  colorsUsed: z.array(z.string().max(50)).max(100).optional().default([]),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,9 +49,31 @@ serve(async (req) => {
       );
     }
 
-    const { imageData, taskPrompt, emotionStats, colorsUsed } = await req.json();
+    // Parse and validate input - CRITICAL for preventing DoS and prompt injection
+    let rawBody;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const parseResult = requestSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parseResult.error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { imageData, taskPrompt, emotionStats, colorsUsed } = parseResult.data;
     
-    console.log("Analyzing task drawing with prompt:", taskPrompt);
+    console.log("Analyzing task drawing with validated prompt");
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -56,6 +92,7 @@ CRITICAL RULES:
 
 Be warm but honest about whether the drawing actually addresses the task.`;
 
+    // Safe prompt construction - taskPrompt is already validated and sanitized
     const userPrompt = `Task: "${taskPrompt}"
 
 Statistics: ${colorsUsed.length} colors used, emotions: ${JSON.stringify(emotionStats)}
@@ -123,8 +160,7 @@ Respond ONLY with valid JSON:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI gateway error:", response.status);
       throw new Error("AI gateway error");
     }
 
@@ -150,7 +186,7 @@ Respond ONLY with valid JSON:
       };
     }
 
-    console.log("Analysis result:", analysisResult);
+    console.log("Analysis result completed");
 
     return new Response(JSON.stringify(analysisResult), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,9 +195,7 @@ Respond ONLY with valid JSON:
   } catch (error) {
     console.error("Error in analyze-task-drawing:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      }),
+      JSON.stringify({ error: "An error occurred during analysis" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
