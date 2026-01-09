@@ -148,43 +148,99 @@ const TEMPLATES: TemplateData[] = [
     draw: (ctx, size, filled) => {
       const s = size / 100;
       
-      // Body
+      // Head circle
       ctx.beginPath();
-      ctx.ellipse(50 * s, 50 * s, 5 * s, 25 * s, 0, 0, Math.PI * 2);
+      ctx.arc(50 * s, 18 * s, 8 * s, 0, Math.PI * 2);
       if (filled) {
-        ctx.fillStyle = "#8B4513";
+        ctx.fillStyle = "#FFF8DC";
         ctx.fill();
       }
       ctx.stroke();
       
-      // Wings
+      // Body (elongated oval)
       ctx.beginPath();
-      ctx.moveTo(50 * s, 35 * s);
-      ctx.quadraticCurveTo(20 * s, 20 * s, 15 * s, 45 * s);
-      ctx.quadraticCurveTo(20 * s, 70 * s, 50 * s, 65 * s);
+      ctx.ellipse(50 * s, 55 * s, 6 * s, 30 * s, 0, 0, Math.PI * 2);
       if (filled) {
-        ctx.fillStyle = "#FF69B4";
+        ctx.fillStyle = "#FFF8DC";
         ctx.fill();
       }
       ctx.stroke();
       
-      // Mirror wing
+      // Upper left wing
       ctx.beginPath();
-      ctx.moveTo(50 * s, 35 * s);
-      ctx.quadraticCurveTo(80 * s, 20 * s, 85 * s, 45 * s);
-      ctx.quadraticCurveTo(80 * s, 70 * s, 50 * s, 65 * s);
+      ctx.moveTo(44 * s, 30 * s);
+      ctx.bezierCurveTo(20 * s, 10 * s, 5 * s, 25 * s, 10 * s, 50 * s);
+      ctx.bezierCurveTo(15 * s, 60 * s, 35 * s, 55 * s, 44 * s, 45 * s);
       if (filled) {
-        ctx.fillStyle = "#FF69B4";
+        ctx.fillStyle = "#FFE4B5";
         ctx.fill();
       }
       ctx.stroke();
       
-      // Antennae
+      // Upper left wing spiral decoration
       ctx.beginPath();
-      ctx.moveTo(48 * s, 25 * s);
-      ctx.quadraticCurveTo(40 * s, 10 * s, 35 * s, 8 * s);
-      ctx.moveTo(52 * s, 25 * s);
-      ctx.quadraticCurveTo(60 * s, 10 * s, 65 * s, 8 * s);
+      ctx.arc(22 * s, 35 * s, 8 * s, 0, Math.PI * 1.5);
+      ctx.stroke();
+      
+      // Upper right wing
+      ctx.beginPath();
+      ctx.moveTo(56 * s, 30 * s);
+      ctx.bezierCurveTo(80 * s, 10 * s, 95 * s, 25 * s, 90 * s, 50 * s);
+      ctx.bezierCurveTo(85 * s, 60 * s, 65 * s, 55 * s, 56 * s, 45 * s);
+      if (filled) {
+        ctx.fillStyle = "#FFE4B5";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Upper right wing spiral decoration
+      ctx.beginPath();
+      ctx.arc(78 * s, 35 * s, 8 * s, Math.PI, Math.PI * 2.5);
+      ctx.stroke();
+      
+      // Lower left wing
+      ctx.beginPath();
+      ctx.moveTo(44 * s, 55 * s);
+      ctx.bezierCurveTo(25 * s, 55 * s, 10 * s, 70 * s, 15 * s, 88 * s);
+      ctx.bezierCurveTo(25 * s, 98 * s, 40 * s, 90 * s, 44 * s, 75 * s);
+      if (filled) {
+        ctx.fillStyle = "#FFE4B5";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Lower left wing spiral decoration
+      ctx.beginPath();
+      ctx.arc(25 * s, 75 * s, 7 * s, 0, Math.PI * 1.5);
+      ctx.stroke();
+      
+      // Lower right wing
+      ctx.beginPath();
+      ctx.moveTo(56 * s, 55 * s);
+      ctx.bezierCurveTo(75 * s, 55 * s, 90 * s, 70 * s, 85 * s, 88 * s);
+      ctx.bezierCurveTo(75 * s, 98 * s, 60 * s, 90 * s, 56 * s, 75 * s);
+      if (filled) {
+        ctx.fillStyle = "#FFE4B5";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Lower right wing spiral decoration
+      ctx.beginPath();
+      ctx.arc(75 * s, 75 * s, 7 * s, Math.PI, Math.PI * 2.5);
+      ctx.stroke();
+      
+      // Antennae with curls
+      ctx.beginPath();
+      ctx.moveTo(46 * s, 12 * s);
+      ctx.quadraticCurveTo(35 * s, 0 * s, 30 * s, 5 * s);
+      ctx.arc(32 * s, 5 * s, 3 * s, Math.PI, Math.PI * 2.5);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(54 * s, 12 * s);
+      ctx.quadraticCurveTo(65 * s, 0 * s, 70 * s, 5 * s);
+      ctx.arc(68 * s, 5 * s, 3 * s, 0, Math.PI * 1.5);
       ctx.stroke();
     }
   },
