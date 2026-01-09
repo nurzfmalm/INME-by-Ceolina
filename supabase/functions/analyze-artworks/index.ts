@@ -9,9 +9,15 @@ const corsHeaders = {
 };
 
 // Input validation schema
+// emotions_used can be either array of strings OR object with emotion counts
+const emotionsSchema = z.union([
+  z.array(z.string().max(100)).max(50),
+  z.record(z.string(), z.number())
+]).optional();
+
 const artworkSchema = z.object({
   created_at: z.string().optional(),
-  emotions_used: z.array(z.string().max(100)).max(50).optional(),
+  emotions_used: emotionsSchema,
   colors_used: z.array(z.string().max(50)).max(100).optional(),
   metadata: z.object({
     session_duration: z.number().min(0).max(86400).optional(),
