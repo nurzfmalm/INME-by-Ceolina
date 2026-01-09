@@ -2,122 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Autism-friendly design system
-   Soft muted colors, high predictability, reduced sensory load
-   Based on research for children with ASD
+/* Kids-friendly design system inspired by educational apps
+   Soft blue backgrounds, colorful cards, rounded corners, playful feel
    All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Warm cream background - less harsh than white */
-    --background: 40 30% 96%;
-    --foreground: 220 20% 25%;
+    /* Soft blue background like reference */
+    --background: 210 70% 94%;
+    --foreground: 215 50% 25%;
 
-    /* Soft white cards */
-    --card: 40 20% 99%;
-    --card-foreground: 220 20% 25%;
+    /* White cards */
+    --card: 0 0% 100%;
+    --card-foreground: 215 50% 25%;
 
-    --popover: 40 20% 99%;
-    --popover-foreground: 220 20% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 50% 25%;
 
-    /* Primary - soft calming blue (not too bright) */
-    --primary: 200 50% 55%;
+    /* Primary - friendly blue */
+    --primary: 210 90% 55%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - muted peach */
-    --secondary: 25 45% 70%;
-    --secondary-foreground: 25 50% 20%;
+    /* Secondary - warm coral/orange */
+    --secondary: 25 90% 60%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Success - soft sage green */
-    --success: 150 35% 55%;
+    /* Success - fresh green */
+    --success: 150 60% 50%;
     --success-foreground: 0 0% 100%;
 
-    /* Muted tones for less visual noise */
-    --muted: 40 20% 92%;
-    --muted-foreground: 220 15% 50%;
+    --muted: 210 40% 90%;
+    --muted-foreground: 215 30% 45%;
 
-    /* Accent - soft lavender */
-    --accent: 260 35% 70%;
+    /* Purple accent */
+    --accent: 270 70% 65%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 45% 60%;
+    --destructive: 0 75% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 94%;
-    --ring: 200 50% 55%;
+    --border: 210 40% 88%;
+    --input: 210 40% 92%;
+    --ring: 210 90% 55%;
 
-    /* Larger radius for softer, friendlier look */
-    --radius: 1.5rem;
+    /* Very rounded for child-friendly feel */
+    --radius: 1.25rem;
 
-    /* Autism-friendly color palette - muted pastels */
-    --calm-blue: 200 50% 75%;
-    --calm-green: 150 35% 70%;
-    --calm-purple: 260 35% 75%;
-    --calm-peach: 25 45% 80%;
-    --calm-pink: 330 35% 80%;
-    --calm-yellow: 45 50% 80%;
-    --calm-teal: 180 35% 70%;
-    --calm-coral: 15 45% 75%;
-
-    /* Solid soft backgrounds instead of gradients */
-    --bg-calm: hsl(200, 50%, 75%);
-    --bg-warm: hsl(25, 45%, 80%);
-    --bg-purple: hsl(260, 35%, 75%);
-    --bg-green: hsl(150, 35%, 70%);
-    --bg-pink: hsl(330, 35%, 80%);
+    /* Custom kid-friendly tokens */
+    --gradient-calm: linear-gradient(135deg, hsl(210, 80%, 70%), hsl(190, 70%, 65%));
+    --gradient-warm: linear-gradient(135deg, hsl(25, 90%, 65%), hsl(45, 95%, 60%));
+    --gradient-purple: linear-gradient(135deg, hsl(270, 70%, 65%), hsl(290, 60%, 60%));
+    --gradient-green: linear-gradient(135deg, hsl(150, 60%, 55%), hsl(170, 55%, 50%));
+    --gradient-pink: linear-gradient(135deg, hsl(330, 70%, 65%), hsl(350, 65%, 60%));
     
-    --shadow-card: 0 4px 16px -2px hsl(220, 20%, 50% / 0.08);
-    --shadow-soft: 0 2px 8px -1px hsl(220, 20%, 50% / 0.06);
+    --shadow-card: 0 4px 20px -2px hsl(210, 60%, 70% / 0.25);
+    --shadow-float: 0 8px 32px -4px hsl(210, 60%, 50% / 0.2);
     
-    /* Slower, gentler transitions */
-    --transition-gentle: all 0.4s ease-out;
+    --transition-bounce: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .dark {
-    --background: 220 25% 12%;
-    --foreground: 40 20% 90%;
+    --background: 215 50% 10%;
+    --foreground: 210 30% 90%;
 
-    --card: 220 25% 16%;
-    --card-foreground: 40 20% 90%;
+    --card: 215 45% 15%;
+    --card-foreground: 210 30% 90%;
 
-    --popover: 220 25% 16%;
-    --popover-foreground: 40 20% 90%;
+    --popover: 215 45% 15%;
+    --popover-foreground: 210 30% 90%;
 
-    --primary: 200 45% 55%;
+    --primary: 210 85% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 25 40% 50%;
+    --secondary: 25 85% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --success: 150 30% 45%;
+    --success: 150 55% 45%;
     --success-foreground: 0 0% 100%;
 
-    --muted: 220 20% 22%;
-    --muted-foreground: 40 15% 55%;
+    --muted: 215 35% 22%;
+    --muted-foreground: 210 25% 55%;
 
-    --accent: 260 30% 55%;
+    --accent: 270 65% 55%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 40% 50%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 25%;
-    --input: 220 20% 22%;
-    --ring: 200 45% 55%;
-  }
-
-  /* Simple mode - reduced visual complexity */
-  .simple-mode {
-    --background: 0 0% 98%;
-    --muted: 0 0% 95%;
-    --radius: 1rem;
-  }
-
-  .simple-mode * {
-    animation: none !important;
-    transition: none !important;
+    --border: 215 35% 25%;
+    --input: 215 35% 22%;
+    --ring: 210 85% 60%;
   }
 }
 
@@ -130,106 +105,41 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Gentle animations - can be disabled */
+  /* Playful animations for kids */
   @keyframes gentle-float {
     0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-4px); }
+    50% { transform: translateY(-6px); }
   }
 
-  @keyframes soft-breathe {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.9; }
+  @keyframes soft-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(0.98); }
   }
 
-  @keyframes subtle-pop {
-    0% { transform: scale(0.95); opacity: 0; }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.8); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
   }
 
   .animate-gentle-float {
-    animation: gentle-float 4s ease-in-out infinite;
+    animation: gentle-float 3s ease-in-out infinite;
   }
 
-  .animate-soft-breathe {
-    animation: soft-breathe 3s ease-in-out infinite;
+  .animate-soft-pulse {
+    animation: soft-pulse 2s ease-in-out infinite;
   }
 
-  .animate-subtle-pop {
-    animation: subtle-pop 0.4s ease-out;
+  .animate-wiggle {
+    animation: wiggle 0.5s ease-in-out;
   }
 
-  /* Large touch targets for motor difficulties */
-  .touch-target {
-    min-height: 56px;
-    min-width: 56px;
-  }
-
-  .touch-target-large {
-    min-height: 64px;
-    min-width: 64px;
-  }
-
-  /* High contrast mode */
-  .high-contrast {
-    --foreground: 0 0% 0%;
-    --background: 0 0% 100%;
-    --primary: 220 100% 40%;
-  }
-
-  /* Reduced motion preference */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-}
-
-/* Autism-friendly card styles */
-@layer components {
-  .autism-card {
-    @apply bg-card rounded-3xl p-6 shadow-sm border-2 border-transparent;
-    transition: var(--transition-gentle);
-  }
-
-  .autism-card:hover {
-    @apply border-primary/20;
-  }
-
-  .autism-card:focus-visible {
-    @apply outline-none ring-4 ring-primary/30;
-  }
-
-  /* Large, clear buttons */
-  .autism-button {
-    @apply rounded-2xl px-6 py-4 text-lg font-semibold;
-    @apply flex items-center gap-3 justify-center;
-    @apply touch-target transition-all duration-300;
-    @apply focus-visible:ring-4 focus-visible:ring-primary/30 focus-visible:outline-none;
-  }
-
-  /* Activity cards with solid colors */
-  .activity-card {
-    @apply rounded-3xl p-6 text-white shadow-md;
-    @apply touch-target-large;
-    @apply transition-transform duration-300;
-  }
-
-  .activity-card:active {
-    transform: scale(0.97);
-  }
-
-  /* Predictable icon containers */
-  .icon-circle {
-    @apply w-16 h-16 rounded-2xl flex items-center justify-center;
-    @apply bg-white/25;
-  }
-
-  .icon-circle-large {
-    @apply w-20 h-20 rounded-3xl flex items-center justify-center;
-    @apply bg-white/30;
+  .animate-pop-in {
+    animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 }

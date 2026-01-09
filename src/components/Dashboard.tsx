@@ -178,124 +178,111 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
     }
   };
 
-  // Autism-friendly menu items with muted pastel colors and clear icons
+  // Kid-friendly colorful menu items with solid background colors
   const allMenuItems = [
     {
       id: "art-therapy",
       title: "Рисование",
       icon: Palette,
-      bgClass: "bg-[hsl(260,35%,75%)]",
-      hoverClass: "hover:bg-[hsl(260,35%,70%)]",
+      bgColor: "bg-purple-400",
+      hoverColor: "hover:bg-purple-500",
       description: "Рисуй и выражай эмоции",
-      emoji: "🎨",
     },
     {
       id: "learning-path",
       title: "Программа",
       icon: Brain,
-      bgClass: "bg-[hsl(200,50%,75%)]",
-      hoverClass: "hover:bg-[hsl(200,50%,70%)]",
+      bgColor: "bg-blue-400",
+      hoverColor: "hover:bg-blue-500",
       description: "Персональный план",
-      emoji: "📚",
     },
     {
       id: "tracing",
       title: "Трафареты",
       icon: PenTool,
-      bgClass: "bg-[hsl(180,35%,70%)]",
-      hoverClass: "hover:bg-[hsl(180,35%,65%)]",
+      bgColor: "bg-cyan-400",
+      hoverColor: "hover:bg-cyan-500",
       description: "Учись рисовать фигуры",
-      emoji: "✏️",
     },
     {
       id: "dual-drawing",
       title: "Вместе",
       icon: Users,
-      bgClass: "bg-[hsl(25,45%,75%)]",
-      hoverClass: "hover:bg-[hsl(25,45%,70%)]",
+      bgColor: "bg-orange-400",
+      hoverColor: "hover:bg-orange-500",
       description: "Рисуй с друзьями",
-      emoji: "👥",
     },
     {
       id: "symmetry-drawing",
       title: "Симметрия",
       icon: FlipHorizontal2,
-      bgClass: "bg-[hsl(220,40%,75%)]",
-      hoverClass: "hover:bg-[hsl(220,40%,70%)]",
+      bgColor: "bg-indigo-400",
+      hoverColor: "hover:bg-indigo-500",
       description: "Зеркальное рисование",
-      emoji: "🪞",
     },
     {
       id: "half-tracing",
       title: "Половинки",
       icon: SplitSquareHorizontal,
-      bgClass: "bg-[hsl(150,35%,70%)]",
-      hoverClass: "hover:bg-[hsl(150,35%,65%)]",
+      bgColor: "bg-teal-400",
+      hoverColor: "hover:bg-teal-500",
       description: "Дорисуй вторую часть",
-      emoji: "🧩",
     },
     {
       id: "gallery",
       title: "Галерея",
       icon: Image,
-      bgClass: "bg-[hsl(150,35%,70%)]",
-      hoverClass: "hover:bg-[hsl(150,35%,65%)]",
+      bgColor: "bg-green-400",
+      hoverColor: "hover:bg-green-500",
       description: "Твои творения",
-      emoji: "🖼️",
     },
     {
       id: "analytics",
       title: "Прогресс",
       icon: BarChart3,
-      bgClass: "bg-[hsl(260,35%,70%)]",
-      hoverClass: "hover:bg-[hsl(260,35%,65%)]",
+      bgColor: "bg-violet-400",
+      hoverColor: "hover:bg-violet-500",
       description: "Отслеживай успехи",
-      emoji: "📊",
     },
     {
       id: "photo-analysis",
       title: "Фото AI",
       icon: Camera,
-      bgClass: "bg-[hsl(45,50%,75%)]",
-      hoverClass: "hover:bg-[hsl(45,50%,70%)]",
+      bgColor: "bg-amber-400",
+      hoverColor: "hover:bg-amber-500",
       description: "Анализ с AI",
-      emoji: "📷",
     },
     {
       id: "tasks",
       title: "Задания",
       icon: Target,
-      bgClass: "bg-[hsl(330,35%,75%)]",
-      hoverClass: "hover:bg-[hsl(330,35%,70%)]",
+      bgColor: "bg-rose-400",
+      hoverColor: "hover:bg-rose-500",
       description: "Получай награды",
-      emoji: "🎯",
     },
     {
       id: "rewards",
       title: "Награды",
       icon: ShoppingBag,
-      bgClass: "bg-[hsl(330,35%,80%)]",
-      hoverClass: "hover:bg-[hsl(330,35%,75%)]",
+      bgColor: "bg-pink-400",
+      hoverColor: "hover:bg-pink-500",
       description: "Разблокируй новое",
-      emoji: "🎁",
     },
     {
       id: "parent-dashboard",
       title: "Аналитика",
       icon: Heart,
-      bgClass: "bg-[hsl(15,45%,75%)]",
-      hoverClass: "hover:bg-[hsl(15,45%,70%)]",
+      bgColor: "bg-red-400",
+      hoverColor: "hover:bg-red-500",
       description: "Детальная аналитика",
-      emoji: "❤️",
     },
     {
       id: "children",
       title: "Профили",
       icon: Users,
-      bgClass: "bg-[hsl(200,45%,75%)]",
-      hoverClass: "hover:bg-[hsl(200,45%,70%)]",
+      bgColor: "bg-sky-400",
+      hoverColor: "hover:bg-sky-500",
       description: "Управление профилями",
-      emoji: "👤",
     },
   ];
 
@@ -311,23 +298,23 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
         <div className={`${mobileSpacing.screenPadding} py-4`}>
           <div className="flex items-center justify-between">
-        {/* Welcome & Avatar */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[hsl(200,50%,75%)] rounded-2xl flex items-center justify-center shadow-md">
-                <span className="text-white text-2xl">👋</span>
+            {/* Welcome & Avatar */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white text-lg">👋</span>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Привет!</p>
+                <p className="text-xs text-muted-foreground">Привет!</p>
                 {userRole === "parent" ? (
                   <button 
                     onClick={onChangeChild}
-                    className="font-bold text-xl text-foreground flex items-center gap-2"
+                    className="font-bold text-lg text-foreground flex items-center gap-1"
                   >
                     {childData.childName || "Ребёнок"}
-                    <Users size={16} className="text-primary" />
+                    <Users size={14} className="text-primary" />
                   </button>
                 ) : (
-                  <p className="font-bold text-xl text-foreground">
+                  <p className="font-bold text-lg text-foreground">
                     {childData.childName || "Друг"}
                   </p>
                 )}
@@ -335,63 +322,82 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             </div>
 
             {/* Tokens & Settings */}
-            <div className="flex items-center gap-3">
-              <div className="bg-[hsl(45,50%,75%)] text-foreground px-5 py-3 rounded-2xl flex items-center gap-2 shadow-sm">
-                <Star className="w-5 h-5 text-amber-600" fill="currentColor" />
-                <span className="font-bold text-lg">{tokenCount}</span>
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white px-4 py-2 rounded-full flex items-center gap-1.5 shadow-md">
+                <Star className="w-4 h-4" fill="currentColor" />
+                <span className="font-bold">{tokenCount}</span>
               </div>
               
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-12 h-12 rounded-2xl bg-muted hover:bg-muted/80"
+                className="w-10 h-10 rounded-full bg-primary/10"
                 onClick={() => onNavigate("settings")}
               >
-                <Settings size={22} className="text-muted-foreground" />
+                <Settings size={20} className="text-primary" />
               </Button>
             </div>
           </div>
 
+          {/* Search Bar */}
+          <div className="mt-4 flex gap-2">
+            <div className="flex-1 bg-muted rounded-full px-4 py-3 flex items-center gap-2">
+              <span className="text-muted-foreground">🔍</span>
+              <span className="text-muted-foreground text-sm">Поиск занятий...</span>
+            </div>
+            <Button
+              size="icon"
+              className="w-12 h-12 rounded-full bg-primary shadow-lg"
+            >
+              <Sparkles size={20} />
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className={`${mobileSpacing.screenPadding} py-6 space-y-8`}>
-        {/* Quick Stats Row - Larger cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="autism-card text-center">
-            <div className="w-14 h-14 mx-auto bg-[hsl(260,35%,85%)] rounded-2xl flex items-center justify-center mb-3">
-              <Palette className="w-7 h-7 text-[hsl(260,35%,50%)]" />
+      <main className={`${mobileSpacing.screenPadding} py-6 space-y-6`}>
+        {/* Quick Stats Row */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
+            <div className="text-center">
+              <div className="w-10 h-10 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-2">
+                <Palette className="w-5 h-5 text-purple-500" />
+              </div>
+              <p className="text-2xl font-bold text-purple-500">{stats.artworks}</p>
+              <p className="text-xs text-muted-foreground">Рисунков</p>
             </div>
-            <p className="text-3xl font-bold text-[hsl(260,35%,50%)]">{stats.artworks}</p>
-            <p className="text-sm text-muted-foreground mt-1">Рисунков</p>
           </Card>
 
-          <Card className="autism-card text-center">
-            <div className="w-14 h-14 mx-auto bg-[hsl(150,35%,85%)] rounded-2xl flex items-center justify-center mb-3">
-              <Trophy className="w-7 h-7 text-[hsl(150,35%,45%)]" />
+          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
+            <div className="text-center">
+              <div className="w-10 h-10 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
+                <Trophy className="w-5 h-5 text-green-500" />
+              </div>
+              <p className="text-2xl font-bold text-green-500">{stats.tasksCompleted}</p>
+              <p className="text-xs text-muted-foreground">Заданий</p>
             </div>
-            <p className="text-3xl font-bold text-[hsl(150,35%,45%)]">{stats.tasksCompleted}</p>
-            <p className="text-sm text-muted-foreground mt-1">Заданий</p>
           </Card>
 
-          <Card className="autism-card text-center">
-            <div className="w-14 h-14 mx-auto bg-[hsl(25,45%,85%)] rounded-2xl flex items-center justify-center mb-3">
-              <Flame className="w-7 h-7 text-[hsl(25,45%,50%)]" />
+          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
+            <div className="text-center">
+              <div className="w-10 h-10 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+              </div>
+              <p className="text-2xl font-bold text-orange-500">{stats.streak}</p>
+              <p className="text-xs text-muted-foreground">Дней подряд</p>
             </div>
-            <p className="text-3xl font-bold text-[hsl(25,45%,50%)]">{stats.streak}</p>
-            <p className="text-sm text-muted-foreground mt-1">Дней подряд</p>
           </Card>
         </div>
 
-        {/* Weekly Progress Card - Soft solid color */}
-        <Card className="p-6 border-0 bg-[hsl(200,50%,75%)] text-white shadow-md rounded-3xl">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-xl">📈 Недельный прогресс</h3>
-            <span className="bg-white/25 px-3 py-1 rounded-full text-sm font-semibold">{weeklyProgress}%</span>
+        {/* Weekly Progress Card */}
+        <Card className="p-5 border-0 bg-gradient-to-r from-primary to-blue-500 text-white shadow-xl rounded-3xl">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-lg">Недельный прогресс</h3>
+            <span className="text-white/80 text-sm">{weeklyProgress}%</span>
           </div>
-          <Progress value={weeklyProgress} className="h-4 bg-white/30" />
-          <p className="mt-4 text-white/95 text-base">
+          <Progress value={weeklyProgress} className="h-3 bg-white/30" />
+          <p className="mt-3 text-white/90 text-sm">
             Продолжай в том же духе! 🌟
           </p>
         </Card>
@@ -404,31 +410,24 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             </h3>
             <span className="text-sm text-primary font-medium">Ещё →</span>
           </div>
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`${item.bgClass} ${item.hoverClass} activity-card text-left`}
+                  className={`${item.bgColor} ${item.hoverColor} rounded-3xl p-5 text-left transition-all duration-200 active:scale-95 shadow-lg hover:shadow-xl`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="icon-circle">
-                      <Icon className="text-white" size={28} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-2xl">{item.emoji}</span>
-                        <h4 className="font-bold text-white text-lg">
-                          {item.title}
-                        </h4>
-                      </div>
-                      <p className="text-white/90 text-sm leading-snug">
-                        {item.description}
-                      </p>
-                    </div>
+                  <div className="w-14 h-14 bg-white/30 rounded-2xl flex items-center justify-center mb-3">
+                    <Icon className="text-white" size={28} />
                   </div>
+                  <h4 className="font-bold text-white text-base mb-1">
+                    {item.title}
+                  </h4>
+                  <p className="text-white/80 text-xs leading-tight">
+                    {item.description}
+                  </p>
                 </button>
               );
             })}
@@ -437,42 +436,42 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
 
       </main>
 
-      {/* Bottom Navigation Bar - Larger touch targets, solid colors */}
-      <nav className="fixed bottom-6 left-4 right-4 z-50">
-        <div className="bg-card rounded-3xl shadow-lg px-6 py-4 flex items-center justify-around max-w-md mx-auto border border-border/50">
+      {/* Bottom Navigation Bar */}
+      <nav className="fixed bottom-4 left-4 right-4 z-50">
+        <div className="bg-white dark:bg-slate-800 rounded-full shadow-2xl px-4 py-3 flex items-center justify-around max-w-md mx-auto">
           <button
             onClick={() => {}}
-            className="touch-target rounded-2xl bg-[hsl(200,50%,75%)] flex items-center justify-center"
+            className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg"
           >
-            <Sparkles size={24} className="text-white" />
+            <Sparkles size={22} className="text-white" />
           </button>
           
           <button
             onClick={() => onNavigate("gallery")}
-            className="touch-target rounded-2xl hover:bg-muted flex items-center justify-center transition-colors"
+            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
           >
-            <Heart size={24} className="text-muted-foreground" />
+            <Heart size={22} className="text-muted-foreground" />
           </button>
           
           <button
             onClick={() => onNavigate("art-therapy")}
-            className="touch-target-large rounded-2xl bg-[hsl(260,35%,75%)] flex items-center justify-center shadow-md -mt-6"
+            className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-blue-500 flex items-center justify-center shadow-xl -mt-4"
           >
-            <Palette size={28} className="text-white" />
+            <Palette size={26} className="text-white" />
           </button>
           
           <button
             onClick={() => onNavigate("rewards")}
-            className="touch-target rounded-2xl hover:bg-muted flex items-center justify-center transition-colors"
+            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
           >
-            <ShoppingBag size={24} className="text-muted-foreground" />
+            <ShoppingBag size={22} className="text-muted-foreground" />
           </button>
           
           <button
             onClick={handleLogout}
-            className="touch-target rounded-2xl hover:bg-muted flex items-center justify-center transition-colors"
+            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
           >
-            <LogOut size={24} className="text-muted-foreground" />
+            <LogOut size={22} className="text-muted-foreground" />
           </button>
         </div>
       </nav>
