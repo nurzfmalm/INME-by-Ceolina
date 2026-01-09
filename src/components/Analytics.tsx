@@ -22,6 +22,73 @@ interface Artwork {
   metadata: any;
 }
 
+interface DeepAnalysis {
+  overall_assessment?: string;
+  emotional_profile?: {
+    dominant_emotions?: string[];
+    emotional_range?: string;
+    emotional_flexibility?: string;
+    regulation_capacity?: string;
+  };
+  sensory_profile?: {
+    color_sensitivity?: string;
+    preferred_intensities?: string;
+    potential_triggers?: string[];
+    comfort_zones?: string[];
+  };
+  motor_development?: {
+    fine_motor_indicators?: string;
+    pressure_patterns?: string;
+    spatial_awareness?: string;
+  };
+  cognitive_patterns?: {
+    attention_span?: string;
+    focus_quality?: string;
+    creative_thinking?: string;
+  };
+}
+
+interface ProgressAnalysis {
+  trend?: string;
+  key_improvements?: string[];
+  areas_of_growth?: string[];
+  milestones_reached?: string[];
+  next_goals?: string[];
+}
+
+interface ClinicalInsights {
+  strengths?: string[];
+  challenges?: string[];
+  protective_factors?: string[];
+  therapeutic_opportunities?: string[];
+}
+
+interface Recommendations {
+  for_parents?: {
+    daily_practices?: string[];
+    environmental_adjustments?: string[];
+    communication_strategies?: string[];
+    emotional_support?: string[];
+  };
+  for_therapists?: {
+    therapeutic_focus?: string[];
+    recommended_techniques?: string[];
+    session_modifications?: string[];
+  };
+  for_educators?: {
+    classroom_strategies?: string[];
+    learning_accommodations?: string[];
+  };
+}
+
+interface Metrics {
+  stability_score?: number;
+  engagement_score?: number;
+  emotional_diversity_score?: number;
+  progress_score?: number;
+  overall_wellbeing?: number;
+}
+
 interface AIAnalysis {
   emotional_summary: string;
   color_insights: string;
@@ -37,6 +104,12 @@ interface AIAnalysis {
   emotion_balance?: string;
   stability_score: number;
   therapeutic_focus?: string;
+  // Deep analysis fields
+  deep_analysis?: DeepAnalysis;
+  progress_analysis?: ProgressAnalysis;
+  clinical_insights?: ClinicalInsights;
+  recommendations_full?: Recommendations;
+  metrics?: Metrics;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -538,8 +611,8 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
                 <Brain className="text-white" size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-white">AI-анализ</h3>
-                <p className="text-sm text-white/80">Получить рекомендации</p>
+                <h3 className="font-bold text-white">Глубокий AI-анализ</h3>
+                <p className="text-sm text-white/80">Клинические рекомендации</p>
               </div>
             </div>
             <Button
@@ -548,31 +621,182 @@ export const Analytics = ({ onBack, childName }: AnalyticsProps) => {
               disabled={analyzing || artworks.length === 0}
               className="rounded-full"
             >
-              {analyzing ? "..." : "Анализ"}
+              {analyzing ? "Анализирую..." : "Анализ"}
             </Button>
           </div>
 
           {/* AI Analysis Results */}
           {aiAnalysis && (
             <div className="mt-6 space-y-4">
-              {/* Stability Score */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/80 text-sm">Стабильность</span>
-                  <span className="text-white font-bold">{aiAnalysis.stability_score}%</span>
+              {/* Metrics Grid */}
+              {aiAnalysis.metrics && (
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Стабильность', value: aiAnalysis.metrics.stability_score, color: 'bg-purple-400' },
+                    { label: 'Вовлечённость', value: aiAnalysis.metrics.engagement_score, color: 'bg-green-400' },
+                    { label: 'Эмоц. разнообразие', value: aiAnalysis.metrics.emotional_diversity_score, color: 'bg-yellow-400' },
+                    { label: 'Прогресс', value: aiAnalysis.metrics.progress_score, color: 'bg-blue-400' },
+                  ].map((metric) => (
+                    <div key={metric.label} className="bg-white/10 backdrop-blur-sm rounded-2xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white/70 text-xs">{metric.label}</span>
+                        <span className="text-white font-bold text-sm">{metric.value || 0}%</span>
+                      </div>
+                      <div className="bg-white/20 rounded-full h-1.5">
+                        <div
+                          className={`${metric.color} rounded-full h-1.5 transition-all`}
+                          style={{ width: `${metric.value || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="bg-white/20 rounded-full h-2">
-                  <div
-                    className="bg-white rounded-full h-2 transition-all"
-                    style={{ width: `${aiAnalysis.stability_score}%` }}
-                  />
-                </div>
-              </div>
+              )}
 
-              {/* Summary */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-                <p className="text-white/90 text-sm">{aiAnalysis.emotional_summary}</p>
-              </div>
+              {/* Overall Assessment */}
+              {aiAnalysis.deep_analysis?.overall_assessment && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                    <Target size={16} />
+                    Общая оценка
+                  </h4>
+                  <p className="text-white/90 text-sm">{aiAnalysis.deep_analysis.overall_assessment}</p>
+                </div>
+              )}
+
+              {/* Emotional Profile */}
+              {aiAnalysis.deep_analysis?.emotional_profile && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Heart size={16} />
+                    Эмоциональный профиль
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    {aiAnalysis.deep_analysis.emotional_profile.emotional_range && (
+                      <div className="flex justify-between">
+                        <span className="text-white/70">Диапазон эмоций:</span>
+                        <span className="text-white">{aiAnalysis.deep_analysis.emotional_profile.emotional_range}</span>
+                      </div>
+                    )}
+                    {aiAnalysis.deep_analysis.emotional_profile.emotional_flexibility && (
+                      <div className="flex justify-between">
+                        <span className="text-white/70">Гибкость:</span>
+                        <span className="text-white">{aiAnalysis.deep_analysis.emotional_profile.emotional_flexibility}</span>
+                      </div>
+                    )}
+                    {aiAnalysis.deep_analysis.emotional_profile.regulation_capacity && (
+                      <p className="text-white/80 mt-2">{aiAnalysis.deep_analysis.emotional_profile.regulation_capacity}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Sensory Profile */}
+              {aiAnalysis.deep_analysis?.sensory_profile && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Palette size={16} />
+                    Сенсорный профиль
+                  </h4>
+                  {aiAnalysis.deep_analysis.sensory_profile.color_sensitivity && (
+                    <p className="text-white/90 text-sm mb-2">{aiAnalysis.deep_analysis.sensory_profile.color_sensitivity}</p>
+                  )}
+                  {aiAnalysis.deep_analysis.sensory_profile.comfort_zones && aiAnalysis.deep_analysis.sensory_profile.comfort_zones.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {aiAnalysis.deep_analysis.sensory_profile.comfort_zones.map((zone, idx) => (
+                        <span key={idx} className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
+                          ✓ {zone}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Clinical Insights - Strengths */}
+              {aiAnalysis.clinical_insights?.strengths && aiAnalysis.clinical_insights.strengths.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    ⭐ Сильные стороны
+                  </h4>
+                  <ul className="space-y-2">
+                    {aiAnalysis.clinical_insights.strengths.map((strength, idx) => (
+                      <li key={idx} className="text-white/90 text-sm flex items-start gap-2">
+                        <span className="text-green-300">✓</span>
+                        {strength}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Progress Analysis */}
+              {aiAnalysis.progress_analysis && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <TrendingUp size={16} />
+                    Анализ прогресса
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    {aiAnalysis.progress_analysis.trend && (
+                      <div className="inline-block bg-white/20 px-3 py-1 rounded-full">
+                        Тренд: {aiAnalysis.progress_analysis.trend === 'positive' ? '📈 Положительный' : 
+                                aiAnalysis.progress_analysis.trend === 'stable' ? '➡️ Стабильный' : '⚠️ Требует внимания'}
+                      </div>
+                    )}
+                    {aiAnalysis.progress_analysis.key_improvements && aiAnalysis.progress_analysis.key_improvements.length > 0 && (
+                      <div>
+                        <p className="text-white/70 mb-1">Ключевые улучшения:</p>
+                        <ul className="space-y-1">
+                          {aiAnalysis.progress_analysis.key_improvements.map((imp, idx) => (
+                            <li key={idx} className="text-white/90">• {imp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {aiAnalysis.progress_analysis.next_goals && aiAnalysis.progress_analysis.next_goals.length > 0 && (
+                      <div>
+                        <p className="text-white/70 mb-1">Следующие цели:</p>
+                        <ul className="space-y-1">
+                          {aiAnalysis.progress_analysis.next_goals.map((goal, idx) => (
+                            <li key={idx} className="text-white/90">🎯 {goal}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations for Parents */}
+              {(aiAnalysis.recommendations_parents && aiAnalysis.recommendations_parents.length > 0) && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3">👨‍👩‍👧 Рекомендации для родителей</h4>
+                  <ul className="space-y-2">
+                    {aiAnalysis.recommendations_parents.map((rec, idx) => (
+                      <li key={idx} className="text-white/90 text-sm flex items-start gap-2">
+                        <span className="text-yellow-300">•</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommendations for Therapists */}
+              {(aiAnalysis.recommendations_therapists && aiAnalysis.recommendations_therapists.length > 0) && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                  <h4 className="text-white font-semibold mb-3">🩺 Рекомендации для терапевтов</h4>
+                  <ul className="space-y-2">
+                    {aiAnalysis.recommendations_therapists.map((rec, idx) => (
+                      <li key={idx} className="text-white/90 text-sm flex items-start gap-2">
+                        <span className="text-blue-300">★</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Star Feedback */}
               {aiAnalysis.star_feedback && (
