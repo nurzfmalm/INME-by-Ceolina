@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,14 +6,13 @@ import { Home, Save, Trash2, Users, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/lib/auth-helpers";
-import { SimpleColorPalette, THERAPEUTIC_COLORS } from "./drawing/SimpleColorPalette";
+import { ColorPaletteNew, DEFAULT_COLORS } from "./drawing/ColorPaletteNew";
+import { DrawingCursor } from "./drawing/DrawingCursor";
 
 interface DualDrawingProps {
   onBack: () => void;
   childName: string;
 }
-
-const COLORS = THERAPEUTIC_COLORS;
 
 interface PartnerCursor {
   x: number;
@@ -22,11 +21,19 @@ interface PartnerCursor {
   timestamp: number;
 }
 
+interface StrokeData {
+  x: number;
+  y: number;
+  color: string;
+  size: number;
+  is_start: boolean;
+}
+
 export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(COLORS[0].hex);
+  const [currentColor, setCurrentColor] = useState(DEFAULT_COLORS[0].hex);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCode, setSessionCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -35,8 +42,10 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   const [copied, setCopied] = useState(false);
   const [partnerCursor, setPartnerCursor] = useState<PartnerCursor | null>(null);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lineWidth = 8;
 
-  // Инициализация холста — 75% экрана
+  // Инициализация холста
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -44,18 +53,29 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
-      const minHeight = window.innerHeight * 0.6;
-      const canvasHeight = Math.max(minHeight, rect.height);
+      
+      // Сохраняем текущее изображение
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx && canvas.width > 0) {
+        tempCtx.drawImage(canvas, 0, 0);
+      }
       
       canvas.width = rect.width;
-      canvas.height = canvasHeight;
+      canvas.height = rect.height;
 
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = "#FFFEF7";
+        ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+        
+        if (tempCanvas.width > 0 && tempCanvas.height > 0) {
+          ctx.drawImage(tempCanvas, 0, 0);
+        }
       }
     };
 
@@ -64,6 +84,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
+  // Подписка на сессию
   useEffect(() => {
     if (!sessionId) return;
 
@@ -78,7 +99,7 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
           filter: `session_id=eq.${sessionId}`,
         },
         async (payload) => {
-          const stroke = payload.new as any;
+          const stroke = payload.new as { user_id: string; stroke_data: StrokeData };
           const userId = await getCurrentUserId();
           if (stroke.user_id !== userId) {
             drawStroke(stroke.stroke_data);
@@ -108,16 +129,41 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [sessionId]);
+
+  const drawStroke = useCallback((stroke: StrokeData) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.size;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    
+    if (stroke.is_start) {
+      ctx.beginPath();
+      ctx.moveTo(stroke.x, stroke.y);
+    } else {
+      ctx.lineTo(stroke.x, stroke.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(stroke.x, stroke.y);
+    }
+  }, []);
 
   const createSession = async () => {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        toast.error("Ошибка");
+        toast.error("Ошибка авторизации");
         return;
       }
 
@@ -134,16 +180,16 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
       setSessionId(data.id);
       setSessionCode(code);
       setIsHost(true);
-      toast.success(`Код: ${code}`);
+      toast.success(`Сессия создана! Код: ${code}`);
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Ошибка");
+      toast.error("Ошибка создания сессии");
     }
   };
 
   const joinSession = async () => {
     if (!joinCode.trim()) {
-      toast.error("Введите код");
+      toast.error("Введите код сессии");
       return;
     }
 
@@ -156,34 +202,17 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
         .maybeSingle();
 
       if (error || !data) {
-        toast.error("Не найдено");
+        toast.error("Сессия не найдена");
         return;
       }
 
       setSessionId(data.id);
       setSessionCode(joinCode.toUpperCase());
       setIsHost(false);
-      toast.success("Подключено!");
+      toast.success("Подключено к сессии!");
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Ошибка");
-    }
-  };
-
-  const drawStroke = (stroke: any) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = 8;
-    
-    if (stroke.is_start) {
-      ctx.beginPath();
-      ctx.moveTo(stroke.x, stroke.y);
-    } else {
-      ctx.lineTo(stroke.x, stroke.y);
-      ctx.stroke();
+      toast.error("Ошибка подключения");
     }
   };
 
@@ -204,8 +233,34 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     return { x: 0, y: 0 };
   };
 
+  const saveStroke = async (x: number, y: number, isStart: boolean) => {
+    const userId = await getCurrentUserId();
+    if (!userId || !sessionId) return;
+
+    try {
+      await supabase.from("drawing_strokes").insert([{
+        session_id: sessionId,
+        user_id: userId,
+        stroke_data: { x, y, color: currentColor, size: lineWidth, is_start: isStart },
+      }]);
+    } catch (error) {
+      console.error("Error saving stroke:", error);
+    }
+  };
+
+  const broadcastCursor = useCallback(async (x: number, y: number) => {
+    if (!channelRef.current) return;
+    
+    await channelRef.current.send({
+      type: 'broadcast',
+      event: 'cursor_move',
+      payload: { x, y, color: currentColor }
+    });
+  }, [currentColor]);
+
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     if (!sessionId) return;
+    e.preventDefault();
     
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -215,8 +270,11 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     setIsDrawing(true);
     lastPointRef.current = { x, y };
 
+    ctx.globalCompositeOperation = "source-over";
     ctx.strokeStyle = currentColor;
-    ctx.lineWidth = 8;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(x, y);
 
@@ -225,17 +283,22 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing || !sessionId) return;
+    e.preventDefault();
 
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!canvas || !ctx || !lastPointRef.current) return;
 
     const { x, y } = getCoordinates(e);
 
-    ctx.lineTo(x, y);
+    // Плавная линия
+    const midX = (lastPointRef.current.x + x) / 2;
+    const midY = (lastPointRef.current.y + y) / 2;
+    
+    ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(midX, midY);
 
     lastPointRef.current = { x, y };
     saveStroke(x, y, false);
@@ -243,33 +306,12 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
   };
 
   const stopDrawing = () => {
-    setIsDrawing(false);
-    lastPointRef.current = null;
-  };
-
-  const saveStroke = async (x: number, y: number, isStart: boolean) => {
-    const userId = await getCurrentUserId();
-    if (!userId || !sessionId) return;
-
-    try {
-      await supabase.from("drawing_strokes").insert([{
-        session_id: sessionId,
-        user_id: userId,
-        stroke_data: { x, y, color: currentColor, size: 8, is_start: isStart },
-      }]);
-    } catch (error) {
-      console.error("Error:", error);
+    if (isDrawing) {
+      const ctx = canvasRef.current?.getContext("2d");
+      if (ctx) ctx.stroke();
+      setIsDrawing(false);
+      lastPointRef.current = null;
     }
-  };
-
-  const broadcastCursor = async (x: number, y: number) => {
-    if (!sessionId) return;
-    const channel = supabase.channel(`drawing:${sessionId}`);
-    await channel.send({
-      type: 'broadcast',
-      event: 'cursor_move',
-      payload: { x, y, color: currentColor }
-    });
   };
 
   const clearCanvas = async () => {
@@ -277,12 +319,14 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !isHost) return;
 
-    ctx.fillStyle = "#FFFEF7";
+    ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (sessionId) {
       await supabase.from("drawing_strokes").delete().eq("session_id", sessionId);
     }
+    
+    toast.success("Холст очищен");
   };
 
   const saveDrawing = async () => {
@@ -308,57 +352,87 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
         user_id: userId,
         image_url: signedData?.signedUrl || "",
         storage_path: fileName,
-        metadata: { session_id: sessionId, session_type: "collaborative", participants: connectedUsers },
+        metadata: { 
+          session_id: sessionId, 
+          session_type: "collaborative", 
+          participants: connectedUsers 
+        },
       });
 
-      toast.success("Сохранено! 🎨");
+      toast.success("Рисунок сохранён! 🎨");
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Ошибка");
+      toast.error("Ошибка сохранения");
     }
   };
 
   const copyCode = () => {
     navigator.clipboard.writeText(sessionCode);
     setCopied(true);
-    toast.success("Скопировано!");
+    toast.success("Код скопирован!");
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Экран создания/присоединения к сессии
   if (!sessionId) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
-        <header className="flex items-center px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
-          <Button variant="ghost" size="icon" onClick={onBack} className="w-14 h-14 rounded-2xl">
-            <Home size={28} />
-          </Button>
+      <div className="min-h-screen flex flex-col bg-[#F5F3EE]">
+        <header className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm shadow-sm">
+          <button 
+            onClick={onBack}
+            className="w-12 h-12 rounded-full bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition-colors"
+          >
+            <Home size={24} className="text-amber-800" />
+          </button>
+          <h1 className="flex-1 text-center text-xl font-bold text-gray-800">
+            Рисуем вместе
+          </h1>
+          <div className="w-12" />
         </header>
 
-        <main className="flex-1 flex items-center justify-center px-4">
+        <main className="flex-1 flex items-center justify-center px-4 py-8">
           <div className="w-full max-w-md space-y-6">
-            <Card className="p-6 rounded-3xl border-0 shadow-lg">
+            <Card className="p-6 rounded-3xl border-0 shadow-lg bg-white">
               <div className="text-center mb-4">
-                <Users size={48} className="mx-auto text-primary mb-2" />
-                <h2 className="text-xl font-bold">Создать сессию</h2>
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users size={32} className="text-primary" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Создать сессию</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Создайте комнату и пригласите друга
+                </p>
               </div>
               <Button onClick={createSession} className="w-full h-14 text-lg rounded-2xl">
                 Создать
               </Button>
             </Card>
 
-            <Card className="p-6 rounded-3xl border-0 shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-sm text-muted-foreground">или</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <Card className="p-6 rounded-3xl border-0 shadow-lg bg-white">
               <div className="text-center mb-4">
-                <h2 className="text-xl font-bold">Присоединиться</h2>
+                <h2 className="text-xl font-bold text-gray-800">Присоединиться</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Введите код от друга
+                </p>
               </div>
               <div className="space-y-3">
                 <Input
-                  placeholder="Код сессии"
+                  placeholder="XXXXXX"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="h-14 text-lg text-center uppercase rounded-2xl"
+                  className="h-14 text-xl text-center uppercase rounded-2xl font-mono tracking-widest"
                   maxLength={6}
                 />
-                <Button onClick={joinSession} className="w-full h-14 text-lg rounded-2xl">
+                <Button 
+                  onClick={joinSession} 
+                  variant="outline"
+                  className="w-full h-14 text-lg rounded-2xl"
+                >
                   Подключиться
                 </Button>
               </div>
@@ -369,64 +443,90 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
     );
   }
 
+  // Экран рисования
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
-      {/* Шапка с кодом сессии */}
-      <header className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
-        <Button variant="ghost" size="icon" onClick={onBack} className="w-14 h-14 rounded-2xl">
-          <Home size={28} />
-        </Button>
+    <div className="min-h-screen flex flex-col bg-[#F5F3EE]">
+      {/* Кастомный курсор */}
+      <DrawingCursor
+        canvasRef={canvasRef}
+        color={currentColor}
+        size={lineWidth}
+        isEraser={false}
+        visible={!isDrawing}
+      />
+
+      {/* Шапка */}
+      <header className="flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-sm shadow-sm">
+        <button 
+          onClick={onBack}
+          className="w-12 h-12 rounded-full bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition-colors"
+        >
+          <Home size={24} className="text-amber-800" />
+        </button>
 
         <button
           onClick={copyCode}
-          className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-2xl"
+          className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
         >
-          <span className="text-lg font-bold">{sessionCode}</span>
-          {copied ? <Check size={20} /> : <Copy size={20} />}
+          <span className="text-lg font-bold font-mono tracking-wider text-primary">
+            {sessionCode}
+          </span>
+          {copied ? <Check size={18} className="text-green-600" /> : <Copy size={18} className="text-primary" />}
         </button>
 
-        <div className="flex items-center gap-2 px-3 py-2 bg-primary/20 rounded-2xl">
-          <Users size={20} />
-          <span className="font-bold">{connectedUsers}</span>
+        <div className="flex items-center gap-2 px-3 py-2 bg-green-100 rounded-full">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <Users size={18} className="text-green-700" />
+          <span className="font-bold text-green-700">{connectedUsers}</span>
         </div>
       </header>
 
-      {/* ХОЛСТ */}
-      <div 
-        ref={containerRef}
-        className="flex-1 mx-2 my-2 rounded-3xl overflow-hidden relative"
-        style={{ backgroundColor: "#FFFEF7", minHeight: "55vh" }}
-      >
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className="w-full h-full touch-none"
-          style={{ cursor: "crosshair" }}
-        />
-
-        {partnerCursor && Date.now() - partnerCursor.timestamp < 2000 && (
-          <div
-            className="absolute w-5 h-5 rounded-full border-2 border-white shadow-lg pointer-events-none"
-            style={{
-              backgroundColor: partnerCursor.color,
-              left: `${partnerCursor.x}px`,
-              top: `${partnerCursor.y}px`,
-              transform: 'translate(-50%, -50%)'
-            }}
+      {/* Холст */}
+      <div className="flex-1 flex flex-col p-3">
+        <div 
+          ref={containerRef}
+          className="flex-1 rounded-3xl overflow-hidden shadow-lg bg-white relative"
+          style={{ minHeight: "50vh" }}
+        >
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="w-full h-full touch-none"
+            style={{ cursor: "none" }}
           />
-        )}
+
+          {/* Курсор партнёра */}
+          {partnerCursor && Date.now() - partnerCursor.timestamp < 2000 && (
+            <div
+              className="absolute pointer-events-none transition-all duration-75"
+              style={{
+                left: `${partnerCursor.x}px`,
+                top: `${partnerCursor.y}px`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              <div 
+                className="w-6 h-6 rounded-full border-3 border-white shadow-lg"
+                style={{ backgroundColor: partnerCursor.color }}
+              />
+              <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-medium text-gray-500 whitespace-nowrap">
+                Друг
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Панель управления */}
-      <div className="px-3 pb-4 space-y-3">
-        <SimpleColorPalette
-          colors={COLORS}
+      <div className="px-4 pb-4 space-y-3">
+        <ColorPaletteNew
+          colors={DEFAULT_COLORS}
           currentColor={currentColor}
           onColorChange={setCurrentColor}
         />
@@ -437,21 +537,18 @@ export const DualDrawing = ({ onBack, childName }: DualDrawingProps) => {
               variant="outline"
               size="lg"
               onClick={clearCanvas}
-              className="w-16 h-16 rounded-2xl p-0"
-              aria-label="Очистить"
+              className="w-14 h-14 rounded-2xl p-0"
             >
-              <Trash2 size={28} />
+              <Trash2 size={24} />
             </Button>
           )}
           
           <Button
-            variant="default"
             size="lg"
             onClick={saveDrawing}
-            className="w-16 h-16 rounded-2xl p-0"
-            aria-label="Сохранить"
+            className="w-14 h-14 rounded-2xl p-0 bg-green-500 hover:bg-green-600"
           >
-            <Save size={28} />
+            <Save size={24} />
           </Button>
         </div>
       </div>
