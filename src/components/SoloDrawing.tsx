@@ -22,32 +22,34 @@ interface SoloDrawingProps {
 
 const BASE_COLORS = THERAPEUTIC_COLORS;
 
-// Extended color palette in grid format
-const COLOR_GRID = [
-  "#E74C3C", "#E67E22", "#F1C40F", "#2ECC71", "#1ABC9C",
-  "#3498DB", "#9B59B6", "#8E44AD", "#34495E", "#95A5A6",
-  "#D35400", "#C0392B", "#16A085", "#27AE60", "#2980B9",
-  "#FF69B4", "#DDA0DD", "#D2B48C", "#FFF5EE", "#000000",
+// Autism-friendly color palette - fewer colors, clearly distinct, calming tones
+const AUTISM_FRIENDLY_COLORS = [
+  { hex: "#E74C3C", name: "Красный", emoji: "🔴" },
+  { hex: "#F39C12", name: "Оранжевый", emoji: "🟠" },
+  { hex: "#F1C40F", name: "Жёлтый", emoji: "🟡" },
+  { hex: "#27AE60", name: "Зелёный", emoji: "🟢" },
+  { hex: "#3498DB", name: "Синий", emoji: "🔵" },
+  { hex: "#9B59B6", name: "Фиолетовый", emoji: "🟣" },
+  { hex: "#E91E8C", name: "Розовый", emoji: "💗" },
+  { hex: "#8B4513", name: "Коричневый", emoji: "🟤" },
+  { hex: "#2C3E50", name: "Чёрный", emoji: "⚫" },
 ];
 
-// Brush sizes
-const BRUSH_SIZES = [4, 8, 14, 22];
-
-// Teardrop character colors for spiral binding
-const TEARDROP_COLORS = [
-  "#9B59B6", "#8B4513", "#E74C3C", "#E67E22", "#F1C40F",
-  "#2ECC71", "#3498DB", "#9B59B6", "#E74C3C", "#F1C40F",
-  "#2ECC71", "#E67E22",
+// Clear brush size options with visual labels
+const BRUSH_OPTIONS = [
+  { size: 6, label: "Тонкая", icon: "─" },
+  { size: 12, label: "Средняя", icon: "━" },
+  { size: 20, label: "Толстая", icon: "▬" },
 ];
 
 export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(COLOR_GRID[0]);
-  const [lineWidth, setLineWidth] = useState(8);
+  const [currentColor, setCurrentColor] = useState(AUTISM_FRIENDLY_COLORS[0].hex);
+  const [lineWidth, setLineWidth] = useState(12);
   const [brushType, setBrushType] = useState<BrushType>("normal");
-  const [availableColors, setAvailableColors] = useState(BASE_COLORS);
+  const [availableColors] = useState(AUTISM_FRIENDLY_COLORS);
   const [emotionStats, setEmotionStats] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [sessionStart] = useState(Date.now());
@@ -57,14 +59,6 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const unlocked = getUnlockedRewards();
-    const colors = [...BASE_COLORS];
-    REWARD_COLORS.forEach(rewardColor => {
-      if (unlocked.includes(rewardColor.id)) {
-        colors.push({ hex: rewardColor.color, name: rewardColor.name });
-      }
-    });
-    setAvailableColors(colors);
     setBrushType(getBrushType());
   }, []);
 
@@ -400,98 +394,133 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
         </div>
       </div>
 
-      {/* Right sidebar with tools */}
+      {/* Right sidebar with tools - Autism-friendly design */}
       <div 
-        className="w-36 flex flex-col gap-4 p-3 overflow-y-auto"
+        className="w-44 flex flex-col gap-3 p-3 overflow-y-auto"
         style={{ backgroundColor: "#F5F3EE" }}
       >
-        {/* Color palette grid */}
-        <div className="grid grid-cols-5 gap-1.5">
-          {COLOR_GRID.map((color, i) => (
+        {/* Section label */}
+        <div className="text-center text-sm font-medium text-gray-600 pb-1 border-b border-gray-200">
+          🎨 Цвета
+        </div>
+
+        {/* Color palette - Large, clearly labeled buttons */}
+        <div className="grid grid-cols-3 gap-2">
+          {AUTISM_FRIENDLY_COLORS.map((color, i) => (
             <button
               key={i}
               onClick={() => {
-                setCurrentColor(color);
+                setCurrentColor(color.hex);
                 setIsEraser(false);
               }}
-              className={`w-6 h-6 rounded-lg transition-all ${
-                currentColor === color && !isEraser
-                  ? "ring-2 ring-offset-1 ring-gray-800 scale-110"
-                  : "hover:scale-105"
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-
-        {/* Brush size selector */}
-        <div className="flex flex-col gap-2 p-2 bg-white rounded-lg">
-          {BRUSH_SIZES.map((size, i) => (
-            <button
-              key={i}
-              onClick={() => setLineWidth(size)}
-              className={`w-full h-8 flex items-center justify-center rounded-md transition-all ${
-                lineWidth === size
-                  ? "bg-gray-100 ring-1 ring-gray-300"
-                  : "hover:bg-gray-50"
+              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                currentColor === color.hex && !isEraser
+                  ? "ring-3 ring-gray-800 bg-white shadow-md scale-105"
+                  : "bg-white/50 hover:bg-white hover:shadow-sm"
               }`}
             >
               <div 
-                className="bg-gray-800 rounded-full"
-                style={{ 
-                  width: `${Math.min(size * 2, 40)}px`, 
-                  height: `${size}px`,
-                  borderRadius: "50%"
-                }}
+                className="w-8 h-8 rounded-full shadow-inner border-2 border-white"
+                style={{ backgroundColor: color.hex }}
               />
+              <span className="text-[10px] text-gray-600 font-medium leading-tight">
+                {color.name}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Tool buttons */}
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={undo}
-            disabled={historyStep <= 0}
-            className="w-10 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 border-0"
-          >
-            <Undo size={20} className="text-white" />
-          </Button>
-          
-          <Button
-            variant={isEraser ? "default" : "outline"}
-            size="icon"
-            onClick={() => setIsEraser(!isEraser)}
-            className={`w-10 h-10 rounded-xl border-0 ${
-              isEraser 
-                ? "bg-pink-400 hover:bg-pink-500" 
-                : "bg-pink-300 hover:bg-pink-400"
-            }`}
-          >
-            <Eraser size={20} className="text-white" />
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={clearCanvas}
-            className="w-10 h-10 rounded-xl bg-gray-300 hover:bg-gray-400 border-0"
-          >
-            <Trash2 size={20} className="text-gray-700" />
-          </Button>
+        {/* Section label */}
+        <div className="text-center text-sm font-medium text-gray-600 pb-1 border-b border-gray-200 mt-2">
+          ✏️ Толщина
         </div>
 
-        {/* Save button */}
-        <Button
+        {/* Brush size selector - Clear visual difference */}
+        <div className="flex flex-col gap-2">
+          {BRUSH_OPTIONS.map((option, i) => (
+            <button
+              key={i}
+              onClick={() => setLineWidth(option.size)}
+              className={`w-full py-3 px-3 flex items-center gap-3 rounded-xl transition-all ${
+                lineWidth === option.size
+                  ? "bg-amber-100 ring-2 ring-amber-400 shadow-sm"
+                  : "bg-white hover:bg-gray-50"
+              }`}
+            >
+              <div 
+                className="rounded-full bg-gray-800"
+                style={{ 
+                  width: `${option.size * 2}px`, 
+                  height: `${option.size}px`,
+                }}
+              />
+              <span className="text-sm font-medium text-gray-700">
+                {option.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Section label */}
+        <div className="text-center text-sm font-medium text-gray-600 pb-1 border-b border-gray-200 mt-2">
+          🛠️ Инструменты
+        </div>
+
+        {/* Tool buttons - Large with text labels */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setIsEraser(!isEraser)}
+            className={`w-full py-3 px-4 flex items-center gap-3 rounded-xl transition-all ${
+              isEraser 
+                ? "bg-pink-200 ring-2 ring-pink-400 shadow-sm" 
+                : "bg-white hover:bg-pink-50"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-pink-400 flex items-center justify-center">
+              <Eraser size={18} className="text-white" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">
+              {isEraser ? "Ластик ✓" : "Ластик"}
+            </span>
+          </button>
+
+          <button
+            onClick={undo}
+            disabled={historyStep <= 0}
+            className={`w-full py-3 px-4 flex items-center gap-3 rounded-xl transition-all ${
+              historyStep <= 0 
+                ? "bg-gray-100 opacity-50 cursor-not-allowed" 
+                : "bg-white hover:bg-amber-50"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-400 flex items-center justify-center">
+              <Undo size={18} className="text-white" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">Назад</span>
+          </button>
+
+          <button
+            onClick={clearCanvas}
+            className="w-full py-3 px-4 flex items-center gap-3 rounded-xl bg-white hover:bg-red-50 transition-all"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gray-400 flex items-center justify-center">
+              <Trash2 size={18} className="text-white" />
+            </div>
+            <span className="text-sm font-medium text-gray-700">Очистить</span>
+          </button>
+        </div>
+
+        {/* Save button - Large and prominent */}
+        <button
           onClick={saveDrawing}
           disabled={isSaving}
-          className="w-full h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium"
+          className="w-full py-4 px-4 flex items-center justify-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 transition-all shadow-md disabled:opacity-50"
         >
-          <Save size={20} className="mr-2" />
-          {isSaving ? "..." : "Сохранить"}
-        </Button>
+          <Save size={22} className="text-white" />
+          <span className="text-base font-bold text-white">
+            {isSaving ? "Сохраняю..." : "Сохранить"}
+          </span>
+        </button>
       </div>
     </div>
   );
