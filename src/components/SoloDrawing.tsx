@@ -1,10 +1,10 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, Trash2, BarChart3, Eraser, Undo, Home } from "lucide-react";
+import { Save, Trash2, Eraser, Undo, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
-import { SimpleColorPalette, THERAPEUTIC_COLORS } from "./drawing/SimpleColorPalette";
+import { THERAPEUTIC_COLORS } from "./drawing/SimpleColorPalette";
 import { 
   getUnlockedRewards, 
   REWARD_COLORS, 
@@ -22,12 +22,30 @@ interface SoloDrawingProps {
 
 const BASE_COLORS = THERAPEUTIC_COLORS;
 
+// Extended color palette in grid format
+const COLOR_GRID = [
+  "#E74C3C", "#E67E22", "#F1C40F", "#2ECC71", "#1ABC9C",
+  "#3498DB", "#9B59B6", "#8E44AD", "#34495E", "#95A5A6",
+  "#D35400", "#C0392B", "#16A085", "#27AE60", "#2980B9",
+  "#FF69B4", "#DDA0DD", "#D2B48C", "#FFF5EE", "#000000",
+];
+
+// Brush sizes
+const BRUSH_SIZES = [4, 8, 14, 22];
+
+// Teardrop character colors for spiral binding
+const TEARDROP_COLORS = [
+  "#9B59B6", "#8B4513", "#E74C3C", "#E67E22", "#F1C40F",
+  "#2ECC71", "#3498DB", "#9B59B6", "#E74C3C", "#F1C40F",
+  "#2ECC71", "#E67E22",
+];
+
 export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(BASE_COLORS[0].hex);
-  const [lineWidth] = useState(8);
+  const [currentColor, setCurrentColor] = useState(COLOR_GRID[0]);
+  const [lineWidth, setLineWidth] = useState(8);
   const [brushType, setBrushType] = useState<BrushType>("normal");
   const [availableColors, setAvailableColors] = useState(BASE_COLORS);
   const [emotionStats, setEmotionStats] = useState<Record<string, number>>({});
@@ -50,7 +68,6 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     setBrushType(getBrushType());
   }, []);
 
-  // Инициализация холста — 75-80% экрана
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -58,15 +75,13 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
     const resize = () => {
       const containerRect = container.getBoundingClientRect();
-      const minHeight = window.innerHeight * 0.7;
-      const canvasHeight = Math.max(minHeight, containerRect.height);
       
       canvas.width = containerRect.width;
-      canvas.height = canvasHeight;
+      canvas.height = containerRect.height;
 
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = "#FFFEF7";
+        ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -167,9 +182,11 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     if (isEraser) {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = lineWidth * 2;
     } else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = currentColor;
+      ctx.lineWidth = lineWidth;
     }
 
     ctx.lineTo(x, y);
@@ -197,7 +214,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    ctx.fillStyle = "#FFFEF7";
+    ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     const dataUrl = canvas.toDataURL();
@@ -303,104 +320,183 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F8F6F0" }}>
-      {/* Минимальная шапка — только кнопка назад */}
-      <header className="flex items-center px-3 py-2" style={{ backgroundColor: "#FFFEF7" }}>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onBack}
-          className="w-14 h-14 rounded-2xl"
-        >
-          <Home size={28} />
-        </Button>
-        {taskPrompt && (
-          <p className="flex-1 text-center text-lg font-medium text-muted-foreground px-4 truncate">
-            {taskPrompt}
-          </p>
-        )}
-      </header>
+  // Render teardrop character SVG
+  const renderTeardrop = (color: string, index: number) => (
+    <svg key={index} viewBox="0 0 24 36" className="w-6 h-9 -mx-0.5">
+      <path
+        d="M12 2C12 2 4 14 4 20C4 26 8 32 12 32C16 32 20 26 20 20C20 14 12 2 12 2Z"
+        fill={color}
+        stroke="#333"
+        strokeWidth="0.5"
+      />
+      {/* Eyes */}
+      <circle cx="9" cy="18" r="2" fill="white" />
+      <circle cx="15" cy="18" r="2" fill="white" />
+      <circle cx="9.5" cy="18.5" r="1" fill="#333" />
+      <circle cx="15.5" cy="18.5" r="1" fill="#333" />
+    </svg>
+  );
 
-      {/* ХОЛСТ — 75-80% экрана */}
-      <div 
-        ref={containerRef}
-        className="flex-1 mx-2 my-2 rounded-3xl overflow-hidden"
-        style={{ 
-          backgroundColor: "#FFFEF7",
-          minHeight: "70vh"
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className="w-full h-full touch-none"
-          style={{ cursor: "crosshair" }}
-        />
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: "#E8E4DC" }}>
+      {/* Main drawing area */}
+      <div className="flex-1 flex flex-col p-3">
+        {/* Header with back button */}
+        <div className="flex items-center gap-3 mb-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onBack}
+            className="w-12 h-12 rounded-full bg-amber-100 hover:bg-amber-200"
+          >
+            <Home size={24} className="text-amber-800" />
+          </Button>
+          {taskPrompt && (
+            <p className="flex-1 text-center text-lg font-medium text-amber-800 px-4 truncate">
+              {taskPrompt}
+            </p>
+          )}
+        </div>
+
+        {/* Notebook canvas container */}
+        <div className="flex-1 flex flex-col">
+          {/* Spiral binding with teardrop characters */}
+          <div className="flex justify-center items-end px-4 -mb-1">
+            {TEARDROP_COLORS.map((color, i) => renderTeardrop(color, i))}
+          </div>
+          
+          {/* Spiral holes */}
+          <div 
+            className="flex justify-center gap-4 py-1 rounded-t-xl"
+            style={{ backgroundColor: "#F5A623" }}
+          >
+            {Array.from({ length: 16 }).map((_, i) => (
+              <div 
+                key={i} 
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: "#E8E4DC" }}
+              />
+            ))}
+          </div>
+
+          {/* Canvas frame */}
+          <div 
+            className="flex-1 rounded-b-xl overflow-hidden border-4 border-t-0"
+            style={{ 
+              borderColor: "#F5A623",
+              backgroundColor: "#FFFFFF"
+            }}
+          >
+            <div ref={containerRef} className="w-full h-full relative">
+              <canvas
+                ref={canvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="absolute inset-0 w-full h-full touch-none"
+                style={{ cursor: isEraser ? "cell" : "crosshair" }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Панель управления — минимум элементов */}
-      <div className="px-3 pb-4 space-y-3">
-        {/* Палитра цветов — структурированная */}
-        <SimpleColorPalette
-          colors={availableColors}
-          currentColor={currentColor}
-          onColorChange={(color) => {
-            setCurrentColor(color);
-            setIsEraser(false);
-          }}
-        />
+      {/* Right sidebar with tools */}
+      <div 
+        className="w-36 flex flex-col gap-4 p-3 overflow-y-auto"
+        style={{ backgroundColor: "#F5F3EE" }}
+      >
+        {/* Color palette grid */}
+        <div className="grid grid-cols-5 gap-1.5">
+          {COLOR_GRID.map((color, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setCurrentColor(color);
+                setIsEraser(false);
+              }}
+              className={`w-6 h-6 rounded-lg transition-all ${
+                currentColor === color && !isEraser
+                  ? "ring-2 ring-offset-1 ring-gray-800 scale-110"
+                  : "hover:scale-105"
+              }`}
+              style={{ backgroundColor: color }}
+            />
+          ))}
+        </div>
 
-        {/* Инструменты — крупные кнопки без текста */}
-        <div className="flex justify-center gap-3">
-          <Button
-            variant={isEraser ? "default" : "outline"}
-            size="lg"
-            onClick={() => setIsEraser(!isEraser)}
-            className="w-14 h-14 rounded-2xl p-0"
-            aria-label="Ластик"
-          >
-            <Eraser size={26} />
-          </Button>
-          
+        {/* Brush size selector */}
+        <div className="flex flex-col gap-2 p-2 bg-white rounded-lg">
+          {BRUSH_SIZES.map((size, i) => (
+            <button
+              key={i}
+              onClick={() => setLineWidth(size)}
+              className={`w-full h-8 flex items-center justify-center rounded-md transition-all ${
+                lineWidth === size
+                  ? "bg-gray-100 ring-1 ring-gray-300"
+                  : "hover:bg-gray-50"
+              }`}
+            >
+              <div 
+                className="bg-gray-800 rounded-full"
+                style={{ 
+                  width: `${Math.min(size * 2, 40)}px`, 
+                  height: `${size}px`,
+                  borderRadius: "50%"
+                }}
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* Tool buttons */}
+        <div className="flex flex-wrap gap-2 justify-center">
           <Button
             variant="outline"
-            size="lg"
+            size="icon"
             onClick={undo}
             disabled={historyStep <= 0}
-            className="w-14 h-14 rounded-2xl p-0"
-            aria-label="Отменить"
+            className="w-10 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 border-0"
           >
-            <Undo size={26} />
+            <Undo size={20} className="text-white" />
+          </Button>
+          
+          <Button
+            variant={isEraser ? "default" : "outline"}
+            size="icon"
+            onClick={() => setIsEraser(!isEraser)}
+            className={`w-10 h-10 rounded-xl border-0 ${
+              isEraser 
+                ? "bg-pink-400 hover:bg-pink-500" 
+                : "bg-pink-300 hover:bg-pink-400"
+            }`}
+          >
+            <Eraser size={20} className="text-white" />
           </Button>
           
           <Button
             variant="outline"
-            size="lg"
+            size="icon"
             onClick={clearCanvas}
-            className="w-14 h-14 rounded-2xl p-0"
-            aria-label="Очистить"
+            className="w-10 h-10 rounded-xl bg-gray-300 hover:bg-gray-400 border-0"
           >
-            <Trash2 size={26} />
-          </Button>
-          
-          <Button
-            variant="default"
-            size="lg"
-            onClick={saveDrawing}
-            disabled={isSaving}
-            className="w-14 h-14 rounded-2xl p-0 bg-primary"
-            aria-label="Сохранить"
-          >
-            <Save size={26} />
+            <Trash2 size={20} className="text-gray-700" />
           </Button>
         </div>
+
+        {/* Save button */}
+        <Button
+          onClick={saveDrawing}
+          disabled={isSaving}
+          className="w-full h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium"
+        >
+          <Save size={20} className="mr-2" />
+          {isSaving ? "..." : "Сохранить"}
+        </Button>
       </div>
     </div>
   );
