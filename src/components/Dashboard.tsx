@@ -339,19 +339,6 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="mt-4 flex gap-2">
-            <div className="flex-1 bg-muted rounded-full px-4 py-3 flex items-center gap-2">
-              <span className="text-muted-foreground">🔍</span>
-              <span className="text-muted-foreground text-sm">Поиск занятий...</span>
-            </div>
-            <Button
-              size="icon"
-              className="w-12 h-12 rounded-full bg-primary shadow-lg"
-            >
-              <Sparkles size={20} />
-            </Button>
-          </div>
         </div>
       </header>
 
