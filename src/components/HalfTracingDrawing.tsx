@@ -10,43 +10,216 @@ interface HalfTracingDrawingProps {
   childId?: string;
 }
 
-// Simple symmetrical templates (SVG paths for left half)
-const TEMPLATES = [
+// Matryoshka-style symmetrical templates with drawing functions
+interface TemplateData {
+  id: string;
+  name: string;
+  draw: (ctx: CanvasRenderingContext2D, size: number, filled: boolean) => void;
+}
+
+const TEMPLATES: TemplateData[] = [
+  {
+    id: "matryoshka",
+    name: "Матрёшка",
+    draw: (ctx, size, filled) => {
+      const s = size / 100;
+      
+      // Head circle
+      ctx.beginPath();
+      ctx.arc(50 * s, 25 * s, 20 * s, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#FFE4C4";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Body (pear shape)
+      ctx.beginPath();
+      ctx.moveTo(30 * s, 40 * s);
+      ctx.quadraticCurveTo(15 * s, 60 * s, 20 * s, 80 * s);
+      ctx.quadraticCurveTo(25 * s, 95 * s, 50 * s, 95 * s);
+      ctx.quadraticCurveTo(75 * s, 95 * s, 80 * s, 80 * s);
+      ctx.quadraticCurveTo(85 * s, 60 * s, 70 * s, 40 * s);
+      ctx.quadraticCurveTo(60 * s, 35 * s, 50 * s, 45 * s);
+      ctx.quadraticCurveTo(40 * s, 35 * s, 30 * s, 40 * s);
+      if (filled) {
+        ctx.fillStyle = "#FF6B6B";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Face details (only on filled side)
+      if (filled) {
+        ctx.fillStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(44 * s, 22 * s, 2 * s, 0, Math.PI * 2);
+        ctx.arc(56 * s, 22 * s, 2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(50 * s, 30 * s, 3 * s, 0.1 * Math.PI, 0.9 * Math.PI);
+        ctx.stroke();
+      }
+    }
+  },
+  {
+    id: "ball",
+    name: "Мяч",
+    draw: (ctx, size, filled) => {
+      const s = size / 100;
+      
+      // Main circle
+      ctx.beginPath();
+      ctx.arc(50 * s, 50 * s, 40 * s, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#87CEEB";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Stripe lines
+      ctx.beginPath();
+      ctx.moveTo(25 * s, 20 * s);
+      ctx.lineTo(75 * s, 80 * s);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(20 * s, 50 * s);
+      ctx.lineTo(80 * s, 50 * s);
+      ctx.stroke();
+      
+      if (filled) {
+        // Color segments
+        ctx.fillStyle = "#FF6B6B";
+        ctx.beginPath();
+        ctx.arc(50 * s, 50 * s, 40 * s, -0.3 * Math.PI, 0.2 * Math.PI);
+        ctx.lineTo(50 * s, 50 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  },
+  {
+    id: "spider",
+    name: "Паучок",
+    draw: (ctx, size, filled) => {
+      const s = size / 100;
+      
+      // Body circle
+      ctx.beginPath();
+      ctx.arc(50 * s, 50 * s, 15 * s, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#4A5568";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Legs
+      const legAngles = [-0.7, -0.4, 0.4, 0.7];
+      legAngles.forEach(angle => {
+        ctx.beginPath();
+        ctx.moveTo(50 * s, 50 * s);
+        const endX = 50 * s + Math.cos(angle) * 35 * s;
+        const endY = 50 * s + Math.sin(angle) * 35 * s;
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        
+        // Mirror legs
+        ctx.beginPath();
+        ctx.moveTo(50 * s, 50 * s);
+        const endX2 = 50 * s + Math.cos(Math.PI - angle) * 35 * s;
+        const endY2 = 50 * s + Math.sin(Math.PI - angle) * 35 * s;
+        ctx.lineTo(endX2, endY2);
+        ctx.stroke();
+      });
+      
+      if (filled) {
+        ctx.fillStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(45 * s, 45 * s, 3 * s, 0, Math.PI * 2);
+        ctx.arc(55 * s, 45 * s, 3 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  },
   {
     id: "butterfly",
     name: "Бабочка",
-    path: "M 0,50 Q 20,20 40,30 Q 60,10 50,50 Q 60,90 40,70 Q 20,80 0,50",
-    color: "#FF6B9D",
-  },
-  {
-    id: "heart",
-    name: "Сердце",
-    path: "M 0,40 Q 0,10 25,10 Q 50,10 50,40 L 50,50 Q 50,80 25,100 L 0,75",
-    color: "#FF6B6B",
-  },
-  {
-    id: "tree",
-    name: "Дерево",
-    path: "M 0,100 L 0,70 Q 10,60 5,50 Q 20,40 10,30 Q 30,20 15,10 Q 40,0 50,20 L 50,100",
-    color: "#4ADE80",
-  },
-  {
-    id: "star",
-    name: "Звезда",
-    path: "M 0,35 L 15,40 L 25,25 L 35,40 L 50,35 L 40,50 L 50,65 L 35,60 L 25,75 L 15,60 L 0,65 L 10,50 Z",
-    color: "#FBBF24",
+    draw: (ctx, size, filled) => {
+      const s = size / 100;
+      
+      // Body
+      ctx.beginPath();
+      ctx.ellipse(50 * s, 50 * s, 5 * s, 25 * s, 0, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#8B4513";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Wings
+      ctx.beginPath();
+      ctx.moveTo(50 * s, 35 * s);
+      ctx.quadraticCurveTo(20 * s, 20 * s, 15 * s, 45 * s);
+      ctx.quadraticCurveTo(20 * s, 70 * s, 50 * s, 65 * s);
+      if (filled) {
+        ctx.fillStyle = "#FF69B4";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Mirror wing
+      ctx.beginPath();
+      ctx.moveTo(50 * s, 35 * s);
+      ctx.quadraticCurveTo(80 * s, 20 * s, 85 * s, 45 * s);
+      ctx.quadraticCurveTo(80 * s, 70 * s, 50 * s, 65 * s);
+      if (filled) {
+        ctx.fillStyle = "#FF69B4";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Antennae
+      ctx.beginPath();
+      ctx.moveTo(48 * s, 25 * s);
+      ctx.quadraticCurveTo(40 * s, 10 * s, 35 * s, 8 * s);
+      ctx.moveTo(52 * s, 25 * s);
+      ctx.quadraticCurveTo(60 * s, 10 * s, 65 * s, 8 * s);
+      ctx.stroke();
+    }
   },
   {
     id: "flower",
     name: "Цветок",
-    path: "M 0,50 Q 15,30 25,35 Q 35,15 50,30 Q 50,50 50,70 Q 35,85 25,65 Q 15,70 0,50",
-    color: "#F472B6",
-  },
-  {
-    id: "fish",
-    name: "Рыбка",
-    path: "M 0,50 Q 10,30 30,35 Q 45,25 50,40 L 50,60 Q 45,75 30,65 Q 10,70 0,50",
-    color: "#60A5FA",
+    draw: (ctx, size, filled) => {
+      const s = size / 100;
+      const petals = 6;
+      const petalRadius = 18 * s;
+      
+      // Petals
+      for (let i = 0; i < petals; i++) {
+        const angle = (i / petals) * Math.PI * 2;
+        const petalX = 50 * s + Math.cos(angle) * 20 * s;
+        const petalY = 50 * s + Math.sin(angle) * 20 * s;
+        
+        ctx.beginPath();
+        ctx.arc(petalX, petalY, petalRadius, 0, Math.PI * 2);
+        if (filled) {
+          ctx.fillStyle = "#FFB6C1";
+          ctx.fill();
+        }
+        ctx.stroke();
+      }
+      
+      // Center
+      ctx.beginPath();
+      ctx.arc(50 * s, 50 * s, 12 * s, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#FFD700";
+        ctx.fill();
+      }
+      ctx.stroke();
+    }
   },
 ];
 
@@ -62,13 +235,13 @@ const HalfTracingDrawing: React.FC<HalfTracingDrawingProps> = ({ onBack, childId
   const currentTemplate = TEMPLATES[currentTemplateIndex];
 
   const drawTemplate = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    // White paper background
     ctx.fillStyle = "#FFFEF7";
     ctx.fillRect(0, 0, width, height);
 
-    // Draw center dividing line
+    // Draw center dividing line (book fold effect)
     ctx.save();
-    ctx.setLineDash([8, 8]);
-    ctx.strokeStyle = "rgba(100, 100, 100, 0.4)";
+    ctx.strokeStyle = "rgba(100, 100, 100, 0.3)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(width / 2, 0);
@@ -76,33 +249,27 @@ const HalfTracingDrawing: React.FC<HalfTracingDrawingProps> = ({ onBack, childId
     ctx.stroke();
     ctx.restore();
 
-    // Calculate template scale and position
-    const templateSize = Math.min(width / 2, height) * 0.7;
-    const offsetX = (width / 4) - (templateSize / 2);
-    const offsetY = (height / 2) - (templateSize / 2);
-
-    // Draw left half (template)
+    // Calculate template size and position
+    const templateSize = Math.min(width / 2, height) * 0.75;
+    const centerY = height / 2;
+    
+    // LEFT SIDE: Draw filled template
     ctx.save();
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(templateSize / 50, templateSize / 50);
-
-    const path = new Path2D(currentTemplate.path);
-    ctx.fillStyle = currentTemplate.color;
-    ctx.fill(path);
+    ctx.translate(width / 4, centerY);
+    ctx.translate(-templateSize / 2, -templateSize / 2);
     ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
-    ctx.stroke(path);
+    ctx.lineWidth = 2;
+    currentTemplate.draw(ctx, templateSize, true);
     ctx.restore();
 
-    // Draw dotted outline on the right side as guide
+    // RIGHT SIDE: Draw dotted outline for tracing
     ctx.save();
-    ctx.translate(width - offsetX, offsetY);
-    ctx.scale(-templateSize / 50, templateSize / 50);
-
-    ctx.setLineDash([3, 3]);
-    ctx.strokeStyle = "rgba(100, 100, 100, 0.3)";
-    ctx.lineWidth = 1;
-    ctx.stroke(path);
+    ctx.translate(width * 3 / 4, centerY);
+    ctx.translate(-templateSize / 2, -templateSize / 2);
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
+    ctx.lineWidth = 2;
+    currentTemplate.draw(ctx, templateSize, false);
     ctx.restore();
   };
 
