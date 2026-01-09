@@ -360,20 +360,15 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
         {/* Notebook canvas container */}
         <div className="flex-1 flex flex-col">
-          {/* Spiral binding with teardrop characters */}
-          <div className="flex justify-center items-end px-4 -mb-1">
-            {TEARDROP_COLORS.map((color, i) => renderTeardrop(color, i))}
-          </div>
-          
           {/* Spiral holes */}
           <div 
-            className="flex justify-center gap-4 py-1 rounded-t-xl"
+            className="flex justify-center gap-4 py-2 rounded-t-xl"
             style={{ backgroundColor: "#F5A623" }}
           >
             {Array.from({ length: 16 }).map((_, i) => (
               <div 
                 key={i} 
-                className="w-2 h-2 rounded-full"
+                className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: "#E8E4DC" }}
               />
             ))}
