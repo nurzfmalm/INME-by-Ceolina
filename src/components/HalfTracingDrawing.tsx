@@ -105,41 +105,111 @@ const TEMPLATES: TemplateData[] = [
     draw: (ctx, size, filled) => {
       const s = size / 100;
       
-      // Body circle
+      // Big body circle (top)
       ctx.beginPath();
-      ctx.arc(50 * s, 50 * s, 15 * s, 0, Math.PI * 2);
+      ctx.arc(50 * s, 35 * s, 25 * s, 0, Math.PI * 2);
       if (filled) {
-        ctx.fillStyle = "#4A5568";
+        ctx.fillStyle = "#A0AEC0";
         ctx.fill();
       }
       ctx.stroke();
       
-      // Legs
-      const legAngles = [-0.7, -0.4, 0.4, 0.7];
-      legAngles.forEach(angle => {
+      // Small head circle (bottom)
+      ctx.beginPath();
+      ctx.arc(50 * s, 70 * s, 15 * s, 0, Math.PI * 2);
+      if (filled) {
+        ctx.fillStyle = "#A0AEC0";
+        ctx.fill();
+      }
+      ctx.stroke();
+      
+      // Spots on body (6 spots in 2 rows)
+      const spotPositions = [
+        { x: 40, y: 28 }, { x: 50, y: 25 }, { x: 60, y: 28 },
+        { x: 42, y: 42 }, { x: 50, y: 40 }, { x: 58, y: 42 }
+      ];
+      spotPositions.forEach(pos => {
         ctx.beginPath();
-        ctx.moveTo(50 * s, 50 * s);
-        const endX = 50 * s + Math.cos(angle) * 35 * s;
-        const endY = 50 * s + Math.sin(angle) * 35 * s;
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-        
-        // Mirror legs
-        ctx.beginPath();
-        ctx.moveTo(50 * s, 50 * s);
-        const endX2 = 50 * s + Math.cos(Math.PI - angle) * 35 * s;
-        const endY2 = 50 * s + Math.sin(Math.PI - angle) * 35 * s;
-        ctx.lineTo(endX2, endY2);
+        ctx.arc(pos.x * s, pos.y * s, 4 * s, 0, Math.PI * 2);
+        if (filled) {
+          ctx.fillStyle = "#E53E3E";
+          ctx.fill();
+        }
         ctx.stroke();
       });
       
+      // Left legs (4 curved legs)
+      // Top left leg
+      ctx.beginPath();
+      ctx.moveTo(28 * s, 30 * s);
+      ctx.quadraticCurveTo(10 * s, 20 * s, 5 * s, 35 * s);
+      ctx.stroke();
+      
+      // Second left leg
+      ctx.beginPath();
+      ctx.moveTo(26 * s, 38 * s);
+      ctx.quadraticCurveTo(8 * s, 35 * s, 3 * s, 50 * s);
+      ctx.stroke();
+      
+      // Third left leg
+      ctx.beginPath();
+      ctx.moveTo(26 * s, 45 * s);
+      ctx.quadraticCurveTo(8 * s, 50 * s, 5 * s, 65 * s);
+      ctx.stroke();
+      
+      // Bottom left leg
+      ctx.beginPath();
+      ctx.moveTo(28 * s, 52 * s);
+      ctx.quadraticCurveTo(12 * s, 60 * s, 10 * s, 78 * s);
+      ctx.stroke();
+      
+      // Right legs (4 curved legs - mirrored)
+      // Top right leg
+      ctx.beginPath();
+      ctx.moveTo(72 * s, 30 * s);
+      ctx.quadraticCurveTo(90 * s, 20 * s, 95 * s, 35 * s);
+      ctx.stroke();
+      
+      // Second right leg
+      ctx.beginPath();
+      ctx.moveTo(74 * s, 38 * s);
+      ctx.quadraticCurveTo(92 * s, 35 * s, 97 * s, 50 * s);
+      ctx.stroke();
+      
+      // Third right leg
+      ctx.beginPath();
+      ctx.moveTo(74 * s, 45 * s);
+      ctx.quadraticCurveTo(92 * s, 50 * s, 95 * s, 65 * s);
+      ctx.stroke();
+      
+      // Bottom right leg
+      ctx.beginPath();
+      ctx.moveTo(72 * s, 52 * s);
+      ctx.quadraticCurveTo(88 * s, 60 * s, 90 * s, 78 * s);
+      ctx.stroke();
+      
+      // Face on head - eyes and smile
       if (filled) {
         ctx.fillStyle = "#333";
         ctx.beginPath();
-        ctx.arc(45 * s, 45 * s, 3 * s, 0, Math.PI * 2);
-        ctx.arc(55 * s, 45 * s, 3 * s, 0, Math.PI * 2);
+        ctx.arc(44 * s, 68 * s, 2.5 * s, 0, Math.PI * 2);
         ctx.fill();
+        ctx.beginPath();
+        ctx.arc(56 * s, 68 * s, 2.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(44 * s, 68 * s, 2.5 * s, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(56 * s, 68 * s, 2.5 * s, 0, Math.PI * 2);
+        ctx.stroke();
       }
+      
+      // Smile
+      ctx.beginPath();
+      ctx.arc(50 * s, 72 * s, 6 * s, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
     }
   },
   {
