@@ -68,27 +68,43 @@ const Index = () => {
       if (role === "parent") {
         const { data: children } = await supabase
           .from("children")
-          .select("id, name")
+          .select("id, name, age")
           .eq("user_id", user!.id)
-          .limit(1);
+          .order("created_at", { ascending: true });
 
         if (children && children.length > 0) {
-          // Auto-select first child if none selected
-          if (!selectedChildId) {
+          // Check if previously selected child still exists
+          const previouslySelected = selectedChildId 
+            ? children.find(c => c.id === selectedChildId)
+            : null;
+          
+          if (previouslySelected) {
+            // Keep the previously selected child
+            setSelectedChildName(previouslySelected.name);
+            setSelectedChildAge(previouslySelected.age);
+          } else {
+            // Auto-select first child
             setSelectedChildId(children[0].id);
             setSelectedChildName(children[0].name);
+            setSelectedChildAge(children[0].age);
           }
+          
           setOnboardingComplete(true);
           setDiagnosticComplete(true);
           
           // Set child data for display
           setChildData({
-            childName: selectedChildName,
-            childAge: "",
+            childName: previouslySelected?.name || children[0].name,
+            childAge: String(previouslySelected?.age || children[0].age || ""),
             communicationLevel: "",
             emotionalLevel: "",
             goals: "",
           });
+        } else {
+          // No children yet - specialists need to add children first
+          // Mark onboarding as complete so they see ChildrenManager
+          setOnboardingComplete(false);
+          setDiagnosticComplete(false);
         }
       } else if (role === "child") {
         // Child role - load from profile
@@ -107,6 +123,7 @@ const Index = () => {
             goals: "",
           };
           setChildData(userData);
+          setOnboardingComplete(true); // Profile exists = onboarding done
 
           // Check if assessment exists
           const { data: assessment } = await supabase
@@ -118,7 +135,6 @@ const Index = () => {
             .maybeSingle();
 
           if (assessment && assessment.completed) {
-            setOnboardingComplete(true);
             setDiagnosticComplete(true);
           }
         }
