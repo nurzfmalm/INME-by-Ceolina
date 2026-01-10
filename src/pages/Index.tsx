@@ -38,10 +38,28 @@ const Index = () => {
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   
-  // New: selected child for specialists
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
-  const [selectedChildName, setSelectedChildName] = useState<string>("Ребёнок");
-  const [selectedChildAge, setSelectedChildAge] = useState<number | null>(null);
+  // Selected child - persist in localStorage
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(() => {
+    return localStorage.getItem('selectedChildId');
+  });
+  const [selectedChildName, setSelectedChildName] = useState<string>(() => {
+    return localStorage.getItem('selectedChildName') || "Ребёнок";
+  });
+  const [selectedChildAge, setSelectedChildAge] = useState<number | null>(() => {
+    const stored = localStorage.getItem('selectedChildAge');
+    return stored ? parseInt(stored) : null;
+  });
+
+  // Persist selected child to localStorage
+  useEffect(() => {
+    if (selectedChildId) {
+      localStorage.setItem('selectedChildId', selectedChildId);
+      localStorage.setItem('selectedChildName', selectedChildName);
+      if (selectedChildAge !== null) {
+        localStorage.setItem('selectedChildAge', String(selectedChildAge));
+      }
+    }
+  }, [selectedChildId, selectedChildName, selectedChildAge]);
 
   const loadUserData = async () => {
     setDataLoading(true);
@@ -137,12 +155,24 @@ const Index = () => {
     }
   }, [user, roleLoading, role, selectedChildId]);
 
-  const handleChildSelect = (childId: string, childName: string) => {
+  const handleChildSelect = async (childId: string, childName: string) => {
     setSelectedChildId(childId);
     setSelectedChildName(childName);
+    
+    // Fetch child age from database
+    const { data: childData } = await supabase
+      .from("children")
+      .select("age")
+      .eq("id", childId)
+      .single();
+    
+    if (childData?.age) {
+      setSelectedChildAge(childData.age);
+    }
+    
     setChildData({
       childName,
-      childAge: "",
+      childAge: childData?.age ? String(childData.age) : "",
       communicationLevel: "",
       emotionalLevel: "",
       goals: "",
@@ -360,6 +390,7 @@ const Index = () => {
           setCurrentTaskPrompt(null);
         }}
         childName={childData.childName}
+        childId={selectedChildId}
         taskId={currentTaskId}
         taskPrompt={currentTaskPrompt}
       />
@@ -371,6 +402,7 @@ const Index = () => {
       <Gallery
         onBack={() => setCurrentSection("dashboard")}
         childName={childData.childName}
+        childId={selectedChildId}
       />
     );
   }

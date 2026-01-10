@@ -11,11 +11,12 @@ import { ToolButton } from "./drawing/ToolButton";
 interface SoloDrawingProps {
   onBack: () => void;
   childName: string;
+  childId?: string | null;
   taskId?: string | null;
   taskPrompt?: string | null;
 }
 
-export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawingProps) => {
+export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: SoloDrawingProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -255,6 +256,7 @@ export const SoloDrawing = ({ onBack, childName, taskId, taskPrompt }: SoloDrawi
 
       await supabase.from("artworks").insert({
         user_id: userId,
+        child_id: childId || null,
         image_url: signedData.signedUrl,
         storage_path: fileName,
         metadata: {

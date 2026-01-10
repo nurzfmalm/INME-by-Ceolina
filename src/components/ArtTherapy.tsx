@@ -9,11 +9,12 @@ import ceolinaCharacter from "@/assets/ceolina-character.png";
 interface ArtTherapyProps {
   onBack: () => void;
   childName: string;
+  childId?: string | null;
   taskId?: string | null;
   taskPrompt?: string | null;
 }
 
-export const ArtTherapy = ({ onBack, childName, taskId, taskPrompt }: ArtTherapyProps) => {
+export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: ArtTherapyProps) => {
   const [selectedMode, setSelectedMode] = useState<"select" | "solo" | "dual">("select");
 
   if (selectedMode === "solo") {
@@ -21,6 +22,7 @@ export const ArtTherapy = ({ onBack, childName, taskId, taskPrompt }: ArtTherapy
       <SoloDrawing
         onBack={() => setSelectedMode("select")}
         childName={childName}
+        childId={childId}
         taskId={taskId}
         taskPrompt={taskPrompt}
       />
