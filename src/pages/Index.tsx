@@ -125,16 +125,17 @@ const Index = () => {
           setChildData(userData);
           setOnboardingComplete(true); // Profile exists = onboarding done
 
-          // Check if assessment exists
+          // Check if assessment exists OR if profile has been fully set up
           const { data: assessment } = await supabase
             .from("adaptive_assessments")
-            .select("*")
+            .select("id, completed")
             .eq("user_id", user!.id)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
 
-          if (assessment && assessment.completed) {
+          // If assessment completed OR profile has valid child_name - skip diagnostic
+          if ((assessment && assessment.completed) || (profile.child_name && profile.child_age)) {
             setDiagnosticComplete(true);
           }
         }
