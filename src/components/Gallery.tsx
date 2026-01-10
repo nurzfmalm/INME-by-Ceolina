@@ -31,9 +31,10 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { responsiveText, mobileSpacing, touchSizes } from "@/lib/responsive";
-import { deleteArtwork as deleteFromStorage } from "@/lib/storage";
+import { deleteArtwork as deleteFromStorage, getArtworkUrl } from "@/lib/storage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Sparkles } from "lucide-react";
 
 interface GalleryProps {
   onBack: () => void;
@@ -49,6 +50,7 @@ interface Artwork {
   emotions_used: any;
   colors_used: any;
   metadata: any;
+  signed_url?: string; // Runtime signed URL for display
 }
 
 export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
@@ -58,6 +60,7 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
   const [filterEmotion, setFilterEmotion] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadArtworks();
@@ -92,7 +95,19 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
       const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
-      setArtworks(data || []);
+      
+      // Generate signed URLs for all artworks with storage_path
+      const artworksWithUrls = await Promise.all(
+        (data || []).map(async (artwork) => {
+          if (artwork.storage_path) {
+            const signedUrl = await getArtworkUrl(artwork.storage_path, 3600);
+            return { ...artwork, signed_url: signedUrl };
+          }
+          return artwork;
+        })
+      );
+      
+      setArtworks(artworksWithUrls);
     } catch (error) {
       console.error("Error loading artworks:", error);
       toast.error("Ошибка при загрузке галереи");
@@ -137,23 +152,74 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
   };
 
   const downloadArtwork = async (artwork: Artwork) => {
-    if (!artwork.image_url) return;
+    const url = artwork.signed_url || artwork.image_url;
+    if (!url) return;
 
     try {
-      const response = await fetch(artwork.image_url);
+      const response = await fetch(url);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = blobUrl;
       a.download = `artwork_${artwork.id}.png`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
       toast.success("Рисунок скачан!");
     } catch (error) {
       console.error("Download error:", error);
       toast.error("Ошибка при скачивании");
+    }
+  };
+
+  const analyzeArtwork = async (artwork: Artwork) => {
+    const imageUrl = artwork.signed_url || artwork.image_url;
+    if (!imageUrl) {
+      toast.error("Нет изображения для анализа");
+      return;
+    }
+
+    setAnalyzingId(artwork.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-drawing-deep', {
+        body: { 
+          imageUrl,
+          childAge: 7, // Default age if not available
+          previousAnalyses: []
+        }
+      });
+
+      if (error) throw error;
+
+      // Update artwork with analysis in database
+      const updatedMetadata = {
+        ...artwork.metadata,
+        deep_analysis: data.analysis
+      };
+
+      const { error: updateError } = await supabase
+        .from('artworks')
+        .update({ metadata: updatedMetadata })
+        .eq('id', artwork.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      const updatedArtwork = { ...artwork, metadata: updatedMetadata };
+      setArtworks(prev => prev.map(a => a.id === artwork.id ? updatedArtwork : a));
+      
+      if (selectedArtwork?.id === artwork.id) {
+        setSelectedArtwork(updatedArtwork);
+      }
+
+      toast.success("Анализ рисунка завершён!");
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("Ошибка при анализе рисунка");
+    } finally {
+      setAnalyzingId(null);
     }
   };
 
@@ -297,15 +363,29 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
                     className="relative aspect-square overflow-hidden cursor-pointer"
                     onClick={() => setSelectedArtwork(artwork)}
                   >
-                    {artwork.image_url ? (
+                    {(artwork.signed_url || artwork.image_url) ? (
                       <img
-                        src={artwork.image_url}
+                        src={artwork.signed_url || artwork.image_url || ''}
                         alt="Artwork"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          console.error('Image load error for artwork:', artwork.id);
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center">
                         <ImageIcon className="w-16 h-16 text-purple-300 dark:text-purple-700" />
+                      </div>
+                    )}
+
+                    {/* Analysis badge */}
+                    {artwork.metadata?.deep_analysis && (
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 text-xs">
+                          <Sparkles size={12} className="mr-1" />
+                          Анализ
+                        </Badge>
                       </div>
                     )}
 
@@ -320,6 +400,22 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
                         }}
                       >
                         <Maximize2 size={20} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          analyzeArtwork(artwork);
+                        }}
+                        disabled={analyzingId === artwork.id}
+                        title="Анализировать рисунок"
+                      >
+                        {analyzingId === artwork.id ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <Brain size={20} />
+                        )}
                       </Button>
                       <Button
                         size="icon"
@@ -424,9 +520,9 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
                   </>
                 )}
 
-                {selectedArtwork.image_url ? (
+                {(selectedArtwork.signed_url || selectedArtwork.image_url) ? (
                   <img
-                    src={selectedArtwork.image_url}
+                    src={selectedArtwork.signed_url || selectedArtwork.image_url || ''}
                     alt="Artwork"
                     className="max-w-full max-h-[50vh] lg:max-h-[90vh] object-contain"
                   />
@@ -608,13 +704,25 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
                 {/* Actions */}
                 <div className="p-4 border-t flex gap-2">
                   <Button
-                    variant="secondary"
+                    variant="default"
                     size="sm"
                     className="flex-1"
+                    onClick={() => analyzeArtwork(selectedArtwork)}
+                    disabled={analyzingId === selectedArtwork.id}
+                  >
+                    {analyzingId === selectedArtwork.id ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Brain size={16} className="mr-2" />
+                    )}
+                    {analyzingId === selectedArtwork.id ? 'Анализ...' : 'Анализировать'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => downloadArtwork(selectedArtwork)}
                   >
-                    <Download size={16} className="mr-2" />
-                    Скачать
+                    <Download size={16} />
                   </Button>
                   <Button
                     variant="destructive"
