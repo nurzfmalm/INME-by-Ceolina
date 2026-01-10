@@ -107,23 +107,58 @@ const Index = () => {
           setDiagnosticComplete(false);
         }
       } else if (role === "child") {
-        // Child role - load from profile
+        // Child role - load from profile (fallback to localStorage if profile is missing)
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user!.id)
           .maybeSingle();
 
-        if (profile) {
-          const userData: OnboardingData = {
-            childName: profile.child_name || "Ребёнок",
-            childAge: String(profile.child_age || ""),
+        const cachedRaw = localStorage.getItem("starUserData");
+        const cached = cachedRaw ? (JSON.parse(cachedRaw) as OnboardingData) : null;
+
+        // If profile row doesn't exist yet (or is incomplete), use cached onboarding data and try to persist it.
+        const hasProfileBasics = !!(profile?.child_name && profile?.child_age);
+        const hasCachedBasics = !!(cached?.childName && cached?.childAge);
+
+        if (profile || cached) {
+          const childName = profile?.child_name && profile.child_name !== "Без имени"
+            ? profile.child_name
+            : (cached?.childName || "Ребёнок");
+
+          const childAge = profile?.child_age
+            ? String(profile.child_age)
+            : (cached?.childAge || "");
+
+          setChildData({
+            childName,
+            childAge,
             communicationLevel: "",
             emotionalLevel: "",
-            goals: "",
-          };
-          setChildData(userData);
-          setOnboardingComplete(true); // Profile exists = onboarding done
+            goals: cached?.goals || "",
+          });
+
+          if (hasProfileBasics || hasCachedBasics) {
+            setOnboardingComplete(true);
+          }
+
+          // Best-effort persist cached data to backend so it won't ask again on other devices
+          if ((!profile || !hasProfileBasics) && hasCachedBasics) {
+            const { error: persistError } = await supabase
+              .from("profiles")
+              .upsert(
+                {
+                  id: user!.id,
+                  child_name: cached!.childName,
+                  child_age: parseInt(cached!.childAge) || null,
+                },
+                { onConflict: "id" }
+              );
+
+            if (persistError) {
+              console.error("Error persisting cached profile:", persistError);
+            }
+          }
 
           // Check if assessment exists OR if profile has been fully set up
           const { data: assessment } = await supabase
@@ -134,8 +169,7 @@ const Index = () => {
             .limit(1)
             .maybeSingle();
 
-          // If assessment completed OR profile has valid child_name - skip diagnostic
-          if ((assessment && assessment.completed) || (profile.child_name && profile.child_age)) {
+          if ((assessment && assessment.completed) || hasProfileBasics || hasCachedBasics) {
             setDiagnosticComplete(true);
           }
         }

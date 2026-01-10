@@ -39,17 +39,26 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save to Supabase
+      // Save to backend
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         if (user) {
+          // Use upsert so a missing profile row won't cause onboarding to repeat
           const { error } = await supabase
             .from("profiles")
-            .update({
-              child_name: formData.childName,
-              child_age: parseInt(formData.childAge) || null,
-            })
-            .eq("id", user.id);
+            .upsert(
+              {
+                id: user.id,
+                child_name: formData.childName,
+                child_age: parseInt(formData.childAge) || null,
+              },
+              {
+                onConflict: "id",
+              }
+            );
 
           if (error) {
             console.error("Error saving profile:", error);
@@ -61,6 +70,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
       } catch (error) {
         console.error("Error:", error);
       }
+
 
       // Also store in localStorage as backup
       localStorage.setItem('starUserData', JSON.stringify(formData));
