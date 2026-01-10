@@ -383,7 +383,7 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             <h3 className="font-bold text-lg">Недельный прогресс</h3>
             <span className="text-white/80 text-sm">{weeklyProgress}%</span>
           </div>
-          <Progress value={weeklyProgress} className="h-3 bg-white/30" />
+          <Progress value={weeklyProgress} className="h-3 bg-white/30 [&>div]:bg-amber-400" />
           <p className="mt-3 text-white/90 text-sm">
             Продолжай в том же духе! 🌟
           </p>
