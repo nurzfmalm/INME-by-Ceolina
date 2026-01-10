@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface GalleryProps {
   onBack: () => void;
   childName: string;
+  childId?: string | null;
 }
 
 interface Artwork {
@@ -50,7 +51,7 @@ interface Artwork {
   metadata: any;
 }
 
-export const Gallery = ({ onBack, childName }: GalleryProps) => {
+export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<string>("date");
@@ -60,7 +61,7 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
 
   useEffect(() => {
     loadArtworks();
-  }, []);
+  }, [childId]);
 
   const loadArtworks = async () => {
     try {
@@ -78,11 +79,17 @@ export const Gallery = ({ onBack, childName }: GalleryProps) => {
       const userId = await getCurrentUserId();
       if (!userId) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("artworks")
         .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .eq("user_id", userId);
+      
+      // Filter by child_id if provided
+      if (childId) {
+        query = query.eq("child_id", childId);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setArtworks(data || []);
