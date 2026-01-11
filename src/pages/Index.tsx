@@ -108,17 +108,22 @@ const Index = () => {
         }
       } else if (role === "child") {
         // Child role - load from profile in database first
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user!.id)
           .maybeSingle();
 
+        console.log("Profile data from database:", profile);
+        console.log("Profile error:", profileError);
+
         // Check if profile has basic required information
         const hasProfileData = !!(profile?.child_name && profile?.child_age);
+        console.log("Has profile data:", hasProfileData);
 
         if (hasProfileData) {
           // Profile exists in database - use it
+          console.log("Loading profile from database:", profile.child_name, profile.child_age);
           setChildData({
             childName: profile.child_name,
             childAge: String(profile.child_age),
@@ -144,9 +149,11 @@ const Index = () => {
           // No profile in database - check localStorage as fallback
           const cachedRaw = localStorage.getItem("starUserData");
           const cached = cachedRaw ? (JSON.parse(cachedRaw) as OnboardingData) : null;
+          console.log("Cached data from localStorage:", cached);
 
           if (cached?.childName && cached?.childAge) {
             // Use cached data and sync to database
+            console.log("Loading from cache and syncing to database:", cached.childName, cached.childAge);
             setChildData(cached);
             setOnboardingComplete(true);
 
@@ -164,6 +171,8 @@ const Index = () => {
 
             if (persistError) {
               console.error("Error persisting profile to database:", persistError);
+            } else {
+              console.log("Successfully synced cache to database");
             }
 
             // Check if diagnostic assessment is completed
@@ -180,6 +189,7 @@ const Index = () => {
             }
           } else {
             // No data anywhere - need to show onboarding
+            console.log("No profile data found anywhere - showing onboarding");
             setOnboardingComplete(false);
             setDiagnosticComplete(false);
           }

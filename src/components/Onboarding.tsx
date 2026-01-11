@@ -40,37 +40,68 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
       setStep(step + 1);
     } else {
       // Save to backend first
+      console.log("Onboarding complete - saving data:", formData);
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
 
+        console.log("Current user:", user?.id);
+
         if (user) {
-          // Use upsert to ensure profile is created or updated
-          const { error } = await supabase
+          // First check if profile exists
+          const { data: existingProfile } = await supabase
             .from("profiles")
-            .upsert(
-              {
-                id: user.id,
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          const dataToSave = {
+            id: user.id,
+            child_name: formData.childName,
+            child_age: parseInt(formData.childAge) || null,
+          };
+          console.log("Saving to database:", dataToSave);
+          console.log("Existing profile:", existingProfile);
+
+          let error;
+          let savedData;
+
+          if (existingProfile) {
+            // Update existing profile
+            const result = await supabase
+              .from("profiles")
+              .update({
                 child_name: formData.childName,
                 child_age: parseInt(formData.childAge) || null,
-              },
-              {
-                onConflict: "id",
-              }
-            );
+              })
+              .eq("id", user.id)
+              .select();
+            error = result.error;
+            savedData = result.data;
+          } else {
+            // Insert new profile
+            const result = await supabase
+              .from("profiles")
+              .insert(dataToSave)
+              .select();
+            error = result.error;
+            savedData = result.data;
+          }
 
           if (error) {
-            console.error("Error saving profile:", error);
-            toast.error("Ошибка сохранения данных в базу");
+            console.error("Error saving profile to database:", error);
+            toast.error(`Ошибка сохранения: ${error.message}`);
             // Still store in localStorage as backup
             localStorage.setItem('starUserData', JSON.stringify(formData));
           } else {
+            console.log("Successfully saved to database:", savedData);
             toast.success("Данные успешно сохранены!");
             // Also store in localStorage as backup
             localStorage.setItem('starUserData', JSON.stringify(formData));
           }
         } else {
+          console.log("No user - saving only to localStorage");
           // No user - just save to localStorage
           localStorage.setItem('starUserData', JSON.stringify(formData));
         }
