@@ -1,6 +1,6 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, KeyRound } from "lucide-react";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
 
 interface RoleSelectionProps {
@@ -33,13 +33,21 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
                 <Building2 className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold mb-2">Специалист</h2>
-              <p className="text-muted-foreground mb-4">
-                Вход по коду центра для работы с детьми
+              
+              {/* Код центра - выделенный блок */}
+              <div className="flex items-center justify-center gap-2 mb-4 p-3 bg-primary/10 rounded-lg">
+                <KeyRound className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-primary">Вход по коду центра</span>
+              </div>
+              
+              <p className="text-muted-foreground mb-4 text-sm">
+                Для работы с детьми и ведения терапии
               </p>
               <ul className="text-sm text-left space-y-2 text-muted-foreground">
+                <li>✓ Безопасная игровая среда</li>
                 <li>✓ Создание профилей детей</li>
-                <li>✓ Отслеживание прогресса и состояния</li>
-                <li>✓ Анализ рисунков и диагностика</li>
+                <li>✓ Отслеживание прогресса</li>
+                <li>✓ Анализ рисунков</li>
                 <li>✓ Арт-терапевтические сессии</li>
                 <li>✓ Отчёты и аналитика</li>
               </ul>
@@ -55,15 +63,21 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
                 <Users className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold mb-2">Ребёнок</h2>
-              <p className="text-muted-foreground mb-4">
-                У меня есть код от специалиста
+              
+              {/* Код доступа - выделенный блок */}
+              <div className="flex items-center justify-center gap-2 mb-4 p-3 bg-primary/10 rounded-lg">
+                <KeyRound className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-primary">У меня есть код от специалиста</span>
+              </div>
+              
+              <p className="text-muted-foreground mb-4 text-sm">
+                Код выдаёт специалист для каждого профиля
               </p>
               <ul className="text-sm text-left space-y-2 text-muted-foreground">
                 <li>✓ Арт-терапия и творческие задания</li>
-                <li>✓ Увлекательные челленджи</li>
+                <li>✓ Челленджи</li>
                 <li>✓ Совместное рисование с друзьями</li>
                 <li>✓ Награды и достижения</li>
-                <li>✓ Безопасная игровая среда</li>
               </ul>
             </div>
           </Card>
