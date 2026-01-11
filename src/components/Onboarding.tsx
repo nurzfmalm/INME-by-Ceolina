@@ -39,14 +39,14 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save to backend
+      // Save to backend first
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
 
         if (user) {
-          // Use upsert so a missing profile row won't cause onboarding to repeat
+          // Use upsert to ensure profile is created or updated
           const { error } = await supabase
             .from("profiles")
             .upsert(
@@ -62,18 +62,26 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
 
           if (error) {
             console.error("Error saving profile:", error);
-            toast.error("Ошибка сохранения данных");
+            toast.error("Ошибка сохранения данных в базу");
+            // Still store in localStorage as backup
+            localStorage.setItem('starUserData', JSON.stringify(formData));
           } else {
-            toast.success("Данные сохранены!");
+            toast.success("Данные успешно сохранены!");
+            // Also store in localStorage as backup
+            localStorage.setItem('starUserData', JSON.stringify(formData));
           }
+        } else {
+          // No user - just save to localStorage
+          localStorage.setItem('starUserData', JSON.stringify(formData));
         }
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Error saving profile:", error);
+        toast.error("Ошибка сохранения");
+        // Store in localStorage as fallback
+        localStorage.setItem('starUserData', JSON.stringify(formData));
       }
 
-
-      // Also store in localStorage as backup
-      localStorage.setItem('starUserData', JSON.stringify(formData));
+      // Complete onboarding
       onComplete(formData);
     }
   };
