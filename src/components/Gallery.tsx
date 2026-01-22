@@ -181,22 +181,67 @@ export const Gallery = ({ onBack, childName, childId }: GalleryProps) => {
     }
 
     setAnalyzingId(artwork.id);
-    
+
     try {
+      console.log("Starting analysis for artwork:", artwork.id);
+      console.log("Image URL:", imageUrl);
+
+      // Prepare observation data with defaults
+      const observation = {
+        child_id: childId || 'unknown',
+        child_age: 7, // TODO: Get from actual child data
+        session_date: artwork.created_at || new Date().toISOString(),
+        task_type: 'free_drawing',
+        task_description: 'Свободное рисование',
+        emotional_states: ['neutral'],
+        behaviors: ['focused'],
+        materials_used: ['digital'],
+        colors_count: 5,
+        drawing_duration_seconds: artwork.metadata?.session_duration || 300,
+        pause_frequency: 'moderate',
+        stroke_count: 100,
+        average_pressure: 5,
+        eraser_usage: 0,
+      };
+
+      // Convert image to data URL if needed
+      let imageData = imageUrl;
+      if (!imageUrl.startsWith('data:')) {
+        // Fetch and convert to base64
+        console.log("Fetching image to convert to base64...");
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        imageData = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      console.log("Invoking analyze-drawing-deep function...");
       const { data, error } = await supabase.functions.invoke('analyze-drawing-deep', {
-        body: { 
-          imageUrl,
-          childAge: 7, // Default age if not available
-          previousAnalyses: []
+        body: {
+          imageData,
+          observation,
+          previousDrawings: []
         }
       });
 
-      if (error) throw error;
+      console.log("Analysis response:", data);
+
+      if (error) {
+        console.error("Analysis error:", error);
+        throw error;
+      }
+
+      if (!data || !data.report) {
+        throw new Error("Нет данных анализа в ответе");
+      }
 
       // Update artwork with analysis in database
       const updatedMetadata = {
         ...artwork.metadata,
-        deep_analysis: data.analysis
+        deep_analysis: data.report
       };
 
       const { error: updateError } = await supabase

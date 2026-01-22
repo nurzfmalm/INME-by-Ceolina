@@ -29,7 +29,7 @@ const SHAPES: Shape[] = [
     drawTemplate: (ctx, w, h) => {
       const centerX = w / 2;
       const centerY = h / 2;
-      const radius = Math.min(w, h) * 0.3;
+      const radius = Math.min(w, h) * 0.45; // Увеличено с 0.3 до 0.45
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.stroke();
@@ -41,7 +41,7 @@ const SHAPES: Shape[] = [
     nameRu: "Квадрат",
     difficulty: 1,
     drawTemplate: (ctx, w, h) => {
-      const size = Math.min(w, h) * 0.5;
+      const size = Math.min(w, h) * 0.65; // Увеличено с 0.5 до 0.65
       const x = (w - size) / 2;
       const y = (h - size) / 2;
       ctx.strokeRect(x, y, size, size);
@@ -53,7 +53,7 @@ const SHAPES: Shape[] = [
     nameRu: "Треугольник",
     difficulty: 2,
     drawTemplate: (ctx, w, h) => {
-      const size = Math.min(w, h) * 0.5;
+      const size = Math.min(w, h) * 0.65; // Увеличено с 0.5 до 0.65
       const centerX = w / 2;
       const topY = (h - size) / 2;
       ctx.beginPath();
@@ -72,7 +72,7 @@ const SHAPES: Shape[] = [
     drawTemplate: (ctx, w, h) => {
       const centerX = w / 2;
       const centerY = h / 2;
-      const outerRadius = Math.min(w, h) * 0.3;
+      const outerRadius = Math.min(w, h) * 0.45; // Увеличено с 0.3 до 0.45
       const innerRadius = outerRadius * 0.4;
       const spikes = 5;
       
@@ -97,7 +97,7 @@ const SHAPES: Shape[] = [
     drawTemplate: (ctx, w, h) => {
       const centerX = w / 2;
       const topY = h * 0.35;
-      const size = Math.min(w, h) * 0.3;
+      const size = Math.min(w, h) * 0.45; // Увеличено с 0.3 до 0.45
       
       ctx.beginPath();
       ctx.moveTo(centerX, topY + size * 0.3);

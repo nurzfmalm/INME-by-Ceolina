@@ -36,7 +36,7 @@ const SCENARIOS: ShapeScenario[] = [
     icon: "☀️",
     getPoints: (w, h) => {
       const cx = w / 2, cy = h / 2;
-      const radius = Math.min(w, h) * 0.12;
+      const radius = Math.min(w, h) * 0.20; // Увеличено с 0.12 до 0.20
       const points: Point[] = [];
       for (let i = 0; i <= 40; i++) {
         const angle = (i / 40) * Math.PI * 2;
@@ -59,7 +59,7 @@ const SCENARIOS: ShapeScenario[] = [
     icon: "🏠",
     getPoints: (w, h) => {
       const cx = w / 2, cy = h / 2;
-      const size = Math.min(w, h) * 0.25;
+      const size = Math.min(w, h) * 0.35; // Увеличено с 0.25 до 0.35
       return [
         { x: cx - size/2, y: cy - size/4 },
         { x: cx + size/2, y: cy - size/4 },
@@ -77,7 +77,7 @@ const SCENARIOS: ShapeScenario[] = [
     icon: "⭐",
     getPoints: (w, h) => {
       const cx = w / 2, cy = h / 2;
-      const outerR = Math.min(w, h) * 0.18;
+      const outerR = Math.min(w, h) * 0.28; // Увеличено с 0.18 до 0.28
       const innerR = outerR * 0.45;
       const points: Point[] = [];
       for (let i = 0; i < 10; i++) {
@@ -95,7 +95,7 @@ const SCENARIOS: ShapeScenario[] = [
     icon: "❤️",
     getPoints: (w, h) => {
       const cx = w / 2, cy = h / 2;
-      const size = Math.min(w, h) * 0.15;
+      const size = Math.min(w, h) * 0.25; // Увеличено с 0.15 до 0.25
       const points: Point[] = [];
       for (let t = 0; t <= 1; t += 0.04) {
         const angle = Math.PI + t * Math.PI;
