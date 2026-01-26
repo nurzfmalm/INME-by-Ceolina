@@ -143,24 +143,27 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
         </button>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm" style={{ width: '30.5vw', minWidth: '400px', height: '63.4vh', minHeight: '500px' }}>
+        <div 
+          className="bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-16" 
+          style={{ width: '30.5vw', minWidth: '400px', height: '63.4vh', minHeight: '500px' }}
+        >
           {/* Title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2 text-center italic">
             Код центра
           </h1>
-          <p className="text-gray-400 text-sm mb-6 text-center">
+          <p className="text-gray-400 text-base mb-10 text-center">
             Введите код, полученный от центра
           </p>
 
           {/* Code input */}
-          <div className="border border-gray-200 rounded-lg mb-6">
+          <div className="w-full max-w-md mb-6">
             <input
               type="text"
               value={centerCode}
               onChange={(e) => setCenterCode(e.target.value.toUpperCase())}
               placeholder=""
               maxLength={10}
-              className="w-full text-center text-lg tracking-widest py-3 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 bg-transparent"
+              className="w-full text-center text-lg tracking-widest py-4 px-6 rounded-full bg-[#E8F4FC] border-0 focus:outline-none focus:ring-2 focus:ring-[#7CB9E8]/30 placeholder:text-gray-300"
             />
           </div>
 
@@ -168,7 +171,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
           <button
             onClick={handleCheckCode}
             disabled={loading || !centerCode.trim()}
-            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full max-w-md py-4 rounded-full bg-[#7CB9E8] text-white text-lg font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
