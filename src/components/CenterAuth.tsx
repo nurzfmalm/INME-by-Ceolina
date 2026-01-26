@@ -143,7 +143,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
         </button>
 
         {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
+        <div className="bg-white rounded-2xl p-8 shadow-sm" style={{ width: '878px', height: '1046px' }}>
           {/* Title */}
           <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Код центра
