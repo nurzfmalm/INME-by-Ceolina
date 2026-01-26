@@ -1,42 +1,15 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Palette,
-  Brain,
-  Image,
-  BarChart3,
-  Settings,
-  Heart,
-  Target,
-  ShoppingBag,
-  Users,
-  Camera,
-  LogOut,
-  Sparkles,
-  Trophy,
-  Flame,
-  Star,
-  Menu,
-  X,
-  PenTool,
-  FlipHorizontal2,
-  SplitSquareHorizontal
-} from "lucide-react";
+import { Palette, Monitor, Flame, Menu, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
 import type { UserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { responsiveText, responsiveGrid, mobileSpacing, touchSizes } from "@/lib/responsive";
+
+// Import card images
+import cardDrawing from "@/assets/card-drawing.png";
+import cardAnalytics from "@/assets/card-analytics.png";
+import cardProfiles from "@/assets/card-profiles.png";
 
 interface DashboardProps {
   childData: OnboardingData;
@@ -47,8 +20,6 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, onChangeChild }: DashboardProps) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [tokenCount, setTokenCount] = useState(0);
   const [stats, setStats] = useState({
     artworks: 0,
     tasksCompleted: 0,
@@ -74,7 +45,6 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
     const lastActivity = new Date(uniqueDays[0]);
     lastActivity.setHours(0, 0, 0, 0);
     
-    // If last activity is not today or yesterday, streak is 0
     if (lastActivity < yesterday) return 0;
     
     let streak = 0;
@@ -100,28 +70,17 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get artworks count
       const { count: artworksCount } = await supabase
         .from('artworks')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
-      // Get completed tasks count
       const { count: tasksCount } = await supabase
         .from('user_tasks')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('completed', true);
 
-      // Get total emotion tokens
-      const { data: tokens } = await supabase
-        .from('emotion_tokens')
-        .select('amount')
-        .eq('user_id', user.id);
-
-      const totalTokens = tokens?.reduce((sum, t) => sum + t.amount, 0) || 0;
-
-      // Calculate streak from activity dates
       const activityDates: string[] = [];
       
       const { data: artworks } = await supabase
@@ -146,7 +105,6 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
       
       const streak = calculateStreak(activityDates);
 
-      // Calculate weekly progress (activities this week vs target of 7)
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       weekStart.setHours(0, 0, 0, 0);
@@ -161,7 +119,6 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
         tasksCompleted: tasksCount || 0,
         streak,
       });
-      setTokenCount(totalTokens);
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -171,297 +128,165 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Ошибка при выходе");
-      console.error("Logout error:", error);
     } else {
       toast.success("Вы вышли из аккаунта");
       window.location.reload();
     }
   };
 
-  // Kid-friendly colorful menu items with solid background colors
-  const allMenuItems = [
-    {
-      id: "art-therapy",
-      title: "Рисование",
-      icon: Palette,
-      bgColor: "bg-purple-400",
-      hoverColor: "hover:bg-purple-500",
-      description: "Рисуй и выражай эмоции",
-    },
-    {
-      id: "learning-path",
-      title: "Программа",
-      icon: Brain,
-      bgColor: "bg-blue-400",
-      hoverColor: "hover:bg-blue-500",
-      description: "Персональный план",
-    },
-    {
-      id: "tracing",
-      title: "Трафареты",
-      icon: PenTool,
-      bgColor: "bg-cyan-400",
-      hoverColor: "hover:bg-cyan-500",
-      description: "Учись рисовать фигуры",
-    },
-    {
-      id: "dual-drawing",
-      title: "Вместе",
-      icon: Users,
-      bgColor: "bg-orange-400",
-      hoverColor: "hover:bg-orange-500",
-      description: "Рисуй с друзьями",
-    },
-    {
-      id: "symmetry-drawing",
-      title: "Симметрия",
-      icon: FlipHorizontal2,
-      bgColor: "bg-indigo-400",
-      hoverColor: "hover:bg-indigo-500",
-      description: "Зеркальное рисование",
-    },
-    {
-      id: "half-tracing",
-      title: "Половинки",
-      icon: SplitSquareHorizontal,
-      bgColor: "bg-teal-400",
-      hoverColor: "hover:bg-teal-500",
-      description: "Дорисуй вторую часть",
-    },
-    {
-      id: "gallery",
-      title: "Галерея",
-      icon: Image,
-      bgColor: "bg-green-400",
-      hoverColor: "hover:bg-green-500",
-      description: "Твои творения",
-    },
-    {
-      id: "analytics",
-      title: "Прогресс",
-      icon: BarChart3,
-      bgColor: "bg-violet-400",
-      hoverColor: "hover:bg-violet-500",
-      description: "Отслеживай успехи",
-    },
-    {
-      id: "photo-analysis",
-      title: "Фото AI",
-      icon: Camera,
-      bgColor: "bg-amber-400",
-      hoverColor: "hover:bg-amber-500",
-      description: "Анализ с AI",
-    },
-    {
-      id: "tasks",
-      title: "Задания",
-      icon: Target,
-      bgColor: "bg-rose-400",
-      hoverColor: "hover:bg-rose-500",
-      description: "Получай награды",
-    },
-    {
-      id: "rewards",
-      title: "Награды",
-      icon: ShoppingBag,
-      bgColor: "bg-pink-400",
-      hoverColor: "hover:bg-pink-500",
-      description: "Разблокируй новое",
-    },
-    {
-      id: "parent-dashboard",
-      title: "Аналитика",
-      icon: Heart,
-      bgColor: "bg-red-400",
-      hoverColor: "hover:bg-red-500",
-      description: "Детальная аналитика",
-    },
-    {
-      id: "children",
-      title: "Профили",
-      icon: Users,
-      bgColor: "bg-sky-400",
-      hoverColor: "hover:bg-sky-500",
-      description: "Управление профилями",
-    },
-  ];
-
-  const menuItems = userRole === "child"
-    ? allMenuItems.filter(item => !["analytics", "parent-dashboard", "learning-path", "photo-analysis", "children"].includes(item.id))
-    : userRole === "parent"
-    ? allMenuItems.filter(item => !["dual-drawing"].includes(item.id))
-    : allMenuItems;
-
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Friendly Header */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
-        <div className={`${mobileSpacing.screenPadding} py-4`}>
-          <div className="flex items-center justify-between">
-            {/* Welcome & Avatar */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-white text-lg">👋</span>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Привет!</p>
-                {userRole === "parent" ? (
-                  <button 
-                    onClick={onChangeChild}
-                    className="font-bold text-lg text-foreground flex items-center gap-1"
-                  >
-                    {childData.childName || "Ребёнок"}
-                    <Users size={14} className="text-primary" />
-                  </button>
-                ) : (
-                  <p className="font-bold text-lg text-foreground">
-                    {childData.childName || "Друг"}
-                  </p>
-                )}
-              </div>
+    <div className="min-h-screen bg-[#E8F4FC]">
+      {/* Header */}
+      <header className="px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Avatar and Name */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-[#4A90D9] rounded-full flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white">
+                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="currentColor"/>
+              </svg>
             </div>
-
-            {/* Tokens & Settings */}
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white px-4 py-2 rounded-full flex items-center gap-1.5 shadow-md">
-                <Star className="w-4 h-4" fill="currentColor" />
-                <span className="font-bold">{tokenCount}</span>
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-10 h-10 rounded-full bg-primary/10"
-                onClick={() => onNavigate("settings")}
-              >
-                <Settings size={20} className="text-primary" />
-              </Button>
+            <div>
+              <p className="text-sm text-gray-500">Привет!</p>
+              {userRole === "parent" ? (
+                <button 
+                  onClick={onChangeChild}
+                  className="font-semibold text-lg text-gray-800 flex items-center gap-1"
+                >
+                  {childData.childName || "Ребёнок"} <span className="text-[#4A90D9]">🎨</span>
+                </button>
+              ) : (
+                <p className="font-semibold text-lg text-gray-800">
+                  {childData.childName || "Друг"} <span className="text-[#4A90D9]">🎨</span>
+                </p>
+              )}
             </div>
           </div>
 
+          {/* Menu Button */}
+          <button 
+            onClick={handleLogout}
+            className="w-10 h-10 flex flex-col items-end justify-center gap-1"
+          >
+            <div className="w-6 h-0.5 bg-[#4A90D9]"></div>
+            <div className="w-4 h-0.5 bg-[#4A90D9]"></div>
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className={`${mobileSpacing.screenPadding} py-6 space-y-6`}>
-        {/* Quick Stats Row */}
+      <main className="px-6 py-4 space-y-6">
+        {/* Stats Row */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
-            <div className="text-center">
-              <div className="w-10 h-10 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-2">
-                <Palette className="w-5 h-5 text-purple-500" />
+          {/* Drawings stat */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Palette className="w-6 h-6 text-green-500" />
               </div>
-              <p className="text-2xl font-bold text-purple-500">{stats.artworks}</p>
-              <p className="text-xs text-muted-foreground">Рисунков</p>
+              <p className="text-gray-700 text-sm">
+                выполнено <span className="font-semibold">{stats.artworks}</span> рисунков
+              </p>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
-            <div className="text-center">
-              <div className="w-10 h-10 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
-                <Trophy className="w-5 h-5 text-green-500" />
+          {/* Tasks stat */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Monitor className="w-6 h-6 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-green-500">{stats.tasksCompleted}</p>
-              <p className="text-xs text-muted-foreground">Заданий</p>
+              <p className="text-gray-700 text-sm">
+                выполнено <span className="font-semibold">{stats.tasksCompleted}</span> задач
+              </p>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-4 border-0 bg-white dark:bg-slate-800 shadow-lg rounded-2xl">
-            <div className="text-center">
-              <div className="w-10 h-10 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-2">
-                <Flame className="w-5 h-5 text-orange-500" />
+          {/* Streak stat */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-500" />
               </div>
-              <p className="text-2xl font-bold text-orange-500">{stats.streak}</p>
-              <p className="text-xs text-muted-foreground">Дней подряд</p>
+              <p className="text-gray-700 text-sm">
+                <span className="font-semibold">{stats.streak}</span> дней серии
+              </p>
             </div>
-          </Card>
+          </div>
         </div>
 
-        {/* Weekly Progress Card */}
-        <Card className="p-5 border-0 bg-gradient-to-r from-primary to-blue-500 text-white shadow-xl rounded-3xl">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-lg">Недельный прогресс</h3>
+        {/* Weekly Progress */}
+        <div className="bg-[#4A90D9] rounded-2xl p-5 text-white">
+          <h3 className="font-semibold text-lg mb-3">Недельный прогресс</h3>
+          <div className="relative h-2 bg-white/30 rounded-full overflow-hidden mb-2">
+            <div 
+              className="absolute left-0 top-0 h-full bg-white rounded-full transition-all duration-500"
+              style={{ width: `${weeklyProgress}%` }}
+            />
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-white/90 text-sm italic">Продолжай в том же духе!</p>
             <span className="text-white/80 text-sm">{weeklyProgress}%</span>
           </div>
-          <Progress value={weeklyProgress} className="h-3 bg-white/30 [&>div]:bg-amber-400" />
-          <p className="mt-3 text-white/90 text-sm">
-            Продолжай в том же духе! 🌟
-          </p>
-        </Card>
-
-        {/* Menu Grid - Colorful Cards like reference */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`${responsiveText.h3} text-slate-700 dark:text-slate-200`}>
-              Занятия
-            </h3>
-            <span className="text-sm text-primary font-medium">Ещё →</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className={`${item.bgColor} ${item.hoverColor} rounded-3xl p-5 text-left transition-all duration-200 active:scale-95 shadow-lg hover:shadow-xl`}
-                >
-                  <div className="w-14 h-14 bg-white/30 rounded-2xl flex items-center justify-center mb-3">
-                    <Icon className="text-white" size={28} />
-                  </div>
-                  <h4 className="font-bold text-white text-base mb-1">
-                    {item.title}
-                  </h4>
-                  <p className="text-white/80 text-xs leading-tight">
-                    {item.description}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
-      </main>
-
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-4 left-4 right-4 z-50">
-        <div className="bg-white dark:bg-slate-800 rounded-full shadow-2xl px-4 py-3 flex items-center justify-around max-w-md mx-auto">
-          <button
-            onClick={() => {}}
-            className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg"
-          >
-            <Sparkles size={22} className="text-white" />
-          </button>
-          
-          <button
-            onClick={() => onNavigate("gallery")}
-            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
-          >
-            <Heart size={22} className="text-muted-foreground" />
-          </button>
-          
+        {/* Feature Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {/* Drawing Card */}
           <button
             onClick={() => onNavigate("art-therapy")}
-            className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-blue-500 flex items-center justify-center shadow-xl -mt-4"
+            className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <Palette size={26} className="text-white" />
+            <div className="h-32 overflow-hidden">
+              <img 
+                src={cardDrawing} 
+                alt="Рисование" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="p-4">
+              <h4 className="font-semibold text-gray-800 mb-1">Рисование</h4>
+              <p className="text-gray-500 text-sm">Что нарисуем сегодня?</p>
+            </div>
           </button>
-          
+
+          {/* Analytics Card */}
           <button
-            onClick={() => onNavigate("rewards")}
-            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+            onClick={() => onNavigate(userRole === "parent" ? "parent-dashboard" : "analytics")}
+            className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <ShoppingBag size={22} className="text-muted-foreground" />
+            <div className="h-32 overflow-hidden">
+              <img 
+                src={cardAnalytics} 
+                alt="Аналитика" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="p-4">
+              <h4 className="font-semibold text-gray-800 mb-1">Аналитика</h4>
+              <p className="text-gray-500 text-sm">Отследите прогресс ребенка</p>
+            </div>
           </button>
-          
+
+          {/* Profiles Card */}
           <button
-            onClick={handleLogout}
-            className="w-12 h-12 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+            onClick={() => onNavigate("children")}
+            className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <LogOut size={22} className="text-muted-foreground" />
+            <div className="h-32 overflow-hidden">
+              <img 
+                src={cardProfiles} 
+                alt="Профили" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="p-4">
+              <h4 className="font-semibold text-gray-800 mb-1">Профили</h4>
+              <p className="text-gray-500 text-sm">Управление профилями</p>
+            </div>
           </button>
         </div>
-      </nav>
+      </main>
 
       <FloatingAssistant contextType="task" />
     </div>
