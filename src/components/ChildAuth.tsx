@@ -134,34 +134,35 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
   if (step === "code") {
     return (
       <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Back button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 text-gray-500 mb-8 hover:text-gray-700 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Назад</span>
-          </button>
+        {/* Back button */}
+        <button
+          onClick={handleBack}
+          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Назад</span>
+        </button>
 
+        {/* Card */}
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
           {/* Title */}
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
-            Код доступа
+          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
+            Код центра
           </h1>
-          <p className="text-gray-500 mb-8">
-            Введите код, полученный от специалиста
+          <p className="text-gray-400 text-sm mb-6 text-center">
+            Введите код, полученный от центра
           </p>
 
           {/* Code input */}
           <form onSubmit={handleCheckCode}>
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+            <div className="border border-gray-200 rounded-lg mb-6">
               <input
                 type="text"
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                placeholder="ABC123"
+                placeholder=""
                 maxLength={6}
-                className="w-full text-center text-3xl tracking-[0.5em] font-mono py-4 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 placeholder:tracking-[0.3em]"
+                className="w-full text-center text-lg tracking-widest py-3 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 bg-transparent"
               />
             </div>
 
@@ -169,7 +170,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
             <button
               type="submit"
               disabled={loading || accessCode.length < 6}
-              className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -186,44 +187,46 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
   // Password screen
   return (
     <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-gray-500 mb-8 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Назад</span>
-        </button>
+      {/* Back button */}
+      <button
+        onClick={handleBack}
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Назад</span>
+      </button>
 
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+        <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
           Придумай пароль
         </h1>
-        <p className="text-gray-500 mb-8">
+        <p className="text-gray-400 text-sm mb-6 text-center">
           Минимум 6 символов
         </p>
 
         {/* Password form */}
         <form onSubmit={handleRegister}>
-          <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+          <div>
             <label className="block text-sm text-gray-500 mb-1">Пароль</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              minLength={6}
-              className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800 text-lg"
-            />
+            <div className="border border-gray-200 rounded-lg mb-6">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
+              />
+            </div>
           </div>
 
           {/* Submit button */}
           <button
             type="submit"
             disabled={loading || password.length < 6}
-            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
