@@ -192,14 +192,10 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
           </div>
 
           {/* Tasks stat */}
-          <div className="bg-[#DBEAFE] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#BFDBFE] rounded-full flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect x="4" y="4" width="14" height="16" rx="2" stroke="#3B82F6" strokeWidth="2" fill="none"/>
-                  <path d="M8 9H14" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M4 20H16" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Monitor className="w-6 h-6 text-blue-500" />
               </div>
               <p className="text-gray-700 text-sm">
                 выполнено <span className="font-semibold">{stats.tasksCompleted}</span> задач
@@ -208,13 +204,10 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
           </div>
 
           {/* Streak stat */}
-          <div className="bg-[#FEF3C7] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#FDE68A] rounded-full flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 22C12 22 4 17 4 11C4 6 8 3 12 6C16 3 20 6 20 11C20 17 12 22 12 22Z" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                  <path d="M12 18C12 18 8 15 8 12C8 9.5 10 8 12 10C14 8 16 9.5 16 12C16 15 12 18 12 18Z" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                </svg>
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-500" />
               </div>
               <p className="text-gray-700 text-sm">
                 <span className="font-semibold">{stats.streak}</span> дней серии
