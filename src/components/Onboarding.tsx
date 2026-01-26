@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import ceolinaCharacter from "@/assets/ceolina-character.png";
-import { ArrowRight } from "lucide-react";
 
 interface OnboardingProps {
   onComplete: (data: OnboardingData) => void;
@@ -39,17 +33,12 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save to backend first
+      // Save to backend
       console.log("Onboarding complete - saving data:", formData);
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        console.log("Current user:", user?.id);
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-          // First check if profile exists
           const { data: existingProfile } = await supabase
             .from("profiles")
             .select("id")
@@ -61,191 +50,255 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
             child_name: formData.childName,
             child_age: parseInt(formData.childAge) || null,
           };
-          console.log("Saving to database:", dataToSave);
-          console.log("Existing profile:", existingProfile);
 
           let error;
-          let savedData;
-
           if (existingProfile) {
-            // Update existing profile
             const result = await supabase
               .from("profiles")
               .update({
                 child_name: formData.childName,
                 child_age: parseInt(formData.childAge) || null,
               })
-              .eq("id", user.id)
-              .select();
+              .eq("id", user.id);
             error = result.error;
-            savedData = result.data;
           } else {
-            // Insert new profile
             const result = await supabase
               .from("profiles")
-              .insert(dataToSave)
-              .select();
+              .insert(dataToSave);
             error = result.error;
-            savedData = result.data;
           }
 
           if (error) {
-            console.error("Error saving profile to database:", error);
+            console.error("Error saving profile:", error);
             toast.error(`Ошибка сохранения: ${error.message}`);
-            // Still store in localStorage as backup
             localStorage.setItem('starUserData', JSON.stringify(formData));
           } else {
-            console.log("Successfully saved to database:", savedData);
-            toast.success("Данные успешно сохранены!");
-            // Also store in localStorage as backup
+            toast.success("Данные сохранены!");
             localStorage.setItem('starUserData', JSON.stringify(formData));
           }
         } else {
-          console.log("No user - saving only to localStorage");
-          // No user - just save to localStorage
           localStorage.setItem('starUserData', JSON.stringify(formData));
         }
       } catch (error) {
         console.error("Error saving profile:", error);
-        toast.error("Ошибка сохранения");
-        // Store in localStorage as fallback
         localStorage.setItem('starUserData', JSON.stringify(formData));
       }
 
-      // Complete onboarding
       onComplete(formData);
     }
   };
 
-  const steps = [
-    {
-      title: "Привет!",
-      subtitle: "Давайте начнем!",
-      content: (
-        <div className="text-center space-y-6">
-          <img
-            src={ceolinaCharacter}
-            alt="Star"
-            className="w-40 h-40 mx-auto animate-gentle-float"
-          />
-          <p className="text-lg text-foreground/80">
-            Я Star, и я помогу вашему ребенку познавать мир через творчество и игру
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "Расскажите о вас",
-      subtitle: "Как можно обращаться к ребенку?",
-      content: (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="childName">Имя ребенка</Label>
-            <Input
-              id="childName"
-              placeholder="Введите имя"
-              value={formData.childName}
-              onChange={(e) => updateField("childName", e.target.value)}
-              className="h-12 rounded-2xl border-2"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="childAge">Возраст ребенка</Label>
-            <Input
-              id="childAge"
-              placeholder="Введите возраст"
-              value={formData.childAge}
-              onChange={(e) => updateField("childAge", e.target.value)}
-              className="h-12 rounded-2xl border-2"
-            />
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Поделитесь",
-      subtitle: "своей историей",
-      content: (
-        <div className="space-y-4">
-          <Textarea
-            placeholder="С какими трудностями сталкивается ребенок?"
-            value={formData.goals}
-            onChange={(e) => updateField("goals", e.target.value)}
-            className="min-h-32 rounded-2xl border-2 resize-none"
-          />
-          <p className="text-sm text-muted-foreground">
-            Например: "учиться ждать", "выражать эмоции спокойно", "просить о помощи"
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "Отлично!",
-      subtitle: "Давайте начнем!",
-      content: (
-        <div className="text-center space-y-6">
-          <img
-            src={ceolinaCharacter}
-            alt="Star"
-            className="w-40 h-40 mx-auto animate-calm-scale"
-          />
-          <p className="text-lg text-foreground/80">
-            Теперь мы готовы начать наше путешествие в мир творчества и эмоций
-          </p>
-        </div>
-      ),
-    },
-  ];
-
-  const currentStep = steps[step];
   const canProceed =
     step === 0 ||
     step === 3 ||
     (step === 1 && formData.childName && formData.childAge) ||
-    (step === 2 && formData.goals);
+    step === 2;
 
-  return (
-    <div className="min-h-screen bg-gradient-calm flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg p-8 shadow-float border-0">
-        <div className="space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">
-              {currentStep.title}
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              {currentStep.subtitle}
-            </p>
-          </div>
+  // Step 0: Welcome
+  if (step === 0) {
+    return (
+      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          {/* Character */}
+          <img
+            src={ceolinaCharacter}
+            alt="Star"
+            className="w-32 h-32 mx-auto mb-8 animate-gentle-float"
+          />
 
-          <div className="min-h-[280px]">{currentStep.content}</div>
+          {/* Title */}
+          <h1 className="text-3xl font-semibold text-gray-800 mb-2">
+            Привет!
+          </h1>
+          <p className="text-gray-500 mb-12">
+            Давайте познакомимся
+          </p>
 
-          <div className="space-y-4">
-            <Button
-              onClick={nextStep}
-              disabled={!canProceed}
-              size="lg"
-              variant="therapeutic"
-              className="w-full"
-            >
-              {step === 3 ? "Начать" : "Продолжить"}
-              <ArrowRight className="ml-2" />
-            </Button>
+          {/* Continue button */}
+          <button
+            onClick={nextStep}
+            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors"
+          >
+            Продолжить
+          </button>
 
-            <div className="flex justify-center gap-2">
-              {steps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-2 rounded-full transition-all ${
-                    index === step
-                      ? "w-8 bg-primary"
-                      : "w-2 bg-muted"
-                  }`}
-                />
-              ))}
-            </div>
+          {/* Progress dots */}
+          <div className="flex justify-center gap-2 mt-8">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === step ? "w-6 bg-[#4A90D9]" : "bg-gray-300"
+                }`}
+              />
+            ))}
           </div>
         </div>
-      </Card>
+      </div>
+    );
+  }
+
+  // Step 1: Name and age
+  if (step === 1) {
+    return (
+      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Title */}
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+            Расскажите о вас
+          </h1>
+          <p className="text-gray-500 mb-8">
+            Как можно обращаться к ребенку?
+          </p>
+
+          {/* Form */}
+          <div className="space-y-4 mb-8">
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <label className="block text-sm text-gray-500 mb-1">Имя</label>
+              <input
+                type="text"
+                value={formData.childName}
+                onChange={(e) => updateField("childName", e.target.value)}
+                placeholder="Введите имя"
+                className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800 text-lg"
+              />
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <label className="block text-sm text-gray-500 mb-1">Возраст</label>
+              <input
+                type="number"
+                value={formData.childAge}
+                onChange={(e) => updateField("childAge", e.target.value)}
+                placeholder="Введите возраст"
+                min={1}
+                max={18}
+                className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800 text-lg"
+              />
+            </div>
+          </div>
+
+          {/* Continue button */}
+          <button
+            onClick={nextStep}
+            disabled={!canProceed}
+            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Продолжить
+          </button>
+
+          {/* Progress dots */}
+          <div className="flex justify-center gap-2 mt-8">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === step ? "w-6 bg-[#4A90D9]" : "bg-gray-300"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Additional info (optional)
+  if (step === 2) {
+    return (
+      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Title */}
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+            Подробнее
+          </h1>
+          <p className="text-gray-500 mb-8">
+            Расскажите о ваших целях (необязательно)
+          </p>
+
+          {/* Form */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-8">
+            <label className="block text-sm text-gray-500 mb-1">Особые заметки</label>
+            <textarea
+              value={formData.goals}
+              onChange={(e) => updateField("goals", e.target.value)}
+              placeholder="С какими трудностями сталкивается ребенок?"
+              rows={4}
+              className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800 resize-none"
+            />
+          </div>
+
+          {/* Continue button */}
+          <button
+            onClick={nextStep}
+            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors"
+          >
+            Продолжить
+          </button>
+
+          {/* Skip button */}
+          <button
+            onClick={() => setStep(3)}
+            className="w-full py-3 mt-3 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            Пропустить
+          </button>
+
+          {/* Progress dots */}
+          <div className="flex justify-center gap-2 mt-8">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === step ? "w-6 bg-[#4A90D9]" : "bg-gray-300"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Complete
+  return (
+    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md text-center">
+        {/* Character */}
+        <img
+          src={ceolinaCharacter}
+          alt="Star"
+          className="w-32 h-32 mx-auto mb-8 animate-gentle-float"
+        />
+
+        {/* Title */}
+        <h1 className="text-3xl font-semibold text-gray-800 mb-2">
+          Отлично!
+        </h1>
+        <p className="text-gray-500 mb-12">
+          Теперь мы готовы начать наше путешествие
+        </p>
+
+        {/* Start button */}
+        <button
+          onClick={nextStep}
+          className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors"
+        >
+          Начать
+        </button>
+
+        {/* Progress dots */}
+        <div className="flex justify-center gap-2 mt-8">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full transition-all ${
+                i === step ? "w-6 bg-[#4A90D9]" : "bg-gray-300"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
