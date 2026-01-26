@@ -1,12 +1,10 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Save, Trash2, Eraser, Undo, Home } from "lucide-react";
+import { Save, Trash2, Eraser, Undo, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
-import { ColorPaletteNew, DEFAULT_COLORS } from "./drawing/ColorPaletteNew";
-import { BrushSizeSelector, DEFAULT_BRUSH_SIZES } from "./drawing/BrushSizeSelector";
+import { FigmaToolbar, FIGMA_COLORS } from "./drawing/FigmaToolbar";
 import { DrawingCursor } from "./drawing/DrawingCursor";
-import { ToolButton } from "./drawing/ToolButton";
 
 interface SoloDrawingProps {
   onBack: () => void;
@@ -20,7 +18,7 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentColor, setCurrentColor] = useState(DEFAULT_COLORS[0].hex);
+  const [currentColor, setCurrentColor] = useState(FIGMA_COLORS[0].hex);
   const [lineWidth, setLineWidth] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
   const [sessionStart] = useState(Date.now());
@@ -283,7 +281,7 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F3EE]">
+    <div className="min-h-screen flex flex-col bg-[#E8F4FC]">
       {/* Кастомный курсор */}
       <DrawingCursor
         canvasRef={canvasRef}
@@ -293,13 +291,14 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
         visible={!isDrawing}
       />
 
-      {/* Шапка */}
-      <header className="flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm shadow-sm">
+      {/* Шапка минималистичная */}
+      <header className="flex items-center gap-3 px-4 py-3">
         <button 
           onClick={onBack}
-          className="w-12 h-12 rounded-full bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
         >
-          <Home size={24} className="text-amber-800" />
+          <ArrowLeft size={24} />
+          <span className="font-medium">Домой</span>
         </button>
         
         {taskPrompt && (
@@ -307,110 +306,78 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
             {taskPrompt}
           </p>
         )}
-        
-        <div className="w-12" /> {/* Spacer для центрирования */}
       </header>
 
       {/* Основная область рисования */}
-      <div className="flex-1 flex flex-col md:flex-row gap-3 p-3">
+      <div className="flex-1 flex flex-col p-4 pb-24">
         {/* Холст */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Рамка холста в стиле блокнота */}
-          <div className="flex-1 flex flex-col rounded-2xl overflow-hidden shadow-lg">
-            {/* Спираль блокнота */}
-            <div className="flex justify-center gap-3 py-2 bg-amber-400">
-              {Array.from({ length: 18 }).map((_, i) => (
-                <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#F5F3EE]" />
-              ))}
-            </div>
-
-            {/* Холст */}
-            <div 
-              ref={containerRef} 
-              className="flex-1 bg-white border-4 border-t-0 border-amber-400 rounded-b-2xl overflow-hidden"
-              style={{ minHeight: "50vh" }}
-            >
-              <canvas
-                ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                className="w-full h-full touch-none"
-                style={{ cursor: "none" }}
-              />
-            </div>
-          </div>
+        <div 
+          ref={containerRef} 
+          className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden"
+          style={{ minHeight: "60vh" }}
+        >
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="w-full h-full touch-none"
+            style={{ cursor: "none" }}
+          />
         </div>
 
-        {/* Панель инструментов */}
-        <div className="md:w-56 flex flex-col gap-4 p-3 bg-white/60 backdrop-blur-sm rounded-2xl">
-          {/* Цвета */}
-          <div>
-            <div className="text-sm font-medium text-gray-500 mb-2 px-1">🎨 Цвета</div>
-            <ColorPaletteNew
-              colors={DEFAULT_COLORS}
-              currentColor={currentColor}
-              onColorChange={(color) => {
-                setCurrentColor(color);
-                setIsEraser(false);
-              }}
-            />
-          </div>
-
-          {/* Размер кисти */}
-          <div>
-            <div className="text-sm font-medium text-gray-500 mb-2 px-1">✏️ Размер</div>
-            <BrushSizeSelector
-              sizes={DEFAULT_BRUSH_SIZES}
-              currentSize={lineWidth}
-              onSizeChange={setLineWidth}
-              currentColor={currentColor}
-            />
-          </div>
-
-          {/* Инструменты */}
-          <div className="flex flex-col gap-2">
-            <div className="text-sm font-medium text-gray-500 mb-1 px-1">🛠️ Инструменты</div>
-            
-            <ToolButton
-              icon={<Eraser size={20} />}
-              label={isEraser ? "Ластик ✓" : "Ластик"}
-              onClick={() => setIsEraser(!isEraser)}
-              active={isEraser}
-            />
-            
-            <ToolButton
-              icon={<Undo size={20} />}
-              label="Назад"
-              onClick={undo}
-              disabled={historyStep <= 0}
-            />
-            
-            <ToolButton
-              icon={<Trash2 size={20} />}
-              label="Очистить"
-              onClick={clearCanvas}
-              variant="danger"
-            />
-          </div>
-
-          {/* Сохранить */}
-          <div className="mt-auto pt-3">
-            <ToolButton
-              icon={<Save size={20} />}
-              label={isSaving ? "Сохраняю..." : "Сохранить"}
-              onClick={saveDrawing}
-              disabled={isSaving}
-              variant="success"
-              className="w-full justify-center"
-            />
-          </div>
+        {/* Мини-панель действий сверху справа */}
+        <div className="fixed top-4 right-4 flex gap-2 z-40">
+          <button
+            onClick={undo}
+            disabled={historyStep <= 0}
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-gray-50 transition-colors"
+            title="Отменить"
+          >
+            <Undo size={18} className="text-gray-600" />
+          </button>
+          <button
+            onClick={() => setIsEraser(!isEraser)}
+            className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-colors ${
+              isEraser ? "bg-sky-100" : "bg-white hover:bg-gray-50"
+            }`}
+            title="Ластик"
+          >
+            <Eraser size={18} className={isEraser ? "text-sky-600" : "text-gray-600"} />
+          </button>
+          <button
+            onClick={clearCanvas}
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-red-50 transition-colors"
+            title="Очистить"
+          >
+            <Trash2 size={18} className="text-gray-600" />
+          </button>
+          <button
+            onClick={saveDrawing}
+            disabled={isSaving}
+            className="w-10 h-10 rounded-full bg-green-500 shadow-md flex items-center justify-center hover:bg-green-600 transition-colors disabled:opacity-50"
+            title="Сохранить"
+          >
+            <Save size={18} className="text-white" />
+          </button>
         </div>
       </div>
+
+      {/* Figma-style Toolbar */}
+      <FigmaToolbar
+        currentColor={currentColor}
+        currentSize={lineWidth}
+        onColorChange={(color) => {
+          setCurrentColor(color);
+          setIsEraser(false);
+        }}
+        onSizeChange={setLineWidth}
+        onBack={onBack}
+      />
     </div>
   );
 };
