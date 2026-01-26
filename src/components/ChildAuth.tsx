@@ -144,7 +144,7 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
         </button>
 
         {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
+        <div className="w-full max-w-md bg-white rounded-3xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
           {/* Title */}
           <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Код центра
