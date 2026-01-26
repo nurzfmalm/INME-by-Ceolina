@@ -237,11 +237,11 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             onClick={() => onNavigate("art-therapy")}
             className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <div className="h-32 overflow-hidden">
+            <div className="h-24 overflow-hidden rounded-t-2xl">
               <img 
                 src={cardDrawing} 
                 alt="Рисование" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
             </div>
             <div className="p-4">
@@ -255,11 +255,11 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             onClick={() => onNavigate(userRole === "parent" ? "parent-dashboard" : "analytics")}
             className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <div className="h-32 overflow-hidden">
+            <div className="h-24 overflow-hidden rounded-t-2xl">
               <img 
                 src={cardAnalytics} 
                 alt="Аналитика" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
             </div>
             <div className="p-4">
@@ -273,11 +273,11 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             onClick={() => onNavigate("children")}
             className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
           >
-            <div className="h-32 overflow-hidden">
+            <div className="h-24 overflow-hidden rounded-t-2xl">
               <img 
                 src={cardProfiles} 
                 alt="Профили" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
             </div>
             <div className="p-4">
