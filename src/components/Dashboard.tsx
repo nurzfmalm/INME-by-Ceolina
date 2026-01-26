@@ -216,7 +216,7 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
         </div>
 
         {/* Weekly Progress */}
-        <div className="bg-[#2563EB] rounded-2xl p-5 text-white">
+        <div className="bg-[#5B8DEF] rounded-2xl p-5 text-white">
           <h3 className="font-semibold text-lg mb-3">Недельный прогресс</h3>
           <div className="relative h-2 bg-white/30 rounded-full overflow-hidden mb-2">
             <div 
