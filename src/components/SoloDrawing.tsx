@@ -1,10 +1,28 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Save, Trash2, Eraser, Undo, ArrowLeft } from "lucide-react";
+import { Save, Trash2, Undo, ArrowLeft, Pencil, Eraser } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
-import { FigmaToolbar, FIGMA_COLORS } from "./drawing/FigmaToolbar";
 import { DrawingCursor } from "./drawing/DrawingCursor";
+
+// Colors from Figma design
+const FIGMA_COLORS = [
+  { hex: "#EF4444", name: "красный" },
+  { hex: "#F97316", name: "оранжевый" },
+  { hex: "#EAB308", name: "жёлтый" },
+  { hex: "#22C55E", name: "зелёный" },
+  { hex: "#3B82F6", name: "синий" },
+  { hex: "#8B5CF6", name: "фиолетовый" },
+  { hex: "#EC4899", name: "розовый" },
+  { hex: "#92400E", name: "коричневый" },
+  { hex: "#1F2937", name: "тёмный" },
+];
+
+const BRUSH_SIZES = [
+  { size: 20, label: "Толстый" },
+  { size: 10, label: "Средний" },
+  { size: 4, label: "Тонкий" },
+];
 
 interface SoloDrawingProps {
   onBack: () => void;
@@ -297,24 +315,17 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
           onClick={onBack}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
         >
-          <ArrowLeft size={24} />
-          <span className="font-medium">Домой</span>
+          <ArrowLeft size={20} />
+          <span className="text-sm">Домой</span>
         </button>
-        
-        {taskPrompt && (
-          <p className="flex-1 text-center text-lg font-medium text-gray-700 truncate px-4">
-            {taskPrompt}
-          </p>
-        )}
       </header>
 
-      {/* Основная область рисования */}
-      <div className="flex-1 flex flex-col p-4 pb-24">
+      {/* Основная область: холст + боковая панель */}
+      <div className="flex-1 flex gap-4 p-4">
         {/* Холст */}
         <div 
           ref={containerRef} 
-          className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden"
-          style={{ minHeight: "60vh" }}
+          className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-sky-200"
         >
           <canvas
             ref={canvasRef}
@@ -330,54 +341,120 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
           />
         </div>
 
-        {/* Мини-панель действий сверху справа */}
-        <div className="fixed top-4 right-4 flex gap-2 z-40">
-          <button
-            onClick={undo}
-            disabled={historyStep <= 0}
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-gray-50 transition-colors"
-            title="Отменить"
-          >
-            <Undo size={18} className="text-gray-600" />
-          </button>
-          <button
-            onClick={() => setIsEraser(!isEraser)}
-            className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-colors ${
-              isEraser ? "bg-sky-100" : "bg-white hover:bg-gray-50"
-            }`}
-            title="Ластик"
-          >
-            <Eraser size={18} className={isEraser ? "text-sky-600" : "text-gray-600"} />
-          </button>
-          <button
-            onClick={clearCanvas}
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-red-50 transition-colors"
-            title="Очистить"
-          >
-            <Trash2 size={18} className="text-gray-600" />
-          </button>
-          <button
-            onClick={saveDrawing}
-            disabled={isSaving}
-            className="w-10 h-10 rounded-full bg-green-500 shadow-md flex items-center justify-center hover:bg-green-600 transition-colors disabled:opacity-50"
-            title="Сохранить"
-          >
-            <Save size={18} className="text-white" />
-          </button>
+        {/* Боковая панель инструментов (Figma Level 3) */}
+        <div className="w-44 bg-white rounded-2xl shadow-lg p-4 flex flex-col gap-4 overflow-y-auto">
+          {/* Инструменты */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Инструменты</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => setIsEraser(true)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                  isEraser 
+                    ? "bg-sky-100 text-sky-600" 
+                    : "hover:bg-gray-50 text-gray-600"
+                }`}
+              >
+                <Eraser size={18} />
+                <span className="text-sm">Ластик</span>
+              </button>
+              
+              <button
+                onClick={() => setIsEraser(false)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                  !isEraser 
+                    ? "bg-sky-100 text-sky-600" 
+                    : "hover:bg-gray-50 text-gray-600"
+                }`}
+              >
+                <Pencil size={18} />
+                <span className="text-sm">Карандаш</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Цвета */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Цвета</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {FIGMA_COLORS.map((color) => (
+                <button
+                  key={color.hex}
+                  onClick={() => {
+                    setCurrentColor(color.hex);
+                    setIsEraser(false);
+                  }}
+                  className={`w-9 h-9 rounded-full transition-transform ${
+                    currentColor === color.hex && !isEraser
+                      ? "scale-110 ring-2 ring-offset-2 ring-sky-400" 
+                      : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Толщина */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Толщина</h3>
+            <div className="space-y-2">
+              {BRUSH_SIZES.map((brush) => (
+                <button
+                  key={brush.size}
+                  onClick={() => setLineWidth(brush.size)}
+                  className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                    lineWidth === brush.size
+                      ? "bg-sky-50" 
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  <div
+                    className="rounded-full bg-sky-400"
+                    style={{
+                      width: Math.min(brush.size * 1.2, 24),
+                      height: Math.min(brush.size * 1.2, 24),
+                    }}
+                  />
+                  <span className="text-sm text-gray-700">{brush.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Действия */}
+          <div className="mt-auto space-y-2">
+            <button
+              onClick={undo}
+              disabled={historyStep <= 0}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
+            >
+              <Undo size={18} />
+              <span className="text-sm">Назад</span>
+            </button>
+            
+            <button
+              onClick={clearCanvas}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-red-50 text-gray-600 transition-colors"
+            >
+              <Trash2 size={18} />
+              <span className="text-sm">Очистить</span>
+            </button>
+            
+            <button
+              onClick={saveDrawing}
+              disabled={isSaving}
+              className="flex items-center justify-center gap-2 w-full px-3 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+            >
+              <Save size={18} />
+              <span className="text-sm font-medium">
+                {isSaving ? "..." : "Сохранить"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Figma-style Toolbar */}
-      <FigmaToolbar
-        currentColor={currentColor}
-        currentSize={lineWidth}
-        onColorChange={(color) => {
-          setCurrentColor(color);
-          setIsEraser(false);
-        }}
-        onSizeChange={setLineWidth}
-        onBack={onBack}
-      />
     </div>
   );
 };
