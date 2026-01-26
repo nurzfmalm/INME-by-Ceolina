@@ -19,7 +19,7 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
           {/* Specialist Card */}
           <button
             onClick={() => onSelectRole("center")}
-            className="bg-white rounded-3xl p-10 shadow-md hover:shadow-lg transition-all duration-300 text-center group"
+            className="bg-white rounded-3xl p-10 shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] transition-all duration-300 text-center group"
           >
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-100 flex items-center justify-center">
               <Building2 className="w-10 h-10 text-amber-600" />
@@ -35,7 +35,7 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
           {/* Child Card */}
           <button
             onClick={() => onSelectRole("child")}
-            className="bg-white rounded-3xl p-10 shadow-md hover:shadow-lg transition-all duration-300 text-center group"
+            className="bg-white rounded-3xl p-10 shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] transition-all duration-300 text-center group"
           >
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-sky-100 flex items-center justify-center">
               <Smile className="w-10 h-10 text-sky-600" />
