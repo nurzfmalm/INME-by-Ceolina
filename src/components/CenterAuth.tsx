@@ -133,33 +133,34 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   if (step === "code") {
     return (
       <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Back button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 text-gray-500 mb-8 hover:text-gray-700 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Назад</span>
-          </button>
+        {/* Back button */}
+        <button
+          onClick={handleBack}
+          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Назад</span>
+        </button>
 
+        {/* Card */}
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
           {/* Title */}
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Код центра
           </h1>
-          <p className="text-gray-500 mb-8">
-            Введите код, полученный от вашего центра
+          <p className="text-gray-400 text-sm mb-6 text-center">
+            Введите код, полученный от центра
           </p>
 
           {/* Code input */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+          <div className="border border-gray-200 rounded-lg mb-6">
             <input
               type="text"
               value={centerCode}
               onChange={(e) => setCenterCode(e.target.value.toUpperCase())}
-              placeholder="Введите код"
+              placeholder=""
               maxLength={10}
-              className="w-full text-center text-2xl tracking-widest font-mono py-4 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300"
+              className="w-full text-center text-lg tracking-widest py-3 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 bg-transparent"
             />
           </div>
 
@@ -167,7 +168,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
           <button
             onClick={handleCheckCode}
             disabled={loading || !centerCode.trim()}
-            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -184,55 +185,58 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   if (step === "login") {
     return (
       <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Back button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 text-gray-500 mb-8 hover:text-gray-700 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Назад</span>
-          </button>
+        {/* Back button */}
+        <button
+          onClick={handleBack}
+          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Назад</span>
+        </button>
 
+        {/* Card */}
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
           {/* Title */}
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Вход
           </h1>
-          <p className="text-gray-500 mb-8">
-            Войдите в свой аккаунт
+          <p className="text-gray-400 text-sm mb-6 text-center">
+            Войдите в аккаунт
           </p>
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div>
               <label className="block text-sm text-gray-500 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="your@email.com"
-                className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800"
-              />
+              <div className="border border-gray-200 rounded-lg">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
+                />
+              </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div>
               <label className="block text-sm text-gray-500 mb-1">Пароль</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                minLength={6}
-                className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800"
-              />
+              <div className="border border-gray-200 rounded-lg">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
+                />
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-6"
+              className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-2"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -243,11 +247,11 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
           </form>
 
           {/* Switch to register */}
-          <p className="text-center mt-6 text-gray-500">
+          <p className="text-center mt-6 text-sm text-gray-400">
             Нет аккаунта?{" "}
             <button
               onClick={() => setStep("register")}
-              className="text-[#4A90D9] hover:underline"
+              className="text-[#7CB9E8] hover:underline"
             >
               Зарегистрируйтесь
             </button>
@@ -260,70 +264,73 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Register screen
   return (
     <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-gray-500 mb-8 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Назад</span>
-        </button>
+      {/* Back button */}
+      <button
+        onClick={handleBack}
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Назад</span>
+      </button>
 
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+        <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
           Регистрация
         </h1>
-        <p className="text-gray-500 mb-8">
-          Создайте аккаунт специалиста
+        <p className="text-gray-400 text-sm mb-6 text-center">
+          Создайте аккаунт
         </p>
 
         {/* Form */}
         <form onSubmit={handleRegister} className="space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div>
             <label className="block text-sm text-gray-500 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-              className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800"
-            />
+            <div className="border border-gray-200 rounded-lg">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
+              />
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div>
             <label className="block text-sm text-gray-500 mb-1">Пароль</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              minLength={6}
-              className="w-full py-2 border-0 focus:outline-none focus:ring-0 text-gray-800"
-            />
+            <div className="border border-gray-200 rounded-lg">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 rounded-full bg-[#4A90D9] text-white font-medium hover:bg-[#3A7BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-6"
+            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-2"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              "Зарегистрироваться"
+              "Продолжить"
             )}
           </button>
         </form>
 
         {/* Switch to login */}
-        <p className="text-center mt-6 text-gray-500">
+        <p className="text-center mt-6 text-sm text-gray-400">
           Уже есть аккаунт?{" "}
           <button
             onClick={() => setStep("login")}
-            className="text-[#4A90D9] hover:underline"
+            className="text-[#7CB9E8] hover:underline"
           >
             Войдите
           </button>

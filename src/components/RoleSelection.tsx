@@ -9,10 +9,10 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
     <div className="min-h-screen bg-[#E8F4FC] flex items-center justify-center p-4">
       <div className="max-w-xl w-full text-center">
         {/* Title */}
-        <h1 className="text-3xl font-semibold text-gray-800 mb-2 italic">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-1 italic">
           Добро пожаловать!
         </h1>
-        <p className="text-gray-500 mb-10">Выберите способ входа</p>
+        <p className="text-gray-400 text-sm mb-10">Выберите способ входа</p>
 
         {/* Cards */}
         <div className="grid grid-cols-2 gap-4">
@@ -24,10 +24,10 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
               <Building2 className="w-7 h-7 text-amber-500" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            <h2 className="text-lg font-medium text-gray-800 mb-4">
               Специалист
             </h2>
-            <div className="inline-block px-4 py-2 rounded-full border border-gray-200 text-sm text-gray-500 group-hover:border-amber-300 group-hover:text-amber-600 transition-colors">
+            <div className="inline-block px-5 py-2 rounded-full border border-gray-200 text-sm text-gray-400 group-hover:border-amber-300 group-hover:text-amber-600 transition-colors">
               Вход по коду центра
             </div>
           </button>
@@ -40,10 +40,10 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-sky-100 flex items-center justify-center">
               <Smile className="w-7 h-7 text-sky-500" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            <h2 className="text-lg font-medium text-gray-800 mb-4">
               Ребёнок
             </h2>
-            <div className="inline-block px-4 py-2 rounded-full border border-sky-200 bg-sky-50 text-sm text-sky-600 group-hover:bg-sky-100 transition-colors">
+            <div className="inline-block px-5 py-2 rounded-full border border-sky-200 bg-sky-50 text-sm text-sky-500 group-hover:bg-sky-100 transition-colors">
               У меня есть код специалиста
             </div>
           </button>
