@@ -21,8 +21,8 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
             onClick={() => onSelectRole("center")}
             className="bg-white rounded-3xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.12)] transition-all duration-300 text-center group"
           >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-100 flex items-center justify-center">
-              <Building2 className="w-10 h-10 text-amber-600" />
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#F5DEB3] flex items-center justify-center">
+              <Building2 className="w-10 h-10 text-[#D4A853]" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-700 mb-6">
               Специалист
@@ -37,8 +37,8 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
             onClick={() => onSelectRole("child")}
             className="bg-white rounded-3xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.12)] transition-all duration-300 text-center group"
           >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-sky-100 flex items-center justify-center">
-              <Smile className="w-10 h-10 text-sky-600" />
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#B5DEF5] flex items-center justify-center">
+              <Smile className="w-10 h-10 text-[#5BA8D4]" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-700 mb-6">
               Ребёнок
