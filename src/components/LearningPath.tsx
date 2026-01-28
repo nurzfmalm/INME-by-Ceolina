@@ -136,6 +136,16 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
   const generateLearningPath = async () => {
     setGenerating(true);
     try {
+      // Refresh session to ensure valid token
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (!refreshData?.session) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          toast.error("Сессия истекла. Пожалуйста, перезайдите в аккаунт.");
+          return;
+        }
+      }
+
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         toast.error("Необходима авторизация");
@@ -168,7 +178,13 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          toast.error("Сессия истекла. Пожалуйста, перезайдите в аккаунт.");
+          return;
+        }
+        throw error;
+      }
 
       if (data?.learningPath) {
         setPath(data.learningPath);

@@ -30,7 +30,10 @@ serve(async (req) => {
   try {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
+      console.log('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -49,9 +52,12 @@ serve(async (req) => {
 
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    console.log('User auth result:', user?.id ? 'authenticated' : 'failed', authError?.message || 'no error');
+    
     if (authError || !user) {
+      console.error('User auth failed:', authError?.message);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
