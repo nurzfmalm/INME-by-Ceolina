@@ -31,6 +31,16 @@ export async function generateLearningPath(
   userId?: string
 ): Promise<{ weeks: LearningPathWeek[] }> {
   try {
+    // Refresh session to ensure valid token
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (!refreshData?.session) {
+      // Fallback to existing session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        throw new Error("Необходима авторизация для генерации программы");
+      }
+    }
+
     // Use edge function with Lovable AI
     const { data, error } = await supabase.functions.invoke('generate-learning-path', {
       body: {
@@ -44,6 +54,9 @@ export async function generateLearningPath(
 
     if (error) {
       console.error("Edge function error:", error);
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw new Error("Сессия истекла. Пожалуйста, перезайдите в аккаунт.");
+      }
       throw new Error(error.message || "Ошибка генерации программы");
     }
 
@@ -61,6 +74,9 @@ export async function generateLearningPath(
 
 export async function analyzDrawing(imageBase64: string, context?: string): Promise<string> {
   try {
+    // Refresh session to ensure valid token
+    await supabase.auth.refreshSession();
+
     // Use CLIP analysis edge function
     const { data, error } = await supabase.functions.invoke('analyze-image-clip', {
       body: {
@@ -71,6 +87,9 @@ export async function analyzDrawing(imageBase64: string, context?: string): Prom
 
     if (error) {
       console.error("CLIP analysis error:", error);
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw new Error("Сессия истекла. Пожалуйста, перезайдите в аккаунт.");
+      }
       throw error;
     }
 
