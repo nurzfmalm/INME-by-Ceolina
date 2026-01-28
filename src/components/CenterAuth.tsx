@@ -132,26 +132,32 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Code input screen
   if (step === "code") {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Назад</span>
+          <span className="hidden sm:inline">Назад</span>
         </button>
 
         {/* Card */}
         <div 
-          className="bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-16" 
-          style={{ width: '30.5vw', minWidth: '400px', height: '63.4vh', minHeight: '500px' }}
+          className="bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-6 sm:px-16 py-8 sm:py-0 w-full max-w-[90vw] sm:max-w-none" 
+          style={{ 
+            width: 'min(90vw, 30.5vw)', 
+            minWidth: 'min(100%, 320px)', 
+            maxWidth: '400px',
+            height: 'auto',
+            minHeight: 'min(80vh, 500px)'
+          }}
         >
           {/* Title */}
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2 text-center italic">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2 text-center italic">
             Код центра
           </h1>
-          <p className="text-gray-400 text-base mb-10 text-center">
+          <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-10 text-center">
             Введите код, полученный от центра
           </p>
 
@@ -163,7 +169,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
               onChange={(e) => setCenterCode(e.target.value.toUpperCase())}
               placeholder=""
               maxLength={10}
-              className="w-full text-center text-lg tracking-widest py-4 px-6 rounded-full bg-[#E8F4FC] border-0 focus:outline-none focus:ring-2 focus:ring-[#7CB9E8]/30 placeholder:text-gray-300"
+              className="w-full text-center text-base sm:text-lg tracking-widest py-3 sm:py-4 px-4 sm:px-6 rounded-full bg-[#E8F4FC] border-0 focus:outline-none focus:ring-2 focus:ring-[#7CB9E8]/30 placeholder:text-gray-300"
             />
           </div>
 
@@ -171,7 +177,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
           <button
             onClick={handleCheckCode}
             disabled={loading || !centerCode.trim()}
-            className="w-full max-w-md py-4 rounded-full bg-[#7CB9E8] text-white text-lg font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full max-w-md py-3 sm:py-4 rounded-full bg-[#7CB9E8] text-white text-base sm:text-lg font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -187,18 +193,18 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Login screen
   if (step === "login") {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Назад</span>
+          <span className="hidden sm:inline">Назад</span>
         </button>
 
         {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
+        <div className="w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
           {/* Title */}
           <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Вход
@@ -266,18 +272,18 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
 
   // Register screen
   return (
-    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
       {/* Back button */}
       <button
         onClick={handleBack}
-        className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
-        <span>Назад</span>
+        <span className="hidden sm:inline">Назад</span>
       </button>
 
       {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
+      <div className="w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
         {/* Title */}
         <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
           Регистрация
