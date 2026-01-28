@@ -87,8 +87,19 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
     setIsLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      // Try to refresh session first for fresh token
+      let accessToken: string | null = null;
+      
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (refreshData?.session?.access_token) {
+        accessToken = refreshData.session.access_token;
+      } else {
+        // Fallback to existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        accessToken = sessionData?.session?.access_token || null;
+      }
+      
+      if (!accessToken) {
         toast.error("Войди в аккаунт, чтобы общаться со Star");
         setIsLoading(false);
         return;
@@ -98,12 +109,17 @@ export const FloatingAssistant = ({ taskPrompt, contextType }: FloatingAssistant
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ messages: newMessages }),
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Сессия истекла. Пожалуйста, перезайдите в аккаунт.");
+          setIsLoading(false);
+          return;
+        }
         if (response.status === 429) {
           toast.error("Слишком много запросов");
           setIsLoading(false);
