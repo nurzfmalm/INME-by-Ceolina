@@ -363,23 +363,35 @@ const Index = () => {
     );
   }
 
-  // Specialist (parent) role - show children manager if no child selected
+  // Specialist (parent) role - show children manager if no child selected or if explicitly requested
   if (role === "parent") {
+    // Show children manager when explicitly navigating to "children" section
     if (currentSection === "children") {
       return (
         <ChildrenManager
           onBack={() => setCurrentSection("dashboard")}
           onSelectChild={handleChildSelect}
           selectedChildId={selectedChildId}
+          onStartDiagnostic={(childId, childName, childAge) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setSelectedChildAge(childAge);
+            setCurrentSection("diagnostic");
+          }}
+          onViewLearningPath={(childId, childName) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setCurrentSection("learning-path");
+          }}
         />
       );
     }
 
-    // If no children exist, show children manager
-    if (currentSection === "children" || (!selectedChildId && !dataLoading)) {
+    // If no children exist, show children manager automatically
+    if (!selectedChildId && !dataLoading) {
       return (
         <ChildrenManager
-          onBack={() => setCurrentSection("dashboard")}
+          onBack={() => {}}
           onSelectChild={handleChildSelect}
           selectedChildId={selectedChildId}
           onStartDiagnostic={(childId, childName, childAge) => {
