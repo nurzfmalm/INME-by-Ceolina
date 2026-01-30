@@ -589,6 +589,28 @@ const Index = () => {
     );
   }
 
+  // Handle children manager for parent role
+  if (currentSection === "children" && role === "parent") {
+    return (
+      <ChildrenManager
+        onBack={() => setCurrentSection("dashboard")}
+        onSelectChild={handleChildSelect}
+        selectedChildId={selectedChildId}
+        onStartDiagnostic={(childId, childName, childAge) => {
+          setSelectedChildId(childId);
+          setSelectedChildName(childName);
+          setSelectedChildAge(childAge);
+          setCurrentSection("diagnostic");
+        }}
+        onViewLearningPath={(childId, childName) => {
+          setSelectedChildId(childId);
+          setSelectedChildName(childName);
+          setCurrentSection("learning-path");
+        }}
+      />
+    );
+  }
+
   return (
     <Dashboard
       childData={childData}
