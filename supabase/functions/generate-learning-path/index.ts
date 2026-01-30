@@ -264,28 +264,74 @@ ${JSON.stringify(assessmentData, null, 2)}
 
     console.log('Parsed path data successfully');
 
-    // Save learning path to database
+    // Save learning path to database - use upsert to update existing paths
     const insertData: Record<string, unknown> = {
       user_id: authenticatedUserId,
       path_data: pathData,
       current_week: 1,
       total_weeks: 6,
       started_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      completion_percentage: 0,
     };
     
     if (childId) {
       insertData.child_id = childId;
     }
     
-    const { data: learningPath, error: pathError } = await supabaseClient
+    // First try to find existing learning path for this user/child
+    let existingPath = null;
+    const queryBuilder = supabaseClient
       .from('learning_paths')
-      .insert(insertData)
-      .select()
-      .single();
+      .select('id')
+      .eq('user_id', authenticatedUserId);
+    
+    if (childId) {
+      const { data } = await queryBuilder.eq('child_id', childId).maybeSingle();
+      existingPath = data;
+    } else {
+      const { data } = await queryBuilder.is('child_id', null).maybeSingle();
+      existingPath = data;
+    }
+    
+    let learningPath;
+    
+    if (existingPath) {
+      // Update existing learning path
+      const { data, error: updateError } = await supabaseClient
+        .from('learning_paths')
+        .update({
+          path_data: pathData,
+          current_week: 1,
+          total_weeks: 6,
+          started_at: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+          completion_percentage: 0,
+        })
+        .eq('id', existingPath.id)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('Error updating learning path:', updateError);
+        throw updateError;
+      }
+      learningPath = data;
+      console.log('Learning path updated:', learningPath.id);
+    } else {
+      // Insert new learning path
+      const { data, error: insertError } = await supabaseClient
+        .from('learning_paths')
+        .insert(insertData)
+        .select()
+        .single();
 
-    if (pathError) {
-      console.error('Error saving learning path:', pathError);
-      throw pathError;
+      if (insertError) {
+        console.error('Error saving learning path:', insertError);
+        throw insertError;
+      }
+      learningPath = data;
+      console.log('Learning path created:', learningPath.id);
     }
     
     console.log('Learning path saved:', learningPath.id);
