@@ -1,16 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Input validation schema
 const requestSchema = z.object({
   assessmentId: z.string().uuid().optional().nullable(),
-  userId: z.string().uuid().optional().nullable(),
   assessmentData: z.record(z.string(), z.number().min(1).max(5)).optional().nullable(),
   childName: z.string()
     .min(1)
@@ -24,7 +23,7 @@ const requestSchema = z.object({
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -32,14 +31,15 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     console.log('Auth header present:', !!authHeader);
     
-    if (!authHeader) {
-      console.log('Missing authorization header');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('Missing or invalid authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Create Supabase client with the user's token
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -50,17 +50,21 @@ serve(async (req) => {
       }
     );
 
-    // Verify user is authenticated
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    console.log('User auth result:', user?.id ? 'authenticated' : 'failed', authError?.message || 'no error');
+    // Verify user using getUser with the token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: authError } = await supabaseClient.auth.getUser(token);
+    console.log('User auth result:', userData?.user?.id ? 'authenticated' : 'failed', authError?.message || 'no error');
     
-    if (authError || !user) {
-      console.error('User auth failed:', authError?.message);
+    if (authError || !userData?.user) {
+      console.error('Token validation failed:', authError?.message);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message || 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const authenticatedUserId = userData.user.id;
+    console.log('Authenticated user:', authenticatedUserId);
 
     // Parse and validate request body
     let rawBody;
@@ -84,9 +88,9 @@ serve(async (req) => {
       );
     }
 
-    const { assessmentId, userId, assessmentData: providedData, childName, childAge, childId } = parseResult.data;
+    const { assessmentId, assessmentData: providedData, childName, childAge, childId } = parseResult.data;
     
-    console.log('Generating learning path for assessment:', assessmentId, 'user:', userId, 'child:', childId);
+    console.log('Generating learning path for assessment:', assessmentId, 'user:', authenticatedUserId, 'child:', childId);
 
     // Fetch assessment data from DB or use provided data
     let assessmentData: Record<string, number> | null | undefined = providedData;
@@ -215,6 +219,20 @@ ${JSON.stringify(assessmentData, null, 2)}
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI gateway error:', aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error(`AI generation failed: ${aiResponse.status}`);
     }
 
@@ -240,14 +258,9 @@ ${JSON.stringify(assessmentData, null, 2)}
 
     console.log('Parsed path data successfully');
 
-    // Save learning path to database (only for authenticated users)
-    let learningPath = null;
-    
-    // Use authenticated user's ID, or the provided userId if it matches
-    const effectiveUserId = user.id;
-    
+    // Save learning path to database
     const insertData: Record<string, unknown> = {
-      user_id: effectiveUserId,
+      user_id: authenticatedUserId,
       path_data: pathData,
       current_week: 1,
       total_weeks: 6,
@@ -258,7 +271,7 @@ ${JSON.stringify(assessmentData, null, 2)}
       insertData.child_id = childId;
     }
     
-    const { data: path, error: pathError } = await supabaseClient
+    const { data: learningPath, error: pathError } = await supabaseClient
       .from('learning_paths')
       .insert(insertData)
       .select()
@@ -269,7 +282,6 @@ ${JSON.stringify(assessmentData, null, 2)}
       throw pathError;
     }
     
-    learningPath = path;
     console.log('Learning path saved:', learningPath.id);
 
     return new Response(
