@@ -7,17 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Input validation schema
+// Input validation schema - flexible to accept various assessment data formats
 const requestSchema = z.object({
-  assessmentId: z.string().uuid().optional().nullable(),
-  assessmentData: z.record(z.string(), z.number().min(1).max(5)).optional().nullable(),
+  assessmentId: z.string().optional().nullable(),
+  assessmentData: z.record(z.string(), z.union([
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    z.array(z.number()),
+    z.boolean(),
+    z.null()
+  ])).optional().nullable(),
   childName: z.string()
     .min(1)
     .max(100)
-    .regex(/^[a-zA-Zа-яА-ЯёЁ\s\-']+$/, "Invalid characters in child name")
     .optional()
     .nullable(),
-  childAge: z.number().int().min(1).max(18).optional().nullable(),
+  childAge: z.union([z.number(), z.string()]).optional().nullable(),
   childId: z.string().uuid().optional().nullable(),
 });
 
@@ -92,8 +98,8 @@ serve(async (req) => {
     
     console.log('Generating learning path for assessment:', assessmentId, 'user:', authenticatedUserId, 'child:', childId);
 
-    // Fetch assessment data from DB or use provided data
-    let assessmentData: Record<string, number> | null | undefined = providedData;
+    // Fetch assessment data from DB or use provided data - accept any format
+    let assessmentData: Record<string, unknown> | null | undefined = providedData;
     
     if (!assessmentData && assessmentId && !assessmentId.startsWith('assessment-')) {
       const { data: assessment, error: assessmentError } = await supabaseClient
@@ -107,7 +113,7 @@ serve(async (req) => {
         throw assessmentError;
       }
       
-      assessmentData = assessment.assessment_data;
+      assessmentData = assessment.assessment_data as Record<string, unknown>;
     }
     
     // Default data if nothing provided
