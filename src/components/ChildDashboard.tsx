@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import cardDrawing from "@/assets/card-drawing.png";
 
 interface ChildDashboardProps {
-  childData: OnboardingData;
+  childData: OnboardingData | null;
   onNavigate: (section: string) => void;
 }
 
 export const ChildDashboard = ({ childData, onNavigate }: ChildDashboardProps) => {
+  // Safe access with fallback
+  const safeChildData = childData || { childName: "Друг", childAge: "", communicationLevel: "", emotionalLevel: "", goals: "" };
   const [stats, setStats] = useState({
     artworks: 0,
     tokens: 0,
@@ -153,7 +155,7 @@ export const ChildDashboard = ({ childData, onNavigate }: ChildDashboardProps) =
             <div>
               <p className="text-gray-500 text-sm">Привет!</p>
               <h1 className="text-2xl font-bold text-gray-800">
-                {childData.childName || "Друг"}
+                {safeChildData.childName || "Друг"}
               </h1>
             </div>
           </div>
