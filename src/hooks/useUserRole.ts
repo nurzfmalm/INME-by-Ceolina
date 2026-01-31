@@ -10,7 +10,18 @@ export function useUserRole() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Initial load
     fetchUserRole();
+
+    // Keep role in sync with auth state.
+    // IMPORTANT: don't call Supabase functions directly in the callback.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      setTimeout(() => {
+        fetchUserRole();
+      }, 0);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchUserRole = async () => {
