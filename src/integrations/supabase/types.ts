@@ -173,6 +173,7 @@ export type Database = {
       }
       children: {
         Row: {
+          access_code: string | null
           age: number | null
           avatar_url: string | null
           created_at: string
@@ -184,6 +185,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_code?: string | null
           age?: number | null
           avatar_url?: string | null
           created_at?: string
@@ -195,6 +197,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_code?: string | null
           age?: number | null
           avatar_url?: string | null
           created_at?: string
@@ -673,6 +676,7 @@ export type Database = {
         Returns: string
       }
       generate_access_code: { Args: never; Returns: string }
+      generate_child_access_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -681,6 +685,14 @@ export type Database = {
         Returns: boolean
       }
       validate_access_code: { Args: { code: string }; Returns: boolean }
+      validate_child_access_code: {
+        Args: { code: string }
+        Returns: {
+          child_id: string
+          child_name: string
+          parent_user_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "parent" | "child"
