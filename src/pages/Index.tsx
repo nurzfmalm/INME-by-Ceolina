@@ -5,6 +5,7 @@ import { generateLearningPath } from "@/lib/gemini";
 import { Onboarding, OnboardingData } from "@/components/Onboarding";
 import { AdaptiveDiagnostic } from "@/components/AdaptiveDiagnostic";
 import { Dashboard } from "@/components/Dashboard";
+import { ChildDashboard } from "@/components/ChildDashboard";
 import { ArtTherapy } from "@/components/ArtTherapy";
 import { Gallery } from "@/components/Gallery";
 import { Analytics } from "@/components/Analytics";
@@ -611,6 +612,17 @@ const Index = () => {
     );
   }
 
+  // Child role - show simplified child dashboard
+  if (role === "child") {
+    return (
+      <ChildDashboard
+        childData={childData}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+
+  // Parent/Specialist role - show full dashboard
   return (
     <Dashboard
       childData={childData}
