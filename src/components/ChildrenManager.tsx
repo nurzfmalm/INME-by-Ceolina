@@ -19,10 +19,19 @@ import {
   BookOpen,
   ClipboardCheck,
   Play,
+  Key,
+  Copy,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+
+interface AccessCode {
+  id: string;
+  access_code: string;
+  child_user_id: string | null;
+  created_at: string;
+}
 
 interface ChildrenManagerProps {
   onBack: () => void;
@@ -79,9 +88,14 @@ export const ChildrenManager = ({
   const [saving, setSaving] = useState(false);
   const [childLearningPaths, setChildLearningPaths] = useState<Record<string, LearningPathInfo>>({});
   const [childAssessments, setChildAssessments] = useState<Record<string, AssessmentInfo>>({});
+  
+  // Access codes state
+  const [accessCodes, setAccessCodes] = useState<AccessCode[]>([]);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   useEffect(() => {
     loadChildren();
+    loadAccessCodes();
   }, []);
 
   const loadChildren = async () => {
@@ -149,6 +163,81 @@ export const ChildrenManager = ({
       toast.error("Ошибка загрузки профилей");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAccessCodes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("parent_child_links")
+        .select("*")
+        .eq("parent_user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAccessCodes(data || []);
+    } catch (error) {
+      console.error("Error loading access codes:", error);
+    }
+  };
+
+  const generateAccessCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Вы не авторизованы");
+        return;
+      }
+
+      // Generate code
+      const { data: codeData, error: codeError } = await supabase
+        .rpc("generate_access_code");
+
+      if (codeError) throw codeError;
+
+      // Insert link
+      const { error: insertError } = await supabase
+        .from("parent_child_links")
+        .insert([{
+          parent_user_id: user.id,
+          access_code: codeData,
+          child_user_id: null,
+        }]);
+
+      if (insertError) throw insertError;
+
+      toast.success("Код создан!");
+      loadAccessCodes();
+    } catch (error: any) {
+      console.error("Error generating code:", error);
+      toast.error(error.message || "Ошибка создания кода");
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success("Код скопирован!");
+  };
+
+  const deleteCode = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("parent_child_links")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Код удалён");
+      loadAccessCodes();
+    } catch (error) {
+      console.error("Error deleting code:", error);
+      toast.error("Ошибка удаления кода");
     }
   };
 
@@ -447,6 +536,85 @@ export const ChildrenManager = ({
             })}
           </div>
         )}
+
+        {/* Access Codes Section */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Key className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Коды доступа для детей</h2>
+            </div>
+            <Button 
+              onClick={generateAccessCode} 
+              disabled={generatingCode}
+              size="sm"
+            >
+              {generatingCode ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
+              Создать код
+            </Button>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mb-4">
+            Создайте код и дайте его ребёнку. Ребёнок вводит код при входе в приложение.
+          </p>
+
+          {accessCodes.length === 0 ? (
+            <Card className="p-6 text-center bg-secondary/30">
+              <Key className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-muted-foreground">Нет созданных кодов</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Нажмите "Создать код" чтобы сгенерировать код для ребёнка
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {accessCodes.map((code) => (
+                <Card key={code.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-mono font-bold tracking-widest text-primary">
+                        {code.access_code}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {code.child_user_id ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700">
+                            ✓ Используется
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            Ожидает
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyCode(code.access_code)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      {!code.child_user_id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteCode(code.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Add Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
