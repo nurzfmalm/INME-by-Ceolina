@@ -20,6 +20,8 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, onChangeChild }: DashboardProps) => {
+  // Safe access to childData with defaults
+  const safeChildData = childData || { childName: "Друг", childAge: "", communicationLevel: "", emotionalLevel: "", goals: "" };
   const [stats, setStats] = useState({
     artworks: 0,
     tasksCompleted: 0,
@@ -154,11 +156,11 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
                   onClick={onChangeChild}
                   className="font-semibold text-lg text-gray-800 flex items-center gap-1"
                 >
-                  {childData.childName || "Ребёнок"} <span className="text-[#4A90D9]">🎨</span>
+                  {safeChildData.childName || "Ребёнок"} <span className="text-[#4A90D9]">🎨</span>
                 </button>
               ) : (
                 <p className="font-semibold text-lg text-gray-800">
-                  {childData.childName || "Друг"} <span className="text-[#4A90D9]">🎨</span>
+                  {safeChildData.childName || "Друг"} <span className="text-[#4A90D9]">🎨</span>
                 </p>
               )}
             </div>
