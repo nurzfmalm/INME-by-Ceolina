@@ -9,187 +9,112 @@ interface ChildAuthProps {
 
 export const ChildAuth = ({ onBack }: ChildAuthProps) => {
   const [accessCode, setAccessCode] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"code" | "register">("code");
 
-  const handleCheckCode = async (e: React.FormEvent) => {
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const { data: isValid, error } = await supabase
-        .rpc("validate_access_code", { code: accessCode.toUpperCase() });
-
-      if (error) throw error;
-
-      if (!isValid) {
-        toast.error("Неверный код доступа или код уже использован");
-        setLoading(false);
-        return;
-      }
-
-      setStep("register");
-      toast.success("Код правильный! Придумай пароль для входа");
-    } catch (error: any) {
-      console.error("Code check error:", error);
-      toast.error("Ошибка проверки кода");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    const code = accessCode.toUpperCase().trim();
 
     try {
+      // 1. Validate the code exists and is unused
       const { data: isValid, error: validateError } = await supabase
-        .rpc("validate_access_code", { code: accessCode.toUpperCase() });
+        .rpc("validate_access_code", { code });
 
       if (validateError) throw validateError;
 
       if (!isValid) {
-        toast.error("Код не найден или уже использован. Попросите новый у родителя.");
+        toast.error("Неверный код или код уже использован");
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: `${accessCode.toLowerCase()}@child.app`,
+      // 2. Try to sign in first (returning user)
+      const email = `${code.toLowerCase()}@child.app`;
+      const password = code; // Code itself is the password
+
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`
-        },
       });
 
-      if (error) throw error;
+      if (signInData?.user) {
+        toast.success("С возвращением! 🎨");
+        return;
+      }
 
-      if (data.user) {
-        const { error: roleError } = await supabase.from("user_roles").insert({
-          user_id: data.user.id,
-          role: "child",
+      // 3. If sign-in failed, register new user
+      if (signInError?.message?.includes("Invalid login credentials")) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
         });
 
-        if (roleError) {
-          console.error("Error creating child role:", roleError);
-          toast.error("Ошибка создания роли");
-          return;
-        }
+        if (signUpError) throw signUpError;
 
-        const { data: parentUserId, error: claimError } = await supabase
-          .rpc("claim_access_code", { 
-            code: accessCode.toUpperCase(), 
-            child_id: data.user.id 
+        if (signUpData.user) {
+          // Create child role
+          const { error: roleError } = await supabase.from("user_roles").insert({
+            user_id: signUpData.user.id,
+            role: "child",
           });
 
-        if (claimError) {
-          console.error("Error claiming code:", claimError);
-          toast.error("Ошибка привязки кода");
-          return;
+          if (roleError) {
+            console.error("Error creating child role:", roleError);
+          }
+
+          // Claim the access code and link to parent
+          const { data: parentUserId, error: claimError } = await supabase
+            .rpc("claim_access_code", {
+              code,
+              child_id: signUpData.user.id,
+            });
+
+          if (claimError) {
+            console.error("Error claiming code:", claimError);
+          }
+
+          // Create profile linked to parent
+          if (parentUserId) {
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .upsert({
+                id: signUpData.user.id,
+                parent_user_id: parentUserId,
+                child_name: "Без имени",
+                child_age: null,
+                interests: [],
+              }, {
+                onConflict: "id",
+              });
+
+            if (profileError) {
+              console.error("Error updating profile:", profileError);
+            }
+          }
+
+          toast.success("Добро пожаловать! 🎨");
         }
-
-        if (!parentUserId) {
-          toast.error("Код уже использован или не найден");
-          return;
-        }
-
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert({ 
-            id: data.user.id,
-            parent_user_id: parentUserId,
-            child_name: 'Без имени',
-            child_age: null,
-            interests: []
-          }, {
-            onConflict: 'id'
-          });
-
-        if (profileError) {
-          console.error("Error updating profile:", profileError);
-          toast.error("Ошибка обновления профиля");
-          return;
-        }
-
-        toast.success("Профиль найден. Подключаемся к вашему родителю...");
+      } else if (signInError) {
+        throw signInError;
       }
     } catch (error: any) {
-      console.error("Registration error:", error);
-      toast.error(error.message || "Ошибка регистрации");
+      console.error("Auth error:", error);
+      toast.error(error.message || "Ошибка входа");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    if (step === "register") {
-      setStep("code");
-    } else {
-      onBack();
-    }
-  };
-
-  // Code input screen
-  if (step === "code") {
-    return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Назад</span>
-        </button>
-
-        {/* Card */}
-        <div className="w-full max-w-md bg-white rounded-3xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
-          {/* Title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
-            Код центра
-          </h1>
-          <p className="text-gray-400 text-sm mb-6 text-center">
-            Введите код, полученный от центра
-          </p>
-
-          {/* Code input */}
-          <form onSubmit={handleCheckCode}>
-            <div className="border border-gray-200 rounded-lg mb-6">
-              <input
-                type="text"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                placeholder=""
-                maxLength={6}
-                className="w-full text-center text-lg tracking-widest py-3 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 bg-transparent"
-              />
-            </div>
-
-            {/* Continue button */}
-            <button
-              type="submit"
-              disabled={loading || accessCode.length < 6}
-              className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                "Продолжить"
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Password screen
   return (
-    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
       {/* Back button */}
       <button
-        onClick={handleBack}
+        onClick={onBack}
         className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -197,44 +122,56 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
       </button>
 
       {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
+      <div className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
+        {/* Icon */}
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#B5DEF5] flex items-center justify-center">
+          <span className="text-4xl">🎨</span>
+        </div>
+
         {/* Title */}
         <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
-          Придумай пароль
+          Привет!
         </h1>
         <p className="text-gray-400 text-sm mb-6 text-center">
-          Минимум 6 символов
+          Введи код, который дал тебе терапевт
         </p>
 
-        {/* Password form */}
-        <form onSubmit={handleRegister}>
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">Пароль</label>
-            <div className="border border-gray-200 rounded-lg mb-6">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
-              />
-            </div>
+        {/* Code input */}
+        <form onSubmit={handleCodeSubmit}>
+          <div className="border-2 border-gray-200 rounded-xl mb-6 focus-within:border-[#7CB9E8] transition-colors">
+            <input
+              type="text"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+              placeholder="КОД"
+              maxLength={6}
+              className="w-full text-center text-2xl tracking-[0.3em] py-4 border-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 bg-transparent font-mono font-bold"
+            />
           </div>
 
           {/* Submit button */}
           <button
             type="submit"
-            disabled={loading || password.length < 6}
-            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            disabled={loading || accessCode.length < 6}
+            className="w-full py-4 rounded-full bg-[#7CB9E8] text-white font-semibold text-lg hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Подключаюсь...</span>
+              </>
             ) : (
-              "Подключиться"
+              <>
+                <span>Начать рисовать!</span>
+                <span>🚀</span>
+              </>
             )}
           </button>
         </form>
+
+        <p className="text-center text-gray-400 text-xs mt-6">
+          Код состоит из 6 букв и цифр
+        </p>
       </div>
     </div>
   );
