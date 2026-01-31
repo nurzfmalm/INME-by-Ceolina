@@ -199,9 +199,11 @@ const Index = () => {
 
   // Load data for authenticated users
   useEffect(() => {
+    console.log("Index useEffect - user:", !!user, "roleLoading:", roleLoading, "role:", role);
     if (user && !roleLoading && role) {
       loadUserData();
     } else if (user && !roleLoading && !role) {
+      console.log("User has no role assigned!");
       setDataLoading(false);
     } else if (!user) {
       setDataLoading(false);
@@ -414,53 +416,47 @@ const Index = () => {
     }
   }
 
-  // Child role restrictions
-  if (role === "child") {
-    if (["parent-dashboard", "settings", "analytics", "learning-path", "photo-analysis", "children"].includes(currentSection)) {
-      toast.error("Доступ запрещён");
-      setCurrentSection("dashboard");
-    }
+  // Debug log
+  console.log("Rendering Index - role:", role, "currentSection:", currentSection, "childData:", childData?.childName);
+
+  // Child role restrictions - redirect to dashboard if on restricted section
+  if (role === "child" && ["parent-dashboard", "settings", "analytics", "learning-path", "photo-analysis", "children"].includes(currentSection)) {
+    return (
+      <ChildDashboard
+        childData={childData || { childName: "Друг", childAge: "", communicationLevel: "", emotionalLevel: "", goals: "" }}
+        onNavigate={handleNavigate}
+      />
+    );
   }
 
-  // For specialists without completed setup
-  if (!onboardingComplete || !childData) {
-    if (role === "parent") {
-      // Specialists need to add children first
-      return (
-        <ChildrenManager
-          onBack={() => {}}
-          onSelectChild={handleChildSelect}
-          selectedChildId={null}
-        />
-      );
-    }
-    // Children should never see onboarding - data comes from their profile
-    // If somehow no data, show child dashboard with default name
-    if (role === "child") {
-      setChildData({
-        childName: "Друг",
-        childAge: "",
-        communicationLevel: "",
-        emotionalLevel: "",
-        goals: "",
-      });
-      setOnboardingComplete(true);
-      setDiagnosticComplete(true);
-    }
+  // For specialists without children
+  if (role === "parent" && (!onboardingComplete || !childData)) {
+    return (
+      <ChildrenManager
+        onBack={() => {}}
+        onSelectChild={handleChildSelect}
+        selectedChildId={null}
+      />
+    );
   }
 
   // Safe access to childData
   const safeChildData = childData || { childName: "Друг", childAge: "", communicationLevel: "", emotionalLevel: "", goals: "" };
 
-  // Child role - show simplified child dashboard for main dashboard
-  // But allow access to child-friendly sections
-  if (role === "child" && currentSection === "dashboard") {
-    return (
-      <ChildDashboard
-        childData={safeChildData}
-        onNavigate={handleNavigate}
-      />
-    );
+  // Child role - show simplified child dashboard for dashboard section
+  if (role === "child") {
+    // Child-friendly sections that children can access
+    const childAllowedSections = ["art-therapy", "tasks", "rewards", "dual-drawing", "tracing", "symmetry-drawing", "half-tracing", "gallery"];
+    
+    if (currentSection === "dashboard" || !childAllowedSections.includes(currentSection)) {
+      return (
+        <ChildDashboard
+          childData={safeChildData}
+          onNavigate={handleNavigate}
+        />
+      );
+    }
+    // Otherwise fall through to allowed sections below
   }
 
   if (currentSection === "art-therapy") {
