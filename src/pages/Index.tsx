@@ -108,91 +108,71 @@ const Index = () => {
           setDiagnosticComplete(false);
         }
       } else if (role === "child") {
-        // Child role - load from profile in database first
-        const { data: profile, error: profileError } = await supabase
+        // Child role - load child data from children table via localStorage childId
+        const storedChildId = localStorage.getItem("currentChildId");
+        
+        if (storedChildId) {
+          // Load child data from children table
+          const { data: childRecord, error: childError } = await supabase
+            .from("children")
+            .select("id, name, age")
+            .eq("id", storedChildId)
+            .maybeSingle();
+
+          if (childRecord) {
+            console.log("Loading child data from children table:", childRecord.name, childRecord.age);
+            setChildData({
+              childName: childRecord.name,
+              childAge: childRecord.age ? String(childRecord.age) : "",
+              communicationLevel: "",
+              emotionalLevel: "",
+              goals: "",
+            });
+            setSelectedChildId(childRecord.id);
+            setOnboardingComplete(true);
+            setDiagnosticComplete(true); // Children don't need diagnostic
+            setDataLoading(false);
+            return;
+          }
+        }
+
+        // Fallback: try to find child by profile's parent link
+        const { data: profile } = await supabase
           .from("profiles")
-          .select("*")
+          .select("child_name, child_age, parent_user_id")
           .eq("id", user!.id)
           .maybeSingle();
 
-        console.log("Profile data from database:", profile);
-        console.log("Profile error:", profileError);
-
-        // Check if profile has basic required information
-        const hasProfileData = !!(profile?.child_name && profile?.child_age);
-        console.log("Has profile data:", hasProfileData);
-
-        if (hasProfileData) {
-          // Profile exists in database - use it
-          console.log("Loading profile from database:", profile.child_name, profile.child_age);
+        if (profile?.child_name) {
           setChildData({
             childName: profile.child_name,
-            childAge: String(profile.child_age),
+            childAge: profile.child_age ? String(profile.child_age) : "",
             communicationLevel: "",
             emotionalLevel: "",
             goals: "",
           });
           setOnboardingComplete(true);
-
-          // Check if diagnostic assessment is completed
-          const { data: assessment } = await supabase
-            .from("adaptive_assessments")
-            .select("id, completed")
-            .eq("user_id", user!.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (assessment && assessment.completed) {
-            setDiagnosticComplete(true);
-          }
+          setDiagnosticComplete(true); // Children don't need diagnostic
         } else {
-          // No profile in database - check localStorage as fallback
+          // Check localStorage
           const cachedRaw = localStorage.getItem("starUserData");
           const cached = cachedRaw ? (JSON.parse(cachedRaw) as OnboardingData) : null;
-          console.log("Cached data from localStorage:", cached);
-
-          if (cached?.childName && cached?.childAge) {
-            // Use cached data and sync to database
-            console.log("Loading from cache and syncing to database:", cached.childName, cached.childAge);
+          
+          if (cached?.childName) {
             setChildData(cached);
             setOnboardingComplete(true);
-
-            // Persist to database
-            const { error: persistError } = await supabase
-              .from("profiles")
-              .upsert(
-                {
-                  id: user!.id,
-                  child_name: cached.childName,
-                  child_age: parseInt(cached.childAge) || null,
-                },
-                { onConflict: "id" }
-              );
-
-            if (persistError) {
-              console.error("Error persisting profile to database:", persistError);
-            } else {
-              console.log("Successfully synced cache to database");
-            }
-
-            // Check if diagnostic assessment is completed
-            const { data: assessment } = await supabase
-              .from("adaptive_assessments")
-              .select("id, completed")
-              .eq("user_id", user!.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (assessment && assessment.completed) {
-              setDiagnosticComplete(true);
-            }
+            setDiagnosticComplete(true);
           } else {
-            // No data anywhere - need to show onboarding
-            console.log("No profile data found anywhere - showing onboarding");
-            setOnboardingComplete(false);
-            setDiagnosticComplete(false);
+            // No data - set defaults
+            setChildData({
+              childName: "Друг",
+              childAge: "",
+              communicationLevel: "",
+              emotionalLevel: "",
+              goals: "",
+            });
+            setOnboardingComplete(true);
+            setDiagnosticComplete(true);
           }
         }
       }
@@ -442,10 +422,10 @@ const Index = () => {
     }
   }
 
-  // For specialists without completed setup or children without onboarding
+  // For specialists without completed setup
   if (!onboardingComplete || !childData) {
     if (role === "parent") {
-      // Specialists don't need onboarding, redirect to children manager
+      // Specialists need to add children first
       return (
         <ChildrenManager
           onBack={() => {}}
@@ -454,16 +434,19 @@ const Index = () => {
         />
       );
     }
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
-
-  if (!diagnosticComplete && role === "child") {
-    return (
-      <AdaptiveDiagnostic
-        onComplete={handleDiagnosticComplete}
-        onBack={() => setOnboardingComplete(false)}
-      />
-    );
+    // Children should never see onboarding - data comes from their profile
+    // If somehow no data, show child dashboard with default name
+    if (role === "child") {
+      setChildData({
+        childName: "Друг",
+        childAge: "",
+        communicationLevel: "",
+        emotionalLevel: "",
+        goals: "",
+      });
+      setOnboardingComplete(true);
+      setDiagnosticComplete(true);
+    }
   }
 
   if (currentSection === "art-therapy") {
