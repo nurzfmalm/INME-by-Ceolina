@@ -18,29 +18,40 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
     const code = accessCode.toUpperCase().trim();
 
     try {
-      // 1. Validate the code exists and is unused
-      const { data: isValid, error: validateError } = await supabase
-        .rpc("validate_access_code", { code });
+      // 1. Validate the code exists in children table
+      const { data: childData, error: validateError } = await supabase
+        .rpc("validate_child_access_code", { code });
 
       if (validateError) throw validateError;
 
-      if (!isValid) {
-        toast.error("Неверный код или код уже использован");
+      if (!childData || childData.length === 0) {
+        toast.error("Неверный код. Проверь и попробуй ещё раз.");
         setLoading(false);
         return;
       }
 
-      // 2. Try to sign in first (returning user)
-      const email = `${code.toLowerCase()}@child.app`;
+      const child = childData[0];
+      const email = `child-${code.toLowerCase()}@app.local`;
       const password = code; // Code itself is the password
 
+      // 2. Try to sign in first (returning user)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInData?.user) {
-        toast.success("С возвращением! 🎨");
+        // Store child info in localStorage for the session
+        localStorage.setItem("starUserData", JSON.stringify({
+          childName: child.child_name,
+          childAge: "",
+          communicationLevel: "",
+          emotionalLevel: "",
+          goals: "",
+        }));
+        localStorage.setItem("currentChildId", child.child_id);
+        
+        toast.success(`С возвращением, ${child.child_name}! 🎨`);
         return;
       }
 
@@ -51,6 +62,10 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              child_name: child.child_name,
+              linked_child_id: child.child_id,
+            },
           },
         });
 
@@ -67,37 +82,34 @@ export const ChildAuth = ({ onBack }: ChildAuthProps) => {
             console.error("Error creating child role:", roleError);
           }
 
-          // Claim the access code and link to parent
-          const { data: parentUserId, error: claimError } = await supabase
-            .rpc("claim_access_code", {
-              code,
-              child_id: signUpData.user.id,
+          // Update profile with child info
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .upsert({
+              id: signUpData.user.id,
+              parent_user_id: child.parent_user_id,
+              child_name: child.child_name,
+              child_age: null,
+              interests: [],
+            }, {
+              onConflict: "id",
             });
 
-          if (claimError) {
-            console.error("Error claiming code:", claimError);
+          if (profileError) {
+            console.error("Error updating profile:", profileError);
           }
 
-          // Create profile linked to parent
-          if (parentUserId) {
-            const { error: profileError } = await supabase
-              .from("profiles")
-              .upsert({
-                id: signUpData.user.id,
-                parent_user_id: parentUserId,
-                child_name: "Без имени",
-                child_age: null,
-                interests: [],
-              }, {
-                onConflict: "id",
-              });
+          // Store child info in localStorage
+          localStorage.setItem("starUserData", JSON.stringify({
+            childName: child.child_name,
+            childAge: "",
+            communicationLevel: "",
+            emotionalLevel: "",
+            goals: "",
+          }));
+          localStorage.setItem("currentChildId", child.child_id);
 
-            if (profileError) {
-              console.error("Error updating profile:", profileError);
-            }
-          }
-
-          toast.success("Добро пожаловать! 🎨");
+          toast.success(`Привет, ${child.child_name}! 🎨`);
         }
       } else if (signInError) {
         throw signInError;
