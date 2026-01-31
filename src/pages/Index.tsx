@@ -449,6 +449,20 @@ const Index = () => {
     }
   }
 
+  // Safe access to childData
+  const safeChildData = childData || { childName: "Друг", childAge: "", communicationLevel: "", emotionalLevel: "", goals: "" };
+
+  // Child role - show simplified child dashboard for main dashboard
+  // But allow access to child-friendly sections
+  if (role === "child" && currentSection === "dashboard") {
+    return (
+      <ChildDashboard
+        childData={safeChildData}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+
   if (currentSection === "art-therapy") {
     return (
       <ArtTherapy
@@ -457,7 +471,7 @@ const Index = () => {
           setCurrentTaskId(null);
           setCurrentTaskPrompt(null);
         }}
-        childName={childData.childName}
+        childName={safeChildData.childName}
         childId={selectedChildId}
         taskId={currentTaskId}
         taskPrompt={currentTaskPrompt}
@@ -469,7 +483,7 @@ const Index = () => {
     return (
       <Gallery
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
         childId={selectedChildId}
       />
     );
@@ -479,7 +493,7 @@ const Index = () => {
     return (
       <Analytics
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -489,7 +503,7 @@ const Index = () => {
       <Tasks
         onBack={() => setCurrentSection("dashboard")}
         onStartTask={handleStartTask}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -498,7 +512,7 @@ const Index = () => {
     return (
       <DualDrawing
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -507,7 +521,7 @@ const Index = () => {
     return (
       <GuidedDrawing
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
         childId={selectedChildId || undefined}
       />
     );
@@ -535,7 +549,7 @@ const Index = () => {
     return (
       <Rewards
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -558,7 +572,7 @@ const Index = () => {
     return (
       <ParentDashboard
         onBack={() => setCurrentSection("dashboard")}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -568,7 +582,7 @@ const Index = () => {
       <PhotoAnalysis
         onBack={() => setCurrentSection("dashboard")}
         userId={user!.id}
-        childName={childData.childName}
+        childName={safeChildData.childName}
       />
     );
   }
@@ -595,20 +609,10 @@ const Index = () => {
     );
   }
 
-  // Child role - show simplified child dashboard
-  if (role === "child") {
-    return (
-      <ChildDashboard
-        childData={childData}
-        onNavigate={handleNavigate}
-      />
-    );
-  }
-
   // Parent/Specialist role - show full dashboard
   return (
     <Dashboard
-      childData={childData}
+      childData={safeChildData}
       onNavigate={handleNavigate}
       userRole={role}
       selectedChildId={selectedChildId}
