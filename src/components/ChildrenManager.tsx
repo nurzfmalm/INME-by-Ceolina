@@ -21,6 +21,7 @@ import {
   Play,
   Key,
   Copy,
+  ChevronRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { formatDistanceToNow } from "date-fns";
@@ -33,6 +34,7 @@ interface ChildrenManagerProps {
   selectedChildId?: string | null;
   onStartDiagnostic?: (childId: string, childName: string, childAge: number | null) => void;
   onViewLearningPath?: (childId: string, childName: string) => void;
+  onViewProfile?: (childId: string, childName: string) => void;
 }
 
 interface LearningPathInfo {
@@ -74,6 +76,7 @@ export const ChildrenManager = ({
   selectedChildId,
   onStartDiagnostic,
   onViewLearningPath,
+  onViewProfile,
 }: ChildrenManagerProps) => {
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
@@ -473,6 +476,22 @@ export const ChildrenManager = ({
                       </Button>
                     )}
                   </div>
+
+                  {/* View Profile Button */}
+                  {onViewProfile && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full mt-3 text-primary hover:bg-primary/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewProfile(child.id, child.name);
+                      }}
+                    >
+                      Подробнее
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  )}
 
                   {child.development_notes && (
                     <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
