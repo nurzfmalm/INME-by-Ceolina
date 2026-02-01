@@ -25,12 +25,15 @@ export const PlanLoadingScreen = ({ onComplete }: PlanLoadingScreenProps) => {
   }, [onComplete]);
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${classroomBackground})` }}
-    >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/30" />
+    <div className="min-h-screen flex items-center justify-center p-4 safe-area-inset relative overflow-hidden">
+      {/* Background image layer */}
+      <div 
+        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${classroomBackground})` }}
+      />
+      
+      {/* White blurred overlay */}
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
       
       {/* Card */}
       <div className="relative z-10 w-full max-w-sm bg-white rounded-3xl p-8 shadow-lg text-center">
