@@ -133,16 +133,20 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Code input screen
   if (step === "code") {
     return (
-      <div 
-        className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
-        style={{ backgroundImage: `url(${classroomBackground})` }}
-      >
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/30" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
+        {/* Background image layer */}
+        <div 
+          className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${classroomBackground})` }}
+        />
+        
+        {/* White blurred overlay */}
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+        
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors z-20"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="hidden sm:inline">Назад</span>
@@ -150,7 +154,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
 
         {/* Card */}
         <div 
-          className="relative z-10 bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-6 sm:px-16 py-8 sm:py-0 w-full max-w-[90vw] sm:max-w-none" 
+          className="relative z-10 bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-6 sm:px-16 py-8 sm:py-0 w-full max-w-[90vw] sm:max-w-none"
           style={{ 
             width: 'min(90vw, 30.5vw)', 
             minWidth: 'min(100%, 320px)', 
@@ -199,17 +203,20 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Login screen
   if (step === "login") {
     return (
-      <div 
-        className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
-        style={{ backgroundImage: `url(${classroomBackground})` }}
-      >
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/30" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
+        {/* Background image layer */}
+        <div 
+          className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${classroomBackground})` }}
+        />
+        
+        {/* White blurred overlay */}
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
         
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors z-20"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="hidden sm:inline">Назад</span>
@@ -284,17 +291,20 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
 
   // Register screen
   return (
-    <div 
-      className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: `url(${classroomBackground})` }}
-    >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/30" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
+      {/* Background image layer */}
+      <div 
+        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${classroomBackground})` }}
+      />
+      
+      {/* White blurred overlay */}
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
       
       {/* Back button */}
       <button
         onClick={handleBack}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors z-20"
       >
         <ArrowLeft className="w-5 h-5" />
         <span className="hidden sm:inline">Назад</span>

@@ -7,12 +7,15 @@ interface RoleSelectionProps {
 
 export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: `url(${classroomBackground})` }}
-    >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/30" />
+    <div className="min-h-screen flex items-center justify-center p-4 safe-area-inset relative overflow-hidden">
+      {/* Background image layer */}
+      <div 
+        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${classroomBackground})` }}
+      />
+      
+      {/* White blurred overlay */}
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
       
       <div className="relative z-10 w-full max-w-4xl text-center px-4 sm:px-0">
         {/* Title */}
