@@ -19,6 +19,7 @@ import { RoleSelection } from "@/components/RoleSelection";
 import { CenterAuth } from "@/components/CenterAuth";
 import { ChildAuth } from "@/components/ChildAuth";
 import { ChildrenManager } from "@/components/ChildrenManager";
+import { ChildProfile } from "@/components/ChildProfile";
 import { PhotoAnalysis } from "@/components/PhotoAnalysis";
 import { GuidedDrawing } from "@/components/GuidedDrawing";
 import SymmetryDrawing from "@/components/SymmetryDrawing";
@@ -383,6 +384,22 @@ const Index = () => {
             setSelectedChildName(childName);
             setCurrentSection("learning-path");
           }}
+          onViewProfile={(childId, childName) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setCurrentSection("child-profile");
+          }}
+        />
+      );
+    }
+
+    // Show child profile
+    if (currentSection === "child-profile" && selectedChildId) {
+      return (
+        <ChildProfile
+          childId={selectedChildId}
+          childName={selectedChildName}
+          onBack={() => setCurrentSection("children")}
         />
       );
     }
@@ -404,6 +421,11 @@ const Index = () => {
             setSelectedChildId(childId);
             setSelectedChildName(childName);
             setCurrentSection("learning-path");
+          }}
+          onViewProfile={(childId, childName) => {
+            setSelectedChildId(childId);
+            setSelectedChildName(childName);
+            setCurrentSection("child-profile");
           }}
         />
       );
