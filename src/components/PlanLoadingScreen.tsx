@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { CircularProgress } from "@/components/ui/CircularProgress";
 import classroomBackground from "@/assets/classroom-background.png";
+import graduationCap from "@/assets/graduation-cap.png";
+import pencil from "@/assets/pencil.png";
 
 interface PlanLoadingScreenProps {
   onComplete: () => void;
@@ -37,6 +39,20 @@ export const PlanLoadingScreen = ({ onComplete }: PlanLoadingScreenProps) => {
       
       {/* Card */}
       <div className="relative z-10 w-full max-w-sm bg-white rounded-3xl p-8 shadow-lg text-center">
+        {/* Decorative graduation cap - left */}
+        <img 
+          src={graduationCap} 
+          alt="" 
+          className="absolute -left-8 -top-6 w-20 h-auto -rotate-12 pointer-events-none"
+        />
+        
+        {/* Decorative pencil - right */}
+        <img 
+          src={pencil} 
+          alt="" 
+          className="absolute -right-6 -top-4 w-16 h-auto rotate-12 pointer-events-none"
+        />
+
         <h1 className="text-xl font-semibold text-gray-800 mb-8">
           Создаем персональный<br />план...
         </h1>
