@@ -10,12 +10,12 @@ export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
     <div className="min-h-screen flex items-center justify-center p-4 safe-area-inset relative overflow-hidden">
       {/* Background image layer */}
       <div 
-        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${classroomBackground})` }}
       />
       
       {/* White blurred overlay */}
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
       
       <div className="relative z-10 w-full max-w-4xl text-center px-4 sm:px-0">
         {/* Title */}

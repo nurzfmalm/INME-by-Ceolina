@@ -136,12 +136,12 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
       <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
         {/* Background image layer */}
         <div 
-          className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+          className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${classroomBackground})` }}
         />
         
         {/* White blurred overlay */}
-        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
         
         {/* Back button */}
         <button
@@ -206,12 +206,12 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
       <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
         {/* Background image layer */}
         <div 
-          className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+          className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${classroomBackground})` }}
         />
         
         {/* White blurred overlay */}
-        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
         
         {/* Back button */}
         <button
@@ -294,12 +294,12 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset relative overflow-hidden">
       {/* Background image layer */}
       <div 
-        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${classroomBackground})` }}
       />
       
       {/* White blurred overlay */}
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
       
       {/* Back button */}
       <button
