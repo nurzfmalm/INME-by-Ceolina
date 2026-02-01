@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import classroomBackground from "@/assets/classroom-background.png";
 
 interface CenterAuthProps {
   onBack: () => void;
@@ -132,11 +133,16 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Code input screen
   if (step === "code") {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
+        style={{ backgroundImage: `url(${classroomBackground})` }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/30" />
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="hidden sm:inline">Назад</span>
@@ -144,7 +150,7 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
 
         {/* Card */}
         <div 
-          className="bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-6 sm:px-16 py-8 sm:py-0 w-full max-w-[90vw] sm:max-w-none" 
+          className="relative z-10 bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center px-6 sm:px-16 py-8 sm:py-0 w-full max-w-[90vw] sm:max-w-none" 
           style={{ 
             width: 'min(90vw, 30.5vw)', 
             minWidth: 'min(100%, 320px)', 
@@ -193,18 +199,24 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
   // Login screen
   if (step === "login") {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
+        style={{ backgroundImage: `url(${classroomBackground})` }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/30" />
+        
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="hidden sm:inline">Назад</span>
         </button>
 
         {/* Card */}
-        <div className="w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="relative z-10 w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
           {/* Title */}
           <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
             Вход
@@ -272,18 +284,24 @@ export const CenterAuth = ({ onBack }: CenterAuthProps) => {
 
   // Register screen
   return (
-    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4 safe-area-inset">
+    <div 
+      className="min-h-screen flex flex-col items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${classroomBackground})` }}
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/30" />
+      
       {/* Back button */}
       <button
         onClick={handleBack}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors z-20"
       >
         <ArrowLeft className="w-5 h-5" />
         <span className="hidden sm:inline">Назад</span>
       </button>
 
       {/* Card */}
-      <div className="w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div className="relative z-10 w-full max-w-[90vw] sm:max-w-sm bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
         {/* Title */}
         <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
           Регистрация

@@ -23,6 +23,8 @@ import { PhotoAnalysis } from "@/components/PhotoAnalysis";
 import { GuidedDrawing } from "@/components/GuidedDrawing";
 import SymmetryDrawing from "@/components/SymmetryDrawing";
 import HalfTracingDrawing from "@/components/HalfTracingDrawing";
+import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
+import { PlanReadyModal } from "@/components/PlanReadyModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
 
@@ -38,6 +40,8 @@ const Index = () => {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [currentTaskPrompt, setCurrentTaskPrompt] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showPlanLoading, setShowPlanLoading] = useState(false);
+  const [showPlanReady, setShowPlanReady] = useState(false);
   
   // Selected child - persist in localStorage
   const [selectedChildId, setSelectedChildId] = useState<string | null>(() => {
@@ -241,10 +245,9 @@ const Index = () => {
 
   const handleDiagnosticComplete = async (assessmentId: string) => {
     console.log("Diagnostic completed:", assessmentId);
+    setShowPlanLoading(true);
 
     try {
-      const loadingToast = toast.loading('🤖 Gemini AI создаёт персональную программу обучения...');
-
       const { data: assessment, error: assessmentError } = await supabase
         .from("adaptive_assessments")
         .select("*")
@@ -253,8 +256,8 @@ const Index = () => {
 
       if (assessmentError) {
         console.error("Error fetching assessment:", assessmentError);
-        toast.dismiss(loadingToast);
         toast.error('Не удалось получить данные диагностики');
+        setShowPlanLoading(false);
         setDiagnosticComplete(true);
         return;
       }
@@ -265,10 +268,7 @@ const Index = () => {
         childData?.childAge ? parseInt(childData.childAge) : 6
       );
 
-      toast.dismiss(loadingToast);
-
       console.log("Learning path generated with Gemini:", learningPath);
-      toast.success('✨ Персональная программа готова!');
 
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
@@ -297,9 +297,20 @@ const Index = () => {
     } catch (error) {
       console.error("Error generating learning path:", error);
       toast.error('Ошибка создания программы. Попробуйте ещё раз.');
+      setShowPlanLoading(false);
     }
 
     setDiagnosticComplete(true);
+  };
+
+  const handlePlanLoadingComplete = () => {
+    setShowPlanLoading(false);
+    setShowPlanReady(true);
+  };
+
+  const handlePlanReadyStart = () => {
+    setShowPlanReady(false);
+    setCurrentSection("art-therapy");
   };
 
   const handleNavigate = (section: string) => {
@@ -312,12 +323,20 @@ const Index = () => {
     setCurrentSection("art-therapy");
   };
 
+  // Show plan loading screen
+  if (showPlanLoading) {
+    return <PlanLoadingScreen onComplete={handlePlanLoadingComplete} />;
+  }
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <>
+        <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </>
     );
   }
 
@@ -600,13 +619,16 @@ const Index = () => {
 
   // Parent/Specialist role - show full dashboard
   return (
-    <Dashboard
-      childData={safeChildData}
-      onNavigate={handleNavigate}
-      userRole={role}
-      selectedChildId={selectedChildId}
-      onChangeChild={() => setCurrentSection("children")}
-    />
+    <>
+      <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
+      <Dashboard
+        childData={safeChildData}
+        onNavigate={handleNavigate}
+        userRole={role}
+        selectedChildId={selectedChildId}
+        onChangeChild={() => setCurrentSection("children")}
+      />
+    </>
   );
 };
 

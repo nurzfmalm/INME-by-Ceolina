@@ -1,4 +1,5 @@
 import { Building2, Smile } from "lucide-react";
+import classroomBackground from "@/assets/classroom-background.png";
 
 interface RoleSelectionProps {
   onSelectRole: (role: "center" | "child") => void;
@@ -6,8 +7,14 @@ interface RoleSelectionProps {
 
 export const RoleSelection = ({ onSelectRole }: RoleSelectionProps) => {
   return (
-    <div className="min-h-screen bg-[#E8F4FC] flex items-center justify-center p-4 safe-area-inset">
-      <div className="w-full max-w-4xl text-center px-4 sm:px-0">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 safe-area-inset bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${classroomBackground})` }}
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/30" />
+      
+      <div className="relative z-10 w-full max-w-4xl text-center px-4 sm:px-0">
         {/* Title */}
         <h1 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-2">
           Добро пожаловать!
