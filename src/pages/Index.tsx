@@ -617,8 +617,8 @@ const Index = () => {
     );
   }
 
-  // Handle children manager for parent role
-  if (currentSection === "children" && role === "parent") {
+  // Handle children manager for parent/specialist role (also works when role is still loading)
+  if (currentSection === "children" && role !== "child") {
     return (
       <ChildrenManager
         onBack={() => setCurrentSection("dashboard")}
@@ -635,6 +635,22 @@ const Index = () => {
           setSelectedChildName(childName);
           setCurrentSection("learning-path");
         }}
+        onViewProfile={(childId, childName) => {
+          setSelectedChildId(childId);
+          setSelectedChildName(childName);
+          setCurrentSection("child-profile");
+        }}
+      />
+    );
+  }
+
+  // Show child profile for parent/specialist role
+  if (currentSection === "child-profile" && role !== "child" && selectedChildId) {
+    return (
+      <ChildProfile
+        childId={selectedChildId}
+        childName={selectedChildName}
+        onBack={() => setCurrentSection("children")}
       />
     );
   }
