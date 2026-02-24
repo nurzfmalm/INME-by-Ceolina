@@ -96,7 +96,20 @@ const Index = () => {
           }
           
           setOnboardingComplete(true);
-          setDiagnosticComplete(true);
+          
+          // Only mark diagnostic complete if user has an existing assessment
+          // Don't override if user is currently going through the diagnostic flow
+          if (!diagnosticComplete) {
+            const { data: existingAssessment } = await supabase
+              .from("adaptive_assessments")
+              .select("id")
+              .eq("user_id", user!.id)
+              .limit(1);
+            
+            if (existingAssessment && existingAssessment.length > 0) {
+              setDiagnosticComplete(true);
+            }
+          }
           
           // Set child data for display
           setChildData({
