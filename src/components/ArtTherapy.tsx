@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Users, Camera } from "lucide-react";
 import { SoloDrawing } from "./SoloDrawing";
 import { DualDrawing } from "./DualDrawing";
 import { TracingDrawing } from "./TracingDrawing";
 import SymmetryDrawing from "./SymmetryDrawing";
 import HalfTracingDrawing from "./HalfTracingDrawing";
+import { PhotoAnalysis } from "./PhotoAnalysis";
+import { supabase } from "@/integrations/supabase/client";
 import cardDuck from "@/assets/card-tracing-duck.png";
 import cardCat from "@/assets/card-tracing-cat.png";
 import cardSymmetry from "@/assets/card-symmetry.png";
@@ -20,16 +22,24 @@ interface ArtTherapyProps {
   taskPrompt?: string | null;
 }
 
-type DrawingMode = "select" | "tracing" | "symmetry" | "half" | "solo" | "dual";
+type DrawingMode = "select" | "tracing" | "symmetry" | "half" | "solo" | "dual" | "photo";
 
 export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: ArtTherapyProps) => {
   const [mode, setMode] = useState<DrawingMode>("select");
+  const [userId, setUserId] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
 
   if (mode === "solo") return <SoloDrawing onBack={() => setMode("select")} childName={childName} childId={childId} taskId={taskId} taskPrompt={taskPrompt} />;
   if (mode === "dual") return <DualDrawing onBack={() => setMode("select")} childName={childName} />;
   if (mode === "tracing") return <TracingDrawing onBack={() => setMode("select")} childName={childName} childId={childId || undefined} />;
   if (mode === "symmetry") return <SymmetryDrawing onBack={() => setMode("select")} childId={childId || undefined} />;
   if (mode === "half") return <HalfTracingDrawing onBack={() => setMode("select")} childId={childId || undefined} />;
+  if (mode === "photo") return <PhotoAnalysis onBack={() => setMode("select")} userId={userId} childName={childName} />;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#E3EBF5" }}>
@@ -131,20 +141,38 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
           </button>
         </div>
 
-        {/* Dual drawing */}
-        <button
-          onClick={() => setMode("dual")}
-          className="w-full rounded-[20px] text-left transition-all active:scale-[0.98] flex items-center gap-4 p-4 bg-white"
-          style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}
-        >
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#C4D4EC" }}>
-            <Users size={28} className="text-white" />
-          </div>
-          <div>
-            <span className="text-[14px] font-medium text-foreground/60 block">Рисовать вместе</span>
-            <span className="text-[13px] text-foreground/35">Совместное рисование с другом или родителем</span>
-          </div>
-        </button>
+        {/* Bottom row: scan + dual */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Сканирование рисунка */}
+          <button
+            onClick={() => setMode("photo")}
+            className="w-full rounded-[20px] text-left transition-all active:scale-[0.98] flex items-center gap-4 p-4 bg-white"
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}
+          >
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#A78BFA" }}>
+              <Camera size={28} className="text-white" />
+            </div>
+            <div>
+              <span className="text-[14px] font-medium text-foreground/60 block">Сканирование рисунка</span>
+              <span className="text-[13px] text-foreground/35">Сфотографируй рисунок и получи AI-анализ</span>
+            </div>
+          </button>
+
+          {/* Dual drawing */}
+          <button
+            onClick={() => setMode("dual")}
+            className="w-full rounded-[20px] text-left transition-all active:scale-[0.98] flex items-center gap-4 p-4 bg-white"
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}
+          >
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#C4D4EC" }}>
+              <Users size={28} className="text-white" />
+            </div>
+            <div>
+              <span className="text-[14px] font-medium text-foreground/60 block">Рисовать вместе</span>
+              <span className="text-[13px] text-foreground/35">Совместное рисование с другом или родителем</span>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );
