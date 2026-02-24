@@ -55,12 +55,12 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
           >
             <div className="relative overflow-hidden" style={{ backgroundColor: "#4ADE80", aspectRatio: "605/352" }}>
               <img src={cardDuck} alt="" style={{
-                position: "absolute", left: "5%", top: "8%", width: "55%",
+                position: "absolute", left: "8%", top: "10%", width: "40%",
                 transform: "rotate(-8deg)",
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
               <img src={cardCat} alt="" style={{
-                position: "absolute", right: "3%", bottom: "5%", width: "50%",
+                position: "absolute", right: "5%", top: "5%", width: "45%",
                 transform: "rotate(5deg)",
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
