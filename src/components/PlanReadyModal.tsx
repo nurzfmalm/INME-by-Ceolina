@@ -20,88 +20,90 @@ export const PlanReadyModal = ({ open, onStart }: PlanReadyModalProps) => {
         WebkitBackdropFilter: "blur(6px)",
       }}
     >
+      {/* Modal container */}
       <div
-        className="relative flex flex-col items-center text-center bg-white"
+        className="relative bg-white"
         style={{
-          width: "clamp(340px, 90%, 680px)",
-          padding: "40px 40px 32px 40px",
-          borderRadius: "24px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          width: "520px",
+          maxWidth: "90%",
+          borderRadius: "20px",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
           overflow: "visible",
         }}
       >
-        {/* Illustrations - absolutely positioned, overflow visible */}
-        <img
-          src={paintPalette}
-          alt=""
-          className="absolute pointer-events-none"
-          style={{ top: "-100px", left: "-40px", width: "120px" }}
-        />
-        <img
-          src={pencil}
-          alt=""
-          className="absolute pointer-events-none"
-          style={{ top: "-30px", left: "-30px", width: "80px", transform: "rotate(-30deg)" }}
-        />
-        <img
-          src={characterFace}
-          alt=""
-          className="absolute pointer-events-none"
-          style={{ top: "-90px", left: "50%", transform: "translateX(-50%)", width: "140px" }}
-        />
-        <img
-          src={graduationCap}
-          alt=""
-          className="absolute pointer-events-none"
-          style={{ top: "-80px", right: "-40px", width: "120px" }}
-        />
+        {/* Hero area for illustrations */}
+        <div className="relative" style={{ height: "120px" }}>
+          <img
+            src={paintPalette}
+            alt=""
+            className="absolute pointer-events-none"
+            style={{ left: "60px", top: "-10px", width: "110px" }}
+          />
+          <img
+            src={pencil}
+            alt=""
+            className="absolute pointer-events-none"
+            style={{ left: "22px", top: "34px", width: "80px", transform: "rotate(-18deg)" }}
+          />
+          <img
+            src={characterFace}
+            alt=""
+            className="absolute pointer-events-none left-1/2"
+            style={{ top: "18px", width: "150px", transform: "translateX(-50%)" }}
+          />
+          <img
+            src={graduationCap}
+            alt=""
+            className="absolute pointer-events-none"
+            style={{ right: "44px", top: "0px", width: "120px" }}
+          />
+        </div>
 
-        {/* Text content */}
-        <p
-          className="text-foreground/70"
-          style={{ fontSize: "22px", fontWeight: 500, marginTop: "70px" }}
-        >
-          Персональный план готов!
-        </p>
-
-        <h2
-          className="text-foreground"
+        {/* Inner white card */}
+        <div
+          className="bg-white flex flex-col items-center text-center"
           style={{
-            fontSize: "48px",
-            fontWeight: 700,
-            lineHeight: 1.1,
-            margin: "16px 0 32px 0",
+            margin: "-22px 18px 18px",
+            borderRadius: "18px",
+            padding: "26px 34px 24px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
           }}
         >
-          Начнем<br />рисовать?
-        </h2>
+          <p className="text-foreground/60" style={{ fontSize: "18px", fontWeight: 500 }}>
+            Персональный план готов!
+          </p>
 
-        <button
-          onClick={onStart}
-          className="transition-all"
-          style={{
-            width: "75%",
-            height: "56px",
-            borderRadius: "28px",
-            background: "#7FA8D8",
-            fontSize: "18px",
-            fontWeight: 500,
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            marginBottom: "8px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#6D99CF";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "#7FA8D8";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
-          Да, начнем!
-        </button>
+          <h2
+            className="text-foreground"
+            style={{
+              fontSize: "54px",
+              fontWeight: 800,
+              lineHeight: 1.1,
+              margin: "12px 0 28px 0",
+              textShadow: "0 1px 2px rgba(0,0,0,0.06)",
+            }}
+          >
+            Начнем<br />рисовать?
+          </h2>
+
+          <button
+            onClick={onStart}
+            className="transition-all hover:brightness-95"
+            style={{
+              width: "68%",
+              height: "44px",
+              borderRadius: "22px",
+              background: "#7FA8D8",
+              fontSize: "16px",
+              fontWeight: 500,
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Да, начнем!
+          </button>
+        </div>
       </div>
     </div>
   );
