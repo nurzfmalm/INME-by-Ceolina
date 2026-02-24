@@ -168,7 +168,7 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
 
           {/* Settings Button */}
           <button 
-            onClick={() => onNavigate("sensory-settings")}
+            onClick={() => onNavigate("settings")}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/50 transition-colors"
           >
             <Settings className="w-6 h-6 text-[#4A90D9]" />
