@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ArrowLeft, Palette, Users } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { SoloDrawing } from "./SoloDrawing";
 import { DualDrawing } from "./DualDrawing";
-import ceolinaCharacter from "@/assets/ceolina-character.png";
+import { TracingDrawing } from "./TracingDrawing";
+import SymmetryDrawing from "./SymmetryDrawing";
+import HalfTracingDrawing from "./HalfTracingDrawing";
+
+import cardTracing from "@/assets/card-tracing.png";
+import cardSymmetry from "@/assets/card-symmetry.png";
+import cardHalves from "@/assets/card-halves.png";
+import cardFreedraw from "@/assets/card-freedraw.png";
+import cardDualDrawing from "@/assets/card-drawing.png";
 
 interface ArtTherapyProps {
   onBack: () => void;
@@ -14,8 +21,18 @@ interface ArtTherapyProps {
   taskPrompt?: string | null;
 }
 
+type DrawingMode = "select" | "tracing" | "symmetry" | "halves" | "solo" | "dual";
+
+const DRAWING_CARDS: { id: DrawingMode; title: string; image: string; bg: string }[] = [
+  { id: "tracing", title: "Трафареты", image: cardTracing, bg: "#A8D5A2" },
+  { id: "symmetry", title: "Симметрия", image: cardSymmetry, bg: "#7EC8D9" },
+  { id: "halves", title: "Половинки", image: cardHalves, bg: "#E8A0B4" },
+  { id: "solo", title: "Свободное рисование", image: cardFreedraw, bg: "#E8C49A" },
+  { id: "dual", title: "Двойное рисование", image: cardDualDrawing, bg: "#B8A9D4" },
+];
+
 export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: ArtTherapyProps) => {
-  const [selectedMode, setSelectedMode] = useState<"select" | "solo" | "dual">("select");
+  const [selectedMode, setSelectedMode] = useState<DrawingMode>("select");
 
   if (selectedMode === "solo") {
     return (
@@ -38,87 +55,74 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
     );
   }
 
+  if (selectedMode === "tracing") {
+    return (
+      <TracingDrawing
+        onBack={() => setSelectedMode("select")}
+        childName={childName}
+        childId={childId || undefined}
+      />
+    );
+  }
+
+  if (selectedMode === "symmetry") {
+    return (
+      <SymmetryDrawing
+        onBack={() => setSelectedMode("select")}
+        childId={childId || undefined}
+      />
+    );
+  }
+
+  if (selectedMode === "halves") {
+    return (
+      <HalfTracingDrawing
+        onBack={() => setSelectedMode("select")}
+        childId={childId || undefined}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card shadow-soft border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft size={24} />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">АРТ - Терапия</h1>
-              <p className="text-sm text-muted-foreground">
-                Выбери режим рисования
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen" style={{ backgroundColor: "#E8EDF4" }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-6 py-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
+          <ArrowLeft size={22} />
+        </Button>
+        <span className="text-lg font-medium text-foreground/80">Домой</span>
+      </div>
+
+      {/* Title */}
+      <div className="px-6 pb-4">
+        <h1 className="text-3xl font-bold text-foreground">Рисование</h1>
+      </div>
+
+      {/* Cards grid */}
+      <div className="px-6 pb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {DRAWING_CARDS.map((card) => (
+            <button
+              key={card.id}
+              onClick={() => setSelectedMode(card.id)}
+              className="rounded-2xl overflow-hidden text-left transition-transform hover:scale-[1.03] active:scale-[0.98] shadow-sm"
+              style={{ backgroundColor: card.bg }}
+            >
+              <div className="aspect-[4/3] flex items-center justify-center p-3">
+                <img
+                  src={card.image}
+                  alt={card.title}
+                  className="w-full h-full object-contain"
+                  style={{ maxHeight: "120px" }}
+                />
+              </div>
+              <div className="bg-white px-4 py-3 rounded-b-2xl">
+                <p className="text-sm font-medium text-foreground">{card.title}</p>
+              </div>
+            </button>
+          ))}
         </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="p-6 bg-gradient-calm border-0 shadow-float mb-8">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <img
-              src={ceolinaCharacter}
-              alt="Star"
-              className="w-24 h-24 animate-gentle-float"
-            />
-            <div className="flex-1 text-center md:text-left">
-              <h2 className="text-xl font-bold text-primary-foreground mb-2">
-                Привет, {childName}!
-              </h2>
-              <p className="text-primary-foreground/90">
-                Как ты хочешь рисовать сегодня? Один или вместе с другом?
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card
-            className="p-8 hover:shadow-float transition-all cursor-pointer border-2 border-border hover:border-primary bg-card group"
-            onClick={() => setSelectedMode("solo")}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto bg-gradient-creative rounded-2xl flex items-center justify-center shadow-soft group-hover:scale-110 transition-transform">
-                <Palette className="text-white" size={40} />
-              </div>
-              <h3 className="text-2xl font-bold">Рисовать одному</h3>
-              <p className="text-muted-foreground">
-                Создавай рисунки самостоятельно и выражай свои эмоции
-              </p>
-              <div className="pt-4 space-y-2 text-sm text-muted-foreground">
-                <p>✨ Стандартный холст</p>
-                <p>✨ Все кисти и цвета</p>
-                <p>✨ Личный анализ рисунка</p>
-                <p>✨ Автосохранение</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-8 hover:shadow-float transition-all cursor-pointer border-2 border-border hover:border-primary bg-card group"
-            onClick={() => setSelectedMode("dual")}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto bg-gradient-warm rounded-2xl flex items-center justify-center shadow-soft group-hover:scale-110 transition-transform">
-                <Users className="text-white" size={40} />
-              </div>
-              <h3 className="text-2xl font-bold">Рисовать вместе</h3>
-              <p className="text-muted-foreground">
-                Создавай совместные рисунки с родителями, терапевтом или друзьями
-              </p>
-              <div className="pt-4 space-y-2 text-sm text-muted-foreground">
-                <p>✨ Совместный холст</p>
-                <p>✨ Реал-тайм синхронизация</p>
-                <p>✨ Кооперативные задачи</p>
-                <p>✨ Анализ сотрудничества</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </main>
+      </div>
     </div>
   );
 };
