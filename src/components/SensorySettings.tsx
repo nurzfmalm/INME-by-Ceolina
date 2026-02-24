@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Volume2, VolumeX, Eye, Sparkles, LogOut } from "lucide-react";
+import { ArrowLeft, Save, Volume2, VolumeX, Eye, Sparkles } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -83,9 +83,13 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Не авторизован");
 
-      const { error } = await supabase.from("sensory_settings")
-        .update(settings)
-        .eq("user_id", userData.user.id);
+      const { error } = await supabase.from("sensory_settings").upsert(
+        {
+          user_id: userData.user.id,
+          ...settings,
+        },
+        { onConflict: "user_id" }
+      );
 
       if (error) throw error;
 
@@ -115,30 +119,20 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
     );
   }
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Ошибка при выходе");
-    } else {
-      toast.success("Вы вышли из аккаунта");
-      window.location.reload();
-    }
-  };
-
   return (
-    <div className="min-h-screen p-4" style={{ backgroundColor: "#E3EBF5" }}>
+    <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-3xl space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-1 mb-2">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 text-foreground/40 hover:text-foreground/60 px-2">
-            <ArrowLeft size={20} />
-            <span className="text-base font-normal">Домой</span>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="mr-2" /> Назад
+          </Button>
+          <h1 className="text-2xl font-bold">Настройки сенсорики</h1>
+          <Button onClick={saveSettings} disabled={saving}>
+            <Save className="mr-2" /> Сохранить
           </Button>
         </div>
-        <h1 className="text-[24px] font-normal text-foreground/45 -mt-3">Настройки</h1>
 
-        {/* Row 1: Visual + Audio */}
-        <div className="grid md:grid-cols-2 gap-4">
         {/* Visual Settings */}
         <Card className="p-6 space-y-6">
           <div className="flex items-center gap-3">
@@ -175,6 +169,24 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label>Цветовая схема</Label>
+              <Select
+                value={settings.color_scheme}
+                onValueChange={(value) => setSettings({ ...settings, color_scheme: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">По умолчанию</SelectItem>
+                  <SelectItem value="pastel">Пастельные тона</SelectItem>
+                  <SelectItem value="high-contrast">Высокий контраст</SelectItem>
+                  <SelectItem value="warm">Тёплые цвета</SelectItem>
+                  <SelectItem value="cool">Холодные цвета</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </Card>
 
@@ -214,7 +226,6 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
             </div>
           </div>
         </Card>
-        </div>
 
         {/* Interface Settings */}
         <Card className="p-6 space-y-6">
@@ -261,21 +272,20 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
           </div>
         </Card>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-3 pt-2">
-          <Button onClick={saveSettings} disabled={saving} className="w-full" size="lg">
-            <Save className="mr-2" size={18} /> {saving ? "Сохранение..." : "Сохранить настройки"}
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            onClick={handleLogout} 
-            className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-            size="lg"
+        {/* Preview */}
+        <Card className="p-6 bg-gradient-calm">
+          <h3 className="font-semibold mb-4">Предпросмотр</h3>
+          <div
+            className="space-y-4"
+            style={{
+              opacity: settings.visual_intensity / 100,
+              animationDuration: `${settings.animation_speed / 50}s`,
+            }}
           >
-            <LogOut className="mr-2" size={18} /> Выйти из аккаунта
-          </Button>
-        </div>
+            <div className="h-20 bg-primary/20 rounded-lg animate-pulse" />
+            <div className="h-20 bg-secondary/20 rounded-lg animate-pulse" />
+          </div>
+        </Card>
       </div>
     </div>
   );

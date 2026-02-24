@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUserId, isUserAuthenticated } from "@/lib/auth-helpers";
 import { DrawingCursor } from "./drawing/DrawingCursor";
-import { MediumToolbar } from "./drawing/MediumToolbar";
-import { ComplexToolbar } from "./drawing/ComplexToolbar";
 
 // Colors from Figma design
 const FIGMA_COLORS = [
@@ -45,29 +43,7 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
-  const [complexity, setComplexity] = useState<string>("simple");
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
-
-  // Загрузка настройки сложности интерфейса
-  useEffect(() => {
-    const loadComplexity = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase
-          .from("sensory_settings")
-          .select("interface_complexity")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (data?.interface_complexity) {
-          setComplexity(data.interface_complexity);
-        }
-      } catch (e) {
-        console.error("Error loading complexity:", e);
-      }
-    };
-    loadComplexity();
-  }, []);
 
   // Инициализация холста
   useEffect(() => {
@@ -322,167 +298,161 @@ export const SoloDrawing = ({ onBack, childName, childId, taskId, taskPrompt }: 
     }
   };
 
-  // Shared canvas element
-  const canvasElement = (
-    <canvas
-      ref={canvasRef}
-      onMouseDown={startDrawing}
-      onMouseMove={draw}
-      onMouseUp={stopDrawing}
-      onMouseLeave={stopDrawing}
-      onTouchStart={startDrawing}
-      onTouchMove={draw}
-      onTouchEnd={stopDrawing}
-      className="w-full h-full touch-none"
-      style={{ cursor: "none" }}
-    />
-  );
-
-
-  // ===== SIMPLE: sidebar on right (current design from рис 1) =====
-  if (complexity === "simple") {
-    return (
-      <div className="min-h-screen flex flex-col bg-[#E8F4FC]">
-        <DrawingCursor canvasRef={canvasRef} color={currentColor} size={lineWidth} isEraser={isEraser} visible={!isDrawing} />
-        <header className="flex items-center gap-3 px-4 py-3">
-          <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-            <ArrowLeft size={20} />
-            <span className="text-sm">Домой</span>
-          </button>
-        </header>
-        <div className="flex-1 flex gap-4 p-4">
-          <div ref={containerRef} className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-sky-200">
-            {canvasElement}
-          </div>
-          {/* Side toolbar */}
-          <div className="w-44 bg-white rounded-2xl shadow-lg p-4 flex flex-col gap-4 overflow-y-auto">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Инструменты</h3>
-              <div className="space-y-2">
-                <button onClick={() => setIsEraser(true)} className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${isEraser ? "bg-sky-100 text-sky-600" : "hover:bg-gray-50 text-gray-600"}`}>
-                  <Eraser size={18} /><span className="text-sm">Ластик</span>
-                </button>
-                <button onClick={() => setIsEraser(false)} className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${!isEraser ? "bg-sky-100 text-sky-600" : "hover:bg-gray-50 text-gray-600"}`}>
-                  <Pencil size={18} /><span className="text-sm">Карандаш</span>
-                </button>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Цвета</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {FIGMA_COLORS.map((color) => (
-                  <button key={color.hex} onClick={() => { setCurrentColor(color.hex); setIsEraser(false); }}
-                    className={`w-9 h-9 rounded-full transition-transform ${currentColor === color.hex && !isEraser ? "scale-110 ring-2 ring-offset-2 ring-sky-400" : "hover:scale-105"}`}
-                    style={{ backgroundColor: color.hex }} title={color.name} />
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Толщина</h3>
-              <div className="space-y-2">
-                {BRUSH_SIZES.map((brush) => (
-                  <button key={brush.size} onClick={() => setLineWidth(brush.size)}
-                    className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${lineWidth === brush.size ? "bg-sky-50" : "hover:bg-gray-50"}`}>
-                    <div className="rounded-full bg-sky-400" style={{ width: Math.min(brush.size * 1.2, 24), height: Math.min(brush.size * 1.2, 24) }} />
-                    <span className="text-sm text-gray-700">{brush.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-auto space-y-2">
-              <button onClick={undo} disabled={historyStep <= 0} className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors">
-                <Undo size={18} /><span className="text-sm">Назад</span>
-              </button>
-              <button onClick={clearCanvas} className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-red-50 text-gray-600 transition-colors">
-                <Trash2 size={18} /><span className="text-sm">Очистить</span>
-              </button>
-              <button onClick={saveDrawing} disabled={isSaving} className="flex items-center justify-center gap-2 w-full px-3 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50">
-                <Save size={18} /><span className="text-sm font-medium">{isSaving ? "..." : "Сохранить"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ===== MEDIUM: left expandable menu (рис 2) =====
-  if (complexity === "medium") {
-    return (
-      <div className="min-h-screen flex flex-col bg-[#E8F4FC]">
-        <DrawingCursor canvasRef={canvasRef} color={currentColor} size={lineWidth} isEraser={isEraser} visible={!isDrawing} />
-        <header className="flex items-center gap-3 px-4 py-3">
-          <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-            <ArrowLeft size={20} />
-            <span className="text-sm">Домой</span>
-          </button>
-        </header>
-        <div className="flex-1 flex gap-4 p-4">
-          {/* Left expandable toolbar */}
-          <div className="flex flex-col justify-between py-2">
-            <MediumToolbar
-              currentColor={currentColor}
-              currentSize={lineWidth}
-              isEraser={isEraser}
-              onColorChange={setCurrentColor}
-              onSizeChange={setLineWidth}
-              onEraserToggle={setIsEraser}
-              onUndo={undo}
-              canUndo={historyStep > 0}
-            />
-            <div className="flex flex-col gap-2 mt-4">
-              <button onClick={clearCanvas} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 text-gray-600 hover:bg-white text-sm" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <Trash2 size={16} /><span>Очистить</span>
-              </button>
-              <button onClick={saveDrawing} disabled={isSaving} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 text-sm disabled:opacity-50" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <Save size={16} /><span>{isSaving ? "..." : "Сохранить"}</span>
-              </button>
-            </div>
-          </div>
-          {/* Canvas */}
-          <div ref={containerRef} className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-sky-200">
-            {canvasElement}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ===== COMPLEX: bottom floating icons (рис 3) =====
   return (
     <div className="min-h-screen flex flex-col bg-[#E8F4FC]">
-      <DrawingCursor canvasRef={canvasRef} color={currentColor} size={lineWidth} isEraser={isEraser} visible={!isDrawing} />
-      <header className="flex items-center justify-between px-4 py-3">
-        <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
+      {/* Кастомный курсор */}
+      <DrawingCursor
+        canvasRef={canvasRef}
+        color={currentColor}
+        size={lineWidth}
+        isEraser={isEraser}
+        visible={!isDrawing}
+      />
+
+      {/* Шапка минималистичная */}
+      <header className="flex items-center gap-3 px-4 py-3">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
           <ArrowLeft size={20} />
           <span className="text-sm">Домой</span>
         </button>
-        <div className="flex gap-2">
-          <button onClick={clearCanvas} className="p-2 rounded-lg bg-white/80 text-gray-500 hover:bg-white transition-colors">
-            <Trash2 size={18} />
-          </button>
-          <button onClick={saveDrawing} disabled={isSaving} className="px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 text-sm disabled:opacity-50">
-            <Save size={18} />
-          </button>
-        </div>
       </header>
-      <div className="flex-1 flex flex-col p-4 gap-3">
-        {/* Canvas takes most space */}
-        <div ref={containerRef} className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-sky-200">
-          {canvasElement}
-        </div>
-        {/* Bottom floating toolbar */}
-        <div className="flex justify-center pb-2">
-          <ComplexToolbar
-            currentColor={currentColor}
-            currentSize={lineWidth}
-            isEraser={isEraser}
-            onColorChange={setCurrentColor}
-            onSizeChange={setLineWidth}
-            onEraserToggle={setIsEraser}
-            onUndo={undo}
-            canUndo={historyStep > 0}
+
+      {/* Основная область: холст + боковая панель */}
+      <div className="flex-1 flex gap-4 p-4">
+        {/* Холст */}
+        <div 
+          ref={containerRef} 
+          className="flex-1 bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-sky-200"
+        >
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="w-full h-full touch-none"
+            style={{ cursor: "none" }}
           />
+        </div>
+
+        {/* Боковая панель инструментов (Figma Level 3) */}
+        <div className="w-44 bg-white rounded-2xl shadow-lg p-4 flex flex-col gap-4 overflow-y-auto">
+          {/* Инструменты */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Инструменты</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => setIsEraser(true)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                  isEraser 
+                    ? "bg-sky-100 text-sky-600" 
+                    : "hover:bg-gray-50 text-gray-600"
+                }`}
+              >
+                <Eraser size={18} />
+                <span className="text-sm">Ластик</span>
+              </button>
+              
+              <button
+                onClick={() => setIsEraser(false)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                  !isEraser 
+                    ? "bg-sky-100 text-sky-600" 
+                    : "hover:bg-gray-50 text-gray-600"
+                }`}
+              >
+                <Pencil size={18} />
+                <span className="text-sm">Карандаш</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Цвета */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Цвета</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {FIGMA_COLORS.map((color) => (
+                <button
+                  key={color.hex}
+                  onClick={() => {
+                    setCurrentColor(color.hex);
+                    setIsEraser(false);
+                  }}
+                  className={`w-9 h-9 rounded-full transition-transform ${
+                    currentColor === color.hex && !isEraser
+                      ? "scale-110 ring-2 ring-offset-2 ring-sky-400" 
+                      : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Толщина */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Толщина</h3>
+            <div className="space-y-2">
+              {BRUSH_SIZES.map((brush) => (
+                <button
+                  key={brush.size}
+                  onClick={() => setLineWidth(brush.size)}
+                  className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-colors ${
+                    lineWidth === brush.size
+                      ? "bg-sky-50" 
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  <div
+                    className="rounded-full bg-sky-400"
+                    style={{
+                      width: Math.min(brush.size * 1.2, 24),
+                      height: Math.min(brush.size * 1.2, 24),
+                    }}
+                  />
+                  <span className="text-sm text-gray-700">{brush.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Действия */}
+          <div className="mt-auto space-y-2">
+            <button
+              onClick={undo}
+              disabled={historyStep <= 0}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
+            >
+              <Undo size={18} />
+              <span className="text-sm">Назад</span>
+            </button>
+            
+            <button
+              onClick={clearCanvas}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-red-50 text-gray-600 transition-colors"
+            >
+              <Trash2 size={18} />
+              <span className="text-sm">Очистить</span>
+            </button>
+            
+            <button
+              onClick={saveDrawing}
+              disabled={isSaving}
+              className="flex items-center justify-center gap-2 w-full px-3 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+            >
+              <Save size={18} />
+              <span className="text-sm font-medium">
+                {isSaving ? "..." : "Сохранить"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

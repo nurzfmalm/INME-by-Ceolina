@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Palette, Monitor, Flame, Settings, Users } from "lucide-react";
+import { Palette, Monitor, Flame, Menu, Users } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
 import type { UserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Import card images
 import cardDrawing from "@/assets/card-drawing.png";
@@ -125,6 +126,15 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
     }
   };
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Ошибка при выходе");
+    } else {
+      toast.success("Вы вышли из аккаунта");
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#E8F4FC]">
@@ -156,12 +166,13 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             </div>
           </div>
 
-          {/* Settings Button */}
+          {/* Menu Button */}
           <button 
-            onClick={() => onNavigate("settings")}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/60 transition-colors"
+            onClick={handleLogout}
+            className="w-10 h-10 flex flex-col items-end justify-center gap-1"
           >
-            <Settings size={22} className="text-[#4A90D9]" />
+            <div className="w-6 h-0.5 bg-[#4A90D9]"></div>
+            <div className="w-4 h-0.5 bg-[#4A90D9]"></div>
           </button>
         </div>
       </header>
