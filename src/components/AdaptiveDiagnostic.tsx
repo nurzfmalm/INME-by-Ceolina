@@ -17,6 +17,7 @@ interface Question {
   subtitle: string;
   type: "single" | "multi";
   options: string[];
+  allowCustom?: boolean;
 }
 
 const questions: Question[] = [
@@ -33,7 +34,31 @@ const questions: Question[] = [
     ],
   },
   {
-    id: "q2_motor",
+    id: "q2_engagement",
+    category: "Вовлечённость и внимание",
+    subtitle: "Как ребёнок обычно включается в задания?",
+    type: "single",
+    options: [
+      "Легко вовлекается",
+      "Нужно время, чтобы привыкнуть",
+      "Быстро теряет интерес",
+      "Зацикливается на одном",
+    ],
+  },
+  {
+    id: "q3_selfregulation",
+    category: "Поведение и саморегуляция",
+    subtitle: "Как себя ведёт ребёнок?",
+    type: "single",
+    options: [
+      "Импульсивный (действует без ожидания)",
+      "Тревожный / избегает новое",
+      "Легко расстраивается при ошибке",
+      "Спокойно переносит трудности",
+    ],
+  },
+  {
+    id: "q4_motor",
     category: "Моторика",
     subtitle: "Как ребёнок использует руки",
     type: "multi",
@@ -46,67 +71,44 @@ const questions: Question[] = [
     ],
   },
   {
-    id: "q3_emotions",
-    category: "Эмоции и самовыражение",
-    subtitle: "Как ребёнок выражает свои чувства?",
-    type: "single",
-    options: [
-      "Называет эмоции словами",
-      "Показывает мимикой и жестами",
-      "Выражает через крик или плач",
-      "Подавляет эмоции, замыкается",
-    ],
-  },
-  {
-    id: "q4_sensory",
-    category: "Сенсорика",
-    subtitle: "Как ребёнок реагирует на звуки, свет, прикосновения?",
+    id: "q5_sensory",
+    category: "Сенсорные особенности",
+    subtitle: "Есть ли у ребёнка сенсорные особенности?",
     type: "multi",
     options: [
-      "Чувствителен к громким звукам",
-      "Не любит яркий свет",
-      "Избегает определённых текстур",
-      "Реагирует спокойно",
-      "Ищет сенсорные ощущения",
+      "Чувствителен к звукам",
+      "Чувствителен к яркому свету",
+      "Избегает прикосновений",
+      "Любит тактильные ощущения",
+      "Сенсорных особенностей не замечено",
     ],
   },
   {
-    id: "q5_attention",
-    category: "Внимание и концентрация",
-    subtitle: "Как долго ребёнок удерживает внимание?",
-    type: "single",
-    options: [
-      "Менее 5 минут",
-      "5–10 минут с перерывами",
-      "10–20 минут",
-      "Более 20 минут",
-    ],
-  },
-  {
-    id: "q6_routine",
-    category: "Поведение и распорядок",
-    subtitle: "Как ребёнок реагирует на изменения в привычном распорядке?",
-    type: "single",
-    options: [
-      "Сильный стресс, истерики",
-      "Беспокоится, но справляется",
-      "Нужна подготовка и объяснение",
-      "Спокойно адаптируется",
-    ],
-  },
-  {
-    id: "q7_interests",
-    category: "Интересы",
-    subtitle: "Какие активности увлекают ребёнка?",
+    id: "q6_interests",
+    category: "Интересы ребёнка",
+    subtitle: "Что нравится ребёнку?",
     type: "multi",
     options: [
-      "Рисование и творчество",
-      "Музыка и звуки",
-      "Движение и танцы",
-      "Конструирование",
-      "Ролевые игры",
-      "Сенсорные игры",
-      "Книги и истории",
+      "Животные",
+      "Машины",
+      "Космос",
+      "Персонажи",
+      "Природа",
+      "Водичкой",
+      "Цветы и узоры",
+    ],
+    allowCustom: true,
+  },
+  {
+    id: "q7_focus",
+    category: "Текущий запрос",
+    subtitle: "Над чем сейчас важнее работать?",
+    type: "single",
+    options: [
+      "Моторика",
+      "Внимание",
+      "Самовыражение и эмоции",
+      "Взаимодействие с другими",
     ],
   },
 ];
@@ -115,11 +117,15 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+  const [customInterest, setCustomInterest] = useState("");
 
-  const q = questions[currentStep];
+  const isComplete = showComplete;
+  const q = !isComplete ? questions[currentStep] : null;
   const displayName = childName || "ребёнка";
 
   const handleSelect = (option: string) => {
+    if (!q) return;
     if (q.type === "single") {
       setAnswers({ ...answers, [q.id]: option });
     } else {
@@ -132,16 +138,27 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
   };
 
   const isSelected = (option: string) => {
+    if (!q) return false;
     const val = answers[q.id];
     if (q.type === "single") return val === option;
     return Array.isArray(val) && val.includes(option);
   };
 
   const canProceed = () => {
+    if (!q) return true;
     const val = answers[q.id];
     if (!val) return false;
     if (q.type === "multi") return Array.isArray(val) && val.length > 0;
     return true;
+  };
+
+  const addCustomInterest = () => {
+    if (!customInterest.trim() || !q) return;
+    const prev: string[] = answers[q.id] || [];
+    if (!prev.includes(customInterest.trim())) {
+      setAnswers({ ...answers, [q.id]: [...prev, customInterest.trim()] });
+    }
+    setCustomInterest("");
   };
 
   const handleNext = () => {
@@ -152,16 +169,20 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      handleComplete();
+      setShowComplete(true);
     }
   };
 
   const handleBack = () => {
+    if (showComplete) {
+      setShowComplete(false);
+      return;
+    }
     if (currentStep > 0) setCurrentStep(currentStep - 1);
     else onBack();
   };
 
-  const handleComplete = async () => {
+  const handleFinish = async () => {
     setLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -203,8 +224,6 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
     }
   };
 
-  if (!q) return null;
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-4 relative"
@@ -223,64 +242,106 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
 
-      {/* Question card */}
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-5 animate-fade-in">
-        <div>
-          <h2 className="text-xl font-bold text-foreground leading-tight">{q.category}</h2>
-          <p className="text-sm text-muted-foreground mt-1">{q.subtitle}</p>
-        </div>
-
-        <div className="space-y-3">
-          {q.options.map((option) => (
-            <label
-              key={option}
-              className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => handleSelect(option)}
-            >
-              <span
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isSelected(option)
-                    ? "border-foreground bg-foreground"
-                    : "border-muted-foreground/40 group-hover:border-muted-foreground"
-                }`}
-              >
-                {isSelected(option) && (
-                  <span className="w-2 h-2 rounded-full bg-white" />
-                )}
-              </span>
-              <span className="text-sm text-foreground">{option}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Pagination dots */}
-      <div className="flex gap-2 mt-6">
-        {questions.map((_, i) => (
+      {/* Complete screen */}
+      {isComplete ? (
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center space-y-5 animate-fade-in">
+          <h2 className="text-2xl font-bold text-foreground">Отлично!</h2>
+          <p className="text-muted-foreground">Давайте приступим</p>
           <button
-            key={i}
-            onClick={() => {
-              if (i < currentStep) setCurrentStep(i);
-            }}
-            className={`h-2.5 rounded-full transition-all ${
-              i === currentStep
-                ? "w-7 bg-foreground"
-                : i < currentStep
-                ? "w-2.5 bg-foreground/50 cursor-pointer"
-                : "w-2.5 bg-foreground/20"
-            }`}
-          />
-        ))}
-      </div>
+            onClick={handleFinish}
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
+          >
+            {loading ? "Сохранение..." : "Продолжить"}
+          </button>
 
-      {/* Next / Complete */}
-      <button
-        onClick={handleNext}
-        disabled={loading || !canProceed()}
-        className="mt-4 bg-foreground text-white rounded-full px-8 py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
-      >
-        {currentStep === questions.length - 1 ? "Завершить" : "Далее"}
-      </button>
+          {/* Dots */}
+          <div className="flex gap-1.5 justify-center pt-2">
+            {questions.map((_, i) => (
+              <span key={i} className="w-2 h-2 rounded-full bg-foreground/30" />
+            ))}
+            <span className="w-2 h-2 rounded-full bg-foreground" />
+          </div>
+        </div>
+      ) : q && (
+        <>
+          {/* Question card */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-5 animate-fade-in">
+            <div>
+              <h2 className="text-xl font-bold text-foreground leading-tight">{q.category}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{q.subtitle}</p>
+            </div>
+
+            <div className="space-y-3">
+              {q.options.map((option) => (
+                <label
+                  key={option}
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => handleSelect(option)}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      isSelected(option)
+                        ? "border-foreground bg-foreground"
+                        : "border-muted-foreground/40 group-hover:border-muted-foreground"
+                    }`}
+                  >
+                    {isSelected(option) && (
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </span>
+                  <span className="text-sm text-foreground">{option}</span>
+                </label>
+              ))}
+
+              {/* Custom interest input */}
+              {q.allowCustom && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-primary text-sm cursor-pointer" onClick={() => {
+                    const input = document.getElementById("custom-interest-input");
+                    if (input) input.focus();
+                  }}>+ Добавить своё</span>
+                  <input
+                    id="custom-interest-input"
+                    type="text"
+                    value={customInterest}
+                    onChange={(e) => setCustomInterest(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addCustomInterest()}
+                    placeholder="Введите..."
+                    className="text-sm border-b border-muted-foreground/30 outline-none bg-transparent flex-1 py-1"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pagination dots */}
+          <div className="flex gap-1.5 mt-6">
+            {questions.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { if (i < currentStep) setCurrentStep(i); }}
+                className={`h-2.5 rounded-full transition-all ${
+                  i === currentStep
+                    ? "w-7 bg-foreground"
+                    : i < currentStep
+                    ? "w-2.5 bg-foreground/50 cursor-pointer"
+                    : "w-2.5 bg-foreground/20"
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Next button */}
+          <button
+            onClick={handleNext}
+            disabled={!canProceed()}
+            className="mt-4 bg-foreground text-white rounded-full px-8 py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
+          >
+            Далее
+          </button>
+        </>
+      )}
     </div>
   );
 };
