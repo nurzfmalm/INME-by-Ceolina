@@ -4,9 +4,9 @@ import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import classroomBackground from "@/assets/classroom-background.png";
-import characterFace from "@/assets/character-face.png";
-import paintPalette from "@/assets/paint-palette.png";
+import characterGlasses from "@/assets/character-glasses.png";
+import characterKidWave from "@/assets/character-kid-wave.png";
+import complexityIllustration from "@/assets/complexity-illustration.png";
 
 interface ChildProfileProps {
   childId: string;
@@ -22,17 +22,24 @@ interface AssessmentData {
   }>;
 }
 
+interface ScheduleSlot {
+  day: string;
+  shortDay: string;
+  time: string;
+  active: boolean;
+}
+
 interface ProfileData {
   parentName: string;
   parentContact: string;
   childName: string;
   childAge: string;
-  // Settings
   notificationsEnabled: boolean;
   soundEnabled: boolean;
   confirmationEnabled: boolean;
   soundsEnabled: boolean;
-  // Assessment categories
+  interfaceComplexity: "simple" | "medium" | "complex";
+  schedule: ScheduleSlot[];
   socialBehavior: string;
   engagement: string;
   selfRegulation: string;
@@ -96,6 +103,16 @@ const CURRENT_FOCUS_OPTIONS = [
   "Взаимодействие с другими",
 ];
 
+const DEFAULT_SCHEDULE: ScheduleSlot[] = [
+  { day: "Понедельник", shortDay: "Пн", time: "22:22", active: true },
+  { day: "Вторник", shortDay: "Вт", time: "", active: false },
+  { day: "Среда", shortDay: "Ср", time: "22:22", active: true },
+  { day: "Четверг", shortDay: "Чт", time: "", active: false },
+  { day: "Пятница", shortDay: "Пт", time: "22:22", active: true },
+  { day: "Суббота", shortDay: "Сб", time: "", active: false },
+  { day: "Воскресенье", shortDay: "Вс", time: "", active: false },
+];
+
 export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,6 +126,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
     soundEnabled: false,
     confirmationEnabled: false,
     soundsEnabled: true,
+    interfaceComplexity: "medium",
+    schedule: DEFAULT_SCHEDULE,
     socialBehavior: "",
     engagement: "",
     selfRegulation: "",
@@ -124,7 +143,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
 
   const loadProfileData = async () => {
     try {
-      // Load child data
       const { data: child, error: childError } = await supabase
         .from("children")
         .select("*")
@@ -133,7 +151,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
 
       if (childError) throw childError;
 
-      // Load assessment data if exists
       const { data: assessment } = await supabase
         .from("adaptive_assessments")
         .select("assessment_data")
@@ -142,7 +159,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
         .limit(1)
         .single();
 
-      // Load sensory settings
       const { data: { user } } = await supabase.auth.getUser();
       const { data: sensorySettings } = await supabase
         .from("sensory_settings")
@@ -150,13 +166,11 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
         .eq("user_id", user?.id)
         .single();
 
-      // Parse assessment responses into categories
       let parsedData: Partial<ProfileData> = {};
       if (assessment?.assessment_data) {
         const assessmentData = assessment.assessment_data as AssessmentData;
         if (assessmentData.responses) {
           assessmentData.responses.forEach((response) => {
-            // Map responses to categories based on question content
             if (response.category === "social" || response.question?.includes("взаимодействует")) {
               parsedData.socialBehavior = response.answer;
             } else if (response.category === "engagement" || response.question?.includes("включается")) {
@@ -189,7 +203,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Update child data
       const { error } = await supabase
         .from("children")
         .update({
@@ -245,21 +258,11 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
   }
 
   return (
-    <div className="min-h-screen bg-[#E8F4FC] relative overflow-hidden">
-      {/* Background pattern */}
-      <div 
-        className="absolute inset-0 opacity-5"
-        style={{ 
-          backgroundImage: `url(${classroomBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      
-      <div className="relative z-10 max-w-4xl mx-auto p-4 pb-8">
+    <div className="min-h-screen bg-[#E8F4FC]">
+      <div className="max-w-4xl mx-auto p-4 pb-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button 
+          <button
             onClick={onBack}
             className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
           >
@@ -272,14 +275,13 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           Профиль {profileData.childName}
         </h1>
 
-        {/* Top Section - Parent Data & Settings */}
+        {/* Row 1: Parent Data & Settings */}
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           {/* Parent Data Card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm relative overflow-hidden">
             <div className="flex justify-between">
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-800 mb-4">Данные родителя</h3>
-                
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-gray-500 uppercase tracking-wide">ФИО</label>
@@ -301,10 +303,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
                   </div>
                 </div>
               </div>
-              
-              {/* Decorative illustration */}
-              <div className="w-24 h-24 ml-4 flex-shrink-0">
-                <img src={paintPalette} alt="" className="w-full h-full object-contain" />
+              <div className="w-28 h-28 ml-4 flex-shrink-0 self-start">
+                <img src={characterGlasses} alt="" className="w-full h-full object-contain" />
               </div>
             </div>
           </div>
@@ -312,7 +312,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           {/* Settings Card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-4">Занятия</h3>
-            
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Получать уведомления о занятиях</span>
@@ -346,41 +345,100 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           </div>
         </div>
 
-        {/* Student Data Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-          <div className="flex justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-800 mb-4">Данные ученика</h3>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wide">ФИО</label>
-                  <Input
-                    value={profileData.childName}
-                    onChange={(e) => setProfileData({ ...profileData, childName: e.target.value })}
-                    placeholder="Имя ребёнка"
-                    className="mt-1 border-0 border-b border-gray-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wide">Возраст</label>
-                  <Input
-                    value={profileData.childAge}
-                    onChange={(e) => setProfileData({ ...profileData, childAge: e.target.value })}
-                    placeholder="Возраст"
-                    type="number"
-                    className="mt-1 border-0 border-b border-gray-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
-                  />
+        {/* Row 2: Student Data & Schedule */}
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          {/* Student Data Card */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between">
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-800 mb-4">Данные ученика</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">ФИО</label>
+                    <Input
+                      value={profileData.childName}
+                      onChange={(e) => setProfileData({ ...profileData, childName: e.target.value })}
+                      placeholder="Имя ребёнка"
+                      className="mt-1 border-0 border-b border-gray-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">Возраст</label>
+                    <Input
+                      value={profileData.childAge}
+                      onChange={(e) => setProfileData({ ...profileData, childAge: e.target.value })}
+                      placeholder="Возраст"
+                      type="number"
+                      className="mt-1 border-0 border-b border-gray-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+                    />
+                  </div>
                 </div>
               </div>
+              <div className="w-32 ml-4 flex-shrink-0 self-end">
+                <img src={characterKidWave} alt="" className="w-full h-auto object-contain" />
+              </div>
             </div>
-            
-            {/* Character illustration */}
-            <div className="w-28 h-20 ml-4 flex-shrink-0">
-              <img src={characterFace} alt="" className="w-full h-full object-contain" />
+          </div>
+
+          {/* Schedule Card */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <h3 className="font-semibold text-gray-800 mb-4">Расписание занятий:</h3>
+            <div className="flex gap-2 flex-wrap">
+              {profileData.schedule.map((slot) => (
+                <div
+                  key={slot.shortDay}
+                  className={`flex flex-col items-center rounded-xl px-3 py-2 min-w-[48px] ${
+                    slot.active
+                      ? "bg-[#4A90D9] text-white"
+                      : "bg-gray-100 text-gray-400"
+                  }`}
+                >
+                  <span className="text-xs font-medium">{slot.shortDay}</span>
+                  <span className="text-[10px] mt-0.5">{slot.time || "–:–"}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-right">
+              <button className="text-sm text-[#4A90D9] hover:underline">изменить</button>
             </div>
           </div>
         </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-6" />
+
+        {/* Interface Complexity */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Уровень сложности интерфейса</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {([
+              { key: "simple" as const, label: "Простой", desc: "Подробнее о простом режиме" },
+              { key: "medium" as const, label: "Средний", desc: "Подробнее о среднем режиме" },
+              { key: "complex" as const, label: "Сложный", desc: "Подробнее о сложном режиме" },
+            ]).map((level) => (
+              <button
+                key={level.key}
+                onClick={() => setProfileData({ ...profileData, interfaceComplexity: level.key })}
+                className={`rounded-2xl overflow-hidden text-left transition-all border-2 ${
+                  profileData.interfaceComplexity === level.key
+                    ? "border-[#4A90D9] shadow-md"
+                    : "border-transparent shadow-sm"
+                }`}
+              >
+                <div className="h-24 bg-[#E8F4FC] flex items-center justify-center overflow-hidden">
+                  <img src={complexityIllustration} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="bg-white p-3">
+                  <span className="text-sm font-medium text-gray-800 block">{level.label}</span>
+                  <span className="text-xs text-[#4A90D9]">{level.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-6" />
 
         {/* Assessment Categories Grid */}
         <div className="grid md:grid-cols-2 gap-4">
@@ -388,7 +446,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-2">Общение и социальное поведение</h3>
             <p className="text-xs text-gray-500 mb-3">Как ребенок взаимодействует с другими?</p>
-            
             <div className="space-y-2">
               {SOCIAL_BEHAVIOR_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -409,7 +466,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-2">Вовлеченность и внимание</h3>
             <p className="text-xs text-gray-500 mb-3">Как ребенок обычно включается в задания?</p>
-            
             <div className="space-y-2">
               {ENGAGEMENT_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -430,7 +486,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-2">Поведение и саморегуляция</h3>
             <p className="text-xs text-gray-500 mb-3">Как себя ведет ребенок?</p>
-            
             <div className="space-y-2">
               {SELF_REGULATION_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -451,7 +506,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-2">Моторика</h3>
             <p className="text-xs text-gray-500 mb-3">Как ребенок использует руки</p>
-            
             <div className="space-y-2">
               {MOTOR_SKILLS_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -471,7 +525,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           {/* Sensory Features */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-3">Сенсорные особенности</h3>
-            
             <div className="space-y-2">
               {SENSORY_FEATURES_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -491,7 +544,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 mb-2">Интересы ребенка</h3>
             <p className="text-xs text-gray-500 mb-3">Что нравится ребенку?</p>
-            
             <div className="space-y-2">
               {INTERESTS_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
@@ -504,10 +556,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
                   <span className="text-sm text-gray-700">{option}</span>
                 </label>
               ))}
-              
-              {/* Custom interest input */}
               <div className="flex items-center gap-2 pt-2">
-                <button 
+                <button
                   onClick={addCustomInterest}
                   className="text-primary text-sm hover:underline"
                 >
@@ -521,7 +571,6 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           <div className="bg-white rounded-2xl p-5 shadow-sm md:col-span-2">
             <h3 className="font-semibold text-gray-800 mb-2">Текущий запрос</h3>
             <p className="text-xs text-gray-500 mb-3">Над чем сейчас важнее работать?</p>
-            
             <div className="grid md:grid-cols-2 gap-2">
               {CURRENT_FOCUS_OPTIONS.map((option) => (
                 <label key={option} className="flex items-center gap-2 cursor-pointer">
