@@ -55,12 +55,14 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
           >
             <div className="relative" style={{ backgroundColor: "#4ADE80", aspectRatio: "605/352" }}>
               <img src={cardDuck} alt="" style={{
-                position: "absolute", left: "12%", top: "14%", width: "46%",
-                transform: "rotate(-3deg)"
+                position: "absolute", left: "5%", top: "8%", width: "55%",
+                transform: "rotate(-8deg)",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
               <img src={cardCat} alt="" style={{
-                position: "absolute", right: "10%", bottom: "12%", width: "42%",
-                transform: "rotate(2deg)"
+                position: "absolute", right: "3%", bottom: "5%", width: "50%",
+                transform: "rotate(5deg)",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
             </div>
             <div className="px-3.5 py-2.5 bg-white">
@@ -77,11 +79,12 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             <div className="relative flex items-center justify-center" style={{ backgroundColor: "#4ACDDE", aspectRatio: "605/352" }}>
               <img src={cardSymmetry} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
-                transform: "translate(-50%, -50%) rotate(1deg)",
-                width: "62%", objectFit: "contain",
+                transform: "translate(-50%, -50%)",
+                width: "70%", objectFit: "contain",
                 borderRadius: "4px",
                 background: "white",
                 padding: "3%",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
             </div>
             <div className="px-3.5 py-2.5 bg-white">
@@ -98,8 +101,9 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             <div className="relative flex items-center justify-center" style={{ backgroundColor: "#FB7185", aspectRatio: "605/352" }}>
               <img src={cardHalves} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
-                transform: "translate(-50%, -50%) rotate(1.5deg)",
-                width: "60%", objectFit: "contain",
+                transform: "translate(-50%, -50%) rotate(3deg)",
+                width: "72%", objectFit: "contain",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
             </div>
             <div className="px-3.5 py-2.5 bg-white">
@@ -117,7 +121,8 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
               <img src={cardEasel} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "50%", objectFit: "contain",
+                width: "45%", objectFit: "contain",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
             </div>
             <div className="px-3.5 py-2.5 bg-white">
