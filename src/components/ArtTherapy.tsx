@@ -53,7 +53,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             className="rounded-[20px] overflow-hidden text-left transition-all active:scale-[0.97]"
             style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)", maxWidth: 605 }}
           >
-            <div className="relative" style={{ backgroundColor: "#4ADE80", aspectRatio: "605/352" }}>
+            <div className="relative overflow-hidden" style={{ backgroundColor: "#4ADE80", aspectRatio: "605/352" }}>
               <img src={cardDuck} alt="" style={{
                 position: "absolute", left: "5%", top: "8%", width: "55%",
                 transform: "rotate(-8deg)",
@@ -76,7 +76,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             className="rounded-[20px] overflow-hidden text-left transition-all active:scale-[0.97]"
             style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)", maxWidth: 605 }}
           >
-            <div className="relative flex items-center justify-center" style={{ backgroundColor: "#4ACDDE", aspectRatio: "605/352" }}>
+            <div className="relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: "#4ACDDE", aspectRatio: "605/352" }}>
               <img src={cardSymmetry} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
@@ -98,7 +98,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             className="rounded-[20px] overflow-hidden text-left transition-all active:scale-[0.97]"
             style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)", maxWidth: 605 }}
           >
-            <div className="relative flex items-center justify-center" style={{ backgroundColor: "#FB7185", aspectRatio: "605/352" }}>
+            <div className="relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: "#FB7185", aspectRatio: "605/352" }}>
               <img src={cardHalves} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%) rotate(3deg)",
@@ -117,7 +117,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
             className="rounded-[20px] overflow-hidden text-left transition-all active:scale-[0.97]"
             style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.03)", maxWidth: 605 }}
           >
-            <div className="relative flex items-center justify-center" style={{ backgroundColor: "#FAC4A0", aspectRatio: "605/352" }}>
+            <div className="relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: "#FAC4A0", aspectRatio: "605/352" }}>
               <img src={cardEasel} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
