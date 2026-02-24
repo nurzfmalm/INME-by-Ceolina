@@ -21,40 +21,44 @@ export const PlanReadyModal = ({ open, onStart }: PlanReadyModalProps) => {
       }}
     >
       <div
-        className="relative"
+        className="relative bg-white"
         style={{
-          width: "700px",
-          maxWidth: "92%",
+          width: "420px",
+          maxWidth: "85%",
+          borderRadius: "20px",
+          boxShadow: "0 10px 36px rgba(0,0,0,0.12)",
           overflow: "visible",
         }}
       >
-        {/* Illustrations — positioned above the white card */}
-        <img src={pencil} alt="" className="absolute pointer-events-none" style={{ left: "-40px", top: "-20px", width: "120px", transform: "rotate(-25deg)" }} />
-        <img src={paintPalette} alt="" className="absolute pointer-events-none" style={{ left: "100px", top: "-100px", width: "160px" }} />
-        <img src={characterFace} alt="" className="absolute pointer-events-none left-1/2" style={{ top: "-80px", width: "200px", transform: "translateX(-50%)", zIndex: 2 }} />
-        <img src={graduationCap} alt="" className="absolute pointer-events-none" style={{ right: "-30px", top: "-80px", width: "160px" }} />
+        {/* Hero — thin zone for illustrations */}
+        <div className="relative" style={{ height: "80px" }}>
+          <img src={paintPalette} alt="" className="absolute pointer-events-none" style={{ left: "50px", top: "-8px", width: "80px" }} />
+          <img src={pencil} alt="" className="absolute pointer-events-none" style={{ left: "18px", top: "28px", width: "56px", transform: "rotate(-18deg)" }} />
+          <img src={characterFace} alt="" className="absolute pointer-events-none left-1/2" style={{ top: "6px", width: "110px", transform: "translateX(-50%)" }} />
+          <img src={graduationCap} alt="" className="absolute pointer-events-none" style={{ right: "36px", top: "-2px", width: "86px" }} />
+        </div>
 
-        {/* White card */}
+        {/* Inner card */}
         <div
           className="bg-white flex flex-col items-center text-center"
           style={{
-            marginTop: "100px",
-            borderRadius: "24px",
-            padding: "80px 48px 40px",
-            boxShadow: "0 16px 48px rgba(0,0,0,0.12)",
+            margin: "-12px 16px 16px",
+            borderRadius: "16px",
+            padding: "18px 28px 20px",
+            boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
           }}
         >
-          <p className="text-foreground/70" style={{ fontSize: "20px", fontWeight: 500 }}>
+          <p className="text-foreground/50" style={{ fontSize: "15px", fontWeight: 400 }}>
             Персональный план готов!
           </p>
 
           <h2
             className="text-foreground"
             style={{
-              fontSize: "52px",
-              fontWeight: 800,
+              fontSize: "40px",
+              fontWeight: 700,
               lineHeight: 1.1,
-              margin: "14px 0 28px 0",
+              margin: "8px 0 20px 0",
             }}
           >
             Начнем<br />рисовать?
@@ -64,11 +68,11 @@ export const PlanReadyModal = ({ open, onStart }: PlanReadyModalProps) => {
             onClick={onStart}
             className="transition-all hover:brightness-95"
             style={{
-              width: "65%",
-              height: "52px",
-              borderRadius: "26px",
+              width: "62%",
+              height: "40px",
+              borderRadius: "20px",
               background: "#7FB8E8",
-              fontSize: "18px",
+              fontSize: "15px",
               fontWeight: 500,
               color: "white",
               border: "none",
