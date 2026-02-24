@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, CheckCircle2, Palette, BookOpen, Gamepad2, Bot } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, CheckCircle2, Palette, BookOpen, Gamepad2, Bot, Plus, Trash2, Clock, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,11 +115,11 @@ const DEFAULT_SCHEDULE: ScheduleSlot[] = [
 
 const DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-const ACTIVITY_CATEGORIES = [
-  { name: "Рисование", icon: Palette, time: "0 сек", active: false, color: "#F59E0B" },
-  { name: "Задания", icon: BookOpen, time: "0 сек", active: false, color: "#3B82F6" },
-  { name: "Игры", icon: Gamepad2, time: "0 сек", active: false, color: "#8B5CF6" },
-  { name: "Другое", icon: Bot, time: "1 мин", active: true, color: "#10B981" },
+const ACTIVITY_TYPES = [
+  { key: "drawing", name: "Рисование", icon: Palette, color: "#F59E0B" },
+  { key: "tasks", name: "Задания", icon: BookOpen, color: "#3B82F6" },
+  { key: "games", name: "Игры", icon: Gamepad2, color: "#8B5CF6" },
+  { key: "other", name: "Другое", icon: Bot, color: "#10B981" },
 ];
 
 function getDaysInMonth(year: number, month: number) {
@@ -128,7 +128,7 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1; // Monday-based
+  return day === 0 ? 6 : day - 1;
 }
 
 const MONTH_NAMES = [
@@ -136,16 +136,62 @@ const MONTH_NAMES = [
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
 ];
 
-const ScheduleCalendarCard = () => {
+const MONTH_GENITIVE = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря"
+];
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} сек`;
+  const mins = Math.floor(seconds / 60);
+  return `${mins} мин`;
+}
+
+interface ScheduleEntry {
+  id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  activity_type: string;
+  activity_name: string;
+}
+
+interface SessionLog {
+  id: string;
+  activity_type: string;
+  activity_name: string;
+  duration_seconds: number;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+const ScheduleCalendarCard = ({ childId, userId }: { childId: string; userId: string }) => {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Data
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [sessionLogs, setSessionLogs] = useState<SessionLog[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // New entry form
+  const [newEntryType, setNewEntryType] = useState("drawing");
+  const [newStartTime, setNewStartTime] = useState("10:00");
+  const [newEndTime, setNewEndTime] = useState("10:30");
 
   const daysInMonth = useMemo(() => getDaysInMonth(currentYear, currentMonth), [currentYear, currentMonth]);
   const firstDay = useMemo(() => getFirstDayOfMonth(currentYear, currentMonth), [currentYear, currentMonth]);
 
-  const isToday = (day: number) =>
+  const selectedDate = new Date(currentYear, currentMonth, selectedDay);
+  const selectedDayOfWeek = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
+  const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+
+  const isTodayFn = (day: number) =>
     day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
 
   const prevMonth = () => {
@@ -157,8 +203,79 @@ const ScheduleCalendarCard = () => {
     else setCurrentMonth(m => m + 1);
   };
 
-  const selectedDate = new Date(currentYear, currentMonth, selectedDay);
-  const dayLabel = `${selectedDay} ${MONTH_NAMES[currentMonth].toLowerCase().slice(0, -1)}я`;
+  // Load schedule entries for this child
+  const loadSchedule = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("schedule_entries")
+        .select("*")
+        .eq("child_id", childId);
+      setScheduleEntries((data as ScheduleEntry[]) || []);
+    } catch (e) { console.error(e); }
+  }, [childId]);
+
+  // Load session logs for selected date
+  const loadSessionLogs = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("daily_session_logs")
+        .select("*")
+        .eq("child_id", childId)
+        .eq("session_date", dateStr);
+      setSessionLogs((data as SessionLog[]) || []);
+    } catch (e) { console.error(e); }
+  }, [childId, dateStr]);
+
+  useEffect(() => {
+    setLoadingData(true);
+    Promise.all([loadSchedule(), loadSessionLogs()]).finally(() => setLoadingData(false));
+  }, [loadSchedule, loadSessionLogs]);
+
+  // Entries for selected day
+  const dayEntries = scheduleEntries.filter(e => e.day_of_week === selectedDayOfWeek);
+
+  // Activity summary for the sidebar
+  const activitySummary = ACTIVITY_TYPES.map(at => {
+    const logs = sessionLogs.filter(l => l.activity_type === at.key);
+    const totalDuration = logs.reduce((sum, l) => sum + l.duration_seconds, 0);
+    const completed = logs.some(l => l.status === "completed");
+    return { ...at, totalDuration, completed, logCount: logs.length };
+  });
+
+  const goalMet = activitySummary.some(a => a.completed);
+
+  // Add schedule entry
+  const addEntry = async () => {
+    const actType = ACTIVITY_TYPES.find(a => a.key === newEntryType);
+    const { error } = await supabase.from("schedule_entries").insert({
+      child_id: childId,
+      user_id: userId,
+      day_of_week: selectedDayOfWeek,
+      start_time: newStartTime,
+      end_time: newEndTime,
+      activity_type: newEntryType,
+      activity_name: actType?.name || "Занятие",
+    });
+    if (!error) await loadSchedule();
+  };
+
+  // Delete schedule entry
+  const deleteEntry = async (id: string) => {
+    await supabase.from("schedule_entries").delete().eq("id", id);
+    await loadSchedule();
+  };
+
+  // Toggle session log status
+  const toggleLogStatus = async (log: SessionLog) => {
+    const newStatus = log.status === "completed" ? "pending" : "completed";
+    await supabase.from("daily_session_logs").update({
+      status: newStatus,
+      completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+    }).eq("id", log.id);
+    await loadSessionLogs();
+  };
+
+  const dayLabel = `${selectedDay} ${MONTH_GENITIVE[currentMonth]}`;
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm">
@@ -179,14 +296,12 @@ const ScheduleCalendarCard = () => {
             </div>
           </div>
 
-          {/* Day headers */}
           <div className="grid grid-cols-7 gap-0 mb-1">
             {DAYS_SHORT.map(d => (
               <div key={d} className="text-center text-[10px] text-gray-400 font-medium py-1">{d}</div>
             ))}
           </div>
 
-          {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-0">
             {Array.from({ length: firstDay }).map((_, i) => (
               <div key={`empty-${i}`} className="text-center py-1">
@@ -196,47 +311,166 @@ const ScheduleCalendarCard = () => {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const selected = day === selectedDay;
+              // Check if this day has schedule entries
+              const dayDate = new Date(currentYear, currentMonth, day);
+              const dow = dayDate.getDay() === 0 ? 6 : dayDate.getDay() - 1;
+              const hasEntries = scheduleEntries.some(e => e.day_of_week === dow);
               return (
                 <button
                   key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`text-center py-1 text-xs rounded-lg transition-colors ${
+                  onClick={() => { setSelectedDay(day); setExpanded(true); }}
+                  className={`text-center py-1 text-xs rounded-lg transition-colors relative ${
                     selected
                       ? "bg-[#FCD34D] text-gray-800 font-semibold"
-                      : isToday(day)
+                      : isTodayFn(day)
                       ? "text-[#4A90D9] font-semibold"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
                   {day}
+                  {hasEntries && !selected && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#4A90D9]" />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Daily activities */}
+        {/* Daily activities summary */}
         <div className="w-[140px] flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <span className="font-semibold text-gray-800 text-sm">{dayLabel}</span>
           </div>
           <div className="space-y-2.5">
-            {ACTIVITY_CATEGORIES.map((cat) => (
-              <div key={cat.name} className="flex items-center gap-2">
+            {activitySummary.map((cat) => (
+              <div key={cat.key} className="flex items-center gap-2">
                 <cat.icon size={16} style={{ color: cat.color }} />
                 <span className="text-xs text-gray-700 flex-1 truncate">{cat.name}</span>
                 <div className="flex items-center gap-0.5">
-                  <CheckCircle2 size={12} className={cat.active ? "text-green-500" : "text-gray-300"} />
-                  <span className={`text-[10px] ${cat.active ? "text-green-500 font-medium" : "text-gray-400"}`}>
-                    {cat.time}
+                  <CheckCircle2 size={12} className={cat.completed ? "text-green-500" : "text-gray-300"} />
+                  <span className={`text-[10px] ${cat.completed ? "text-green-500 font-medium" : "text-gray-400"}`}>
+                    {formatDuration(cat.totalDuration)}
                   </span>
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-gray-400 mt-3 text-right">Цель дня не выполнена</p>
+          <p className={`text-[10px] mt-3 text-right ${goalMet ? "text-green-500" : "text-gray-400"}`}>
+            {goalMet ? "Цель дня выполнена ✓" : "Цель дня не выполнена"}
+          </p>
         </div>
       </div>
+
+      {/* Expandable day details */}
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-gray-800 text-sm">
+              Расписание на {dayLabel}
+            </h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditing(!editing)}
+                className="text-xs text-[#4A90D9] hover:underline"
+              >
+                {editing ? "Готово" : "Изменить"}
+              </button>
+              <button onClick={() => { setExpanded(false); setEditing(false); }}>
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Existing entries */}
+          {dayEntries.length === 0 && !editing ? (
+            <p className="text-xs text-gray-400 py-2">Нет занятий на этот день</p>
+          ) : (
+            <div className="space-y-2">
+              {dayEntries.map((entry) => {
+                const actType = ACTIVITY_TYPES.find(a => a.key === entry.activity_type);
+                const Icon = actType?.icon || BookOpen;
+                const log = sessionLogs.find(l => l.activity_type === entry.activity_type);
+                return (
+                  <div key={entry.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${actType?.color}20` }}>
+                      <Icon size={16} style={{ color: actType?.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-800 block">{entry.activity_name}</span>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                        <Clock size={10} />
+                        <span>{entry.start_time.slice(0, 5)} – {entry.end_time.slice(0, 5)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {log && (
+                        <button onClick={() => toggleLogStatus(log)}>
+                          <CheckCircle2 size={18} className={log.status === "completed" ? "text-green-500" : "text-gray-300"} />
+                        </button>
+                      )}
+                      {log && (
+                        <span className={`text-xs ${log.status === "completed" ? "text-green-500" : "text-gray-400"}`}>
+                          {formatDuration(log.duration_seconds)}
+                        </span>
+                      )}
+                      {!log && <span className="text-xs text-gray-300">—</span>}
+                      {editing && (
+                        <button onClick={() => deleteEntry(entry.id)} className="text-red-400 hover:text-red-500">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add new entry form */}
+          {editing && (
+            <div className="mt-3 flex items-end gap-2 flex-wrap">
+              <div>
+                <label className="text-[10px] text-gray-500 block mb-1">Тип</label>
+                <select
+                  value={newEntryType}
+                  onChange={(e) => setNewEntryType(e.target.value)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
+                >
+                  {ACTIVITY_TYPES.map(a => (
+                    <option key={a.key} value={a.key}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 block mb-1">Начало</label>
+                <input
+                  type="time"
+                  value={newStartTime}
+                  onChange={(e) => setNewStartTime(e.target.value)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 block mb-1">Конец</label>
+                <input
+                  type="time"
+                  value={newEndTime}
+                  onChange={(e) => setNewEndTime(e.target.value)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                />
+              </div>
+              <button
+                onClick={addEntry}
+                className="flex items-center gap-1 text-xs bg-[#4A90D9] text-white rounded-lg px-3 py-1.5 hover:bg-[#3A7BC8] transition-colors"
+              >
+                <Plus size={12} />
+                Добавить
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -244,6 +478,7 @@ const ScheduleCalendarCard = () => {
 export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState<string>("");
   const [customInterest, setCustomInterest] = useState("");
   const [profileData, setProfileData] = useState<ProfileData>({
     parentName: "",
@@ -288,6 +523,7 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
         .single();
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) setUserId(user.id);
       const { data: sensorySettings } = await supabase
         .from("sensory_settings")
         .select("*")
@@ -509,7 +745,7 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
           </div>
 
           {/* Schedule Card - Calendar + Daily Activities */}
-          <ScheduleCalendarCard />
+          <ScheduleCalendarCard childId={childId} userId={userId} />
         </div>
 
         {/* Divider */}

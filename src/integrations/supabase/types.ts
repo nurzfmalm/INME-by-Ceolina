@@ -210,6 +210,66 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_session_logs: {
+        Row: {
+          activity_name: string
+          activity_type: string
+          child_id: string
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number
+          id: string
+          schedule_entry_id: string | null
+          session_date: string
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          activity_name: string
+          activity_type: string
+          child_id: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          schedule_entry_id?: string | null
+          session_date: string
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          activity_name?: string
+          activity_type?: string
+          child_id?: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          schedule_entry_id?: string | null
+          session_date?: string
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_session_logs_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_session_logs_schedule_entry_id_fkey"
+            columns: ["schedule_entry_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drawing_sessions: {
         Row: {
           completed_at: string | null
@@ -466,6 +526,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "progress_tracking_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_entries: {
+        Row: {
+          activity_name: string
+          activity_type: string
+          child_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_recurring: boolean
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          activity_name?: string
+          activity_type?: string
+          child_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_recurring?: boolean
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          activity_name?: string
+          activity_type?: string
+          child_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_recurring?: boolean
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_entries_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
             referencedRelation: "children"
