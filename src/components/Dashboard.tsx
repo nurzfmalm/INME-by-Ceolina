@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import cardDrawing from "@/assets/card-drawing.png";
 import cardAnalytics from "@/assets/card-analytics.png";
 import cardProfiles from "@/assets/card-profiles.png";
-import cardProgram from "@/assets/card-program.png";
 
 interface DashboardProps {
   childData: OnboardingData;
@@ -235,7 +234,7 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {/* Drawing Card */}
           <button
             onClick={() => onNavigate("art-therapy")}
@@ -251,24 +250,6 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             <div className="p-4">
               <h4 className="font-semibold text-gray-800 mb-1">Рисование</h4>
               <p className="text-gray-500 text-sm">Что нарисуем сегодня?</p>
-            </div>
-          </button>
-
-          {/* Program Card */}
-          <button
-            onClick={() => onNavigate("learning-path")}
-            className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left"
-          >
-            <div className="h-24 overflow-hidden rounded-t-2xl">
-              <img 
-                src={cardProgram} 
-                alt="Программа" 
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-            <div className="p-4">
-              <h4 className="font-semibold text-gray-800 mb-1">Программа</h4>
-              <p className="text-gray-500 text-sm">План терапии на неделю</p>
             </div>
           </button>
 
