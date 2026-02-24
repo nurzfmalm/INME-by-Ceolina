@@ -22,53 +22,100 @@ interface Question {
   options: { label: string; value: number }[];
 }
 
+// Extended question type to support multi-select with labels
+interface MultiOption {
+  label: string;
+  value: number | string;
+}
+
 const questions: Question[] = [
   {
     id: "social",
-    category: "Социальное взаимодействие",
+    category: "Общение и социальное поведение",
     subtitle: "Как ребёнок взаимодействует с другими?",
     type: "single",
     options: [
       { label: "Избегает контакта", value: 1 },
       { label: "Играет рядом, но не вместе", value: 2 },
-      { label: "Может играть вместе с поддержкой", value: 3 },
+      { label: "Может играть вместе", value: 3 },
       { label: "Легко взаимодействует", value: 4 },
     ],
   },
   {
     id: "attention",
-    category: "Внимание и вовлечённость",
-    subtitle: "Как ребёнок включается в задания?",
+    category: "Вовлеченность и внимание",
+    subtitle: "Как ребёнок обычно включается в задания?",
     type: "single",
     options: [
-      { label: "Быстро теряет интерес (< 2 мин)", value: 1 },
-      { label: "Нужно время, чтобы привыкнуть", value: 2 },
-      { label: "Удерживает внимание 5-10 мин", value: 3 },
-      { label: "Легко вовлекается, работает долго", value: 4 },
+      { label: "Легко вовлекается", value: 4 },
+      { label: "Нужно время, чтобы привыкнуть", value: 3 },
+      { label: "Быстро теряет интерес", value: 2 },
+      { label: "Зацикливается на одном", value: 1 },
     ],
   },
   {
     id: "regulation",
-    category: "Саморегуляция",
-    subtitle: "Как ребёнок реагирует на трудности?",
+    category: "Поведение и саморегуляция",
+    subtitle: "Как себя ведёт ребёнок?",
     type: "single",
     options: [
-      { label: "Сильно расстраивается, отказывается продолжать", value: 1 },
-      { label: "Тревожится, избегает новое", value: 2 },
-      { label: "Может попросить помощь", value: 3 },
+      { label: "Импульсивный (действует без ожидания)", value: 1 },
+      { label: "Тревожный / избегает новое", value: 2 },
+      { label: "Легко расстраивается при ошибке", value: 3 },
       { label: "Спокойно переносит трудности", value: 4 },
     ],
   },
   {
     id: "motor",
-    category: "Моторные навыки",
-    subtitle: "Как ребёнок управляет инструментами?",
+    category: "Моторика",
+    subtitle: "Как ребёнок использует руки?",
     type: "single",
     options: [
-      { label: "Движения неуверенные, слабый захват", value: 1 },
-      { label: "Трудно обводить, предпочитает нажимать", value: 2 },
-      { label: "Держит уверенно, линии неровные", value: 3 },
-      { label: "Хорошая моторика, уверенные линии", value: 4 },
+      { label: "Движения неуверенные", value: 1 },
+      { label: "Трудно обводить линии", value: 2 },
+      { label: "Предпочитает нажимать, а не вести", value: 3 },
+      { label: "Держит предметы уверенно", value: 4 },
+      { label: "Моторика хорошая", value: 5 },
+    ],
+  },
+  {
+    id: "sensory",
+    category: "Сенсорные особенности",
+    subtitle: "Есть ли у ребёнка сенсорные особенности?",
+    type: "single",
+    options: [
+      { label: "Чувствителен к звукам", value: 1 },
+      { label: "Чувствителен к яркому свету", value: 2 },
+      { label: "Избегает прикосновений", value: 3 },
+      { label: "Любит тактильные ощущения", value: 4 },
+      { label: "Сенсорных особенностей не замечено", value: 5 },
+    ],
+  },
+  {
+    id: "interests",
+    category: "Интересы ребёнка",
+    subtitle: "Что нравится ребёнку? (можно выбрать несколько)",
+    type: "multi",
+    options: [
+      { label: "Животные", value: 1 },
+      { label: "Машины", value: 2 },
+      { label: "Космос", value: 3 },
+      { label: "Персонажи", value: 4 },
+      { label: "Природа", value: 5 },
+      { label: "Водоёмы", value: 6 },
+      { label: "Цветы и узоры", value: 7 },
+    ],
+  },
+  {
+    id: "current_request",
+    category: "Текущий запрос",
+    subtitle: "Над чем сейчас важнее работать?",
+    type: "single",
+    options: [
+      { label: "Моторика", value: 1 },
+      { label: "Внимание", value: 2 },
+      { label: "Коммуникация и эмоции", value: 3 },
+      { label: "Взаимодействие с другими", value: 4 },
     ],
   },
 ];
@@ -198,8 +245,8 @@ export const AdaptiveDiagnostic = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Phase 1: Questionnaire answers
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  // Phase 1: Questionnaire answers (single = number, multi = number[])
+  const [answers, setAnswers] = useState<Record<string, number | number[]>>({});
 
   // Phase 2: Trial tasks
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
@@ -446,11 +493,24 @@ export const AdaptiveDiagnostic = ({
 
   // ─── Phase navigation ───
   const handleQuestionSelect = (questionId: string, value: number) => {
-    setAnswers({ ...answers, [questionId]: value });
+    const q = questions.find(q => q.id === questionId);
+    if (q?.type === "multi") {
+      const current = (answers[questionId] as number[]) || [];
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      setAnswers({ ...answers, [questionId]: updated });
+    } else {
+      setAnswers({ ...answers, [questionId]: value });
+    }
   };
 
   const canProceedQuestion = () => {
     const q = questions[currentStep];
+    if (q.type === "multi") {
+      const val = answers[q.id];
+      return Array.isArray(val) && val.length > 0;
+    }
     return answers[q.id] !== undefined;
   };
 
@@ -620,30 +680,40 @@ export const AdaptiveDiagnostic = ({
             </div>
 
             <div className="space-y-2.5">
-              {questions[currentStep].options.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleQuestionSelect(questions[currentStep].id, option.value)}
-                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                    answers[questions[currentStep].id] === option.value
-                      ? "border-foreground bg-foreground/5"
-                      : "border-transparent bg-muted/50 hover:border-muted-foreground/20"
-                  }`}
-                >
-                  <span
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                      answers[questions[currentStep].id] === option.value
-                        ? "border-foreground bg-foreground"
-                        : "border-muted-foreground/40"
+              {questions[currentStep].options.map((option) => {
+                const qId = questions[currentStep].id;
+                const isMulti = questions[currentStep].type === "multi";
+                const isSelected = isMulti
+                  ? Array.isArray(answers[qId]) && (answers[qId] as number[]).includes(option.value as number)
+                  : answers[qId] === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleQuestionSelect(qId, option.value as number)}
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                      isSelected
+                        ? "border-foreground bg-foreground/5"
+                        : "border-transparent bg-muted/50 hover:border-muted-foreground/20"
                     }`}
                   >
-                    {answers[questions[currentStep].id] === option.value && (
-                      <span className="w-2 h-2 rounded-full bg-white" />
-                    )}
-                  </span>
-                  <span className="text-sm text-foreground">{option.label}</span>
-                </button>
-              ))}
+                    <span
+                      className={`w-5 h-5 ${isMulti ? 'rounded-md' : 'rounded-full'} border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isSelected
+                          ? "border-foreground bg-foreground"
+                          : "border-muted-foreground/40"
+                      }`}
+                    >
+                      {isSelected && (
+                        isMulti
+                          ? <Check className="w-3 h-3 text-white" />
+                          : <span className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </span>
+                    <span className="text-sm text-foreground">{option.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -879,18 +949,34 @@ export const AdaptiveDiagnostic = ({
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 {questions.map((q) => {
-                  const val = answers[q.id] || 0;
-                  const label = q.options.find(o => o.value === val)?.label || '—';
+                  const val = answers[q.id];
+                  if (q.type === "multi") {
+                    const selected = Array.isArray(val) ? val : [];
+                    const labels = selected.map(v => q.options.find(o => o.value === v)?.label).filter(Boolean);
+                    return (
+                      <div key={q.id} className="bg-muted/30 rounded-xl p-3 col-span-2">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{q.category}</p>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {labels.length > 0 ? labels.map((l, i) => (
+                            <span key={i} className="text-[11px] bg-foreground/10 text-foreground px-2 py-0.5 rounded-full">{l}</span>
+                          )) : <span className="text-[11px] text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  const numVal = (typeof val === 'number' ? val : 0);
+                  const maxVal = q.options.length;
+                  const label = q.options.find(o => o.value === numVal)?.label || '—';
                   return (
                     <div key={q.id} className="bg-muted/30 rounded-xl p-3">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{q.category}</p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <div className="flex gap-0.5">
-                          {[1,2,3,4].map(i => (
-                            <div key={i} className={`w-3 h-3 rounded-full ${i <= val ? 'bg-primary' : 'bg-muted'}`} />
+                          {Array.from({ length: Math.min(maxVal, 5) }, (_, i) => i + 1).map(i => (
+                            <div key={i} className={`w-3 h-3 rounded-full ${i <= numVal ? 'bg-primary' : 'bg-muted'}`} />
                           ))}
                         </div>
-                        <span className="text-xs font-medium">{val}/4</span>
+                        <span className="text-xs font-medium">{numVal}/{maxVal}</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1 truncate">{label}</p>
                     </div>
