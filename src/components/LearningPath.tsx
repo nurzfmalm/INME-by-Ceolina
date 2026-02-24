@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, CheckCircle, Circle, TrendingUp, TrendingDown,
   BookOpen, Loader2, ChevronLeft, ChevronRight, Plus, Trash2,
-  Edit2, Save, X, GripVertical, RefreshCw
+  Edit2, Save, X, RefreshCw, Clock, Target, Lightbulb,
+  ChevronDown, ChevronUp, Settings2, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,8 +27,13 @@ interface Activity {
   difficulty: string;
   description: string;
   duration_minutes: number;
-  sensory_focus: string[];
-  emotional_goals: string[];
+  materials?: string[];
+  steps?: string[];
+  therapeutic_rationale?: string;
+  sensory_focus?: string[];
+  emotional_goals?: string[];
+  adaptation_notes?: string;
+  success_indicators?: string[];
   completed?: boolean;
 }
 
@@ -55,20 +62,68 @@ interface LearningPathData {
   completion_percentage: number;
 }
 
+interface Preferences {
+  focusAreas: string[];
+  sessionDuration: number;
+  preferredTypes: string[];
+  complexity: string;
+  personalNotes: string;
+}
+
+const FOCUS_OPTIONS = [
+  { id: "emotional_regulation", label: "Эмоциональная регуляция", emoji: "💛" },
+  { id: "fine_motor", label: "Мелкая моторика", emoji: "✋" },
+  { id: "social_interaction", label: "Социальное взаимодействие", emoji: "👥" },
+  { id: "attention", label: "Внимание и концентрация", emoji: "🎯" },
+  { id: "self_expression", label: "Самовыражение", emoji: "🎨" },
+  { id: "sensory_integration", label: "Сенсорная интеграция", emoji: "🌈" },
+];
+
+const TYPE_OPTIONS = [
+  { id: "solo_drawing", label: "Свободный рисунок", emoji: "🖌️" },
+  { id: "tracing", label: "Обводка / трафарет", emoji: "✏️" },
+  { id: "symmetry", label: "Симметрия", emoji: "🪞" },
+  { id: "half_tracing", label: "Половинки", emoji: "🧩" },
+  { id: "collaborative", label: "Совместное", emoji: "👫" },
+  { id: "sensory", label: "Сенсорное", emoji: "🖐️" },
+];
+
+const TYPE_LABELS: Record<string, string> = {
+  solo_drawing: "🖌️ Рисунок",
+  tracing: "✏️ Обводка",
+  symmetry: "🪞 Симметрия",
+  half_tracing: "🧩 Половинки",
+  collaborative: "👫 Совместное",
+  sensory: "🖐️ Сенсорное",
+  observation: "👁️ Наблюдение",
+  mixed: "🔀 Смешанное",
+};
+
 export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) => {
   const [path, setPath] = useState<LearningPathData | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showAdaptation, setShowAdaptation] = useState<'faster' | 'slower' | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
+
+  // Preferences for generation
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [preferences, setPreferences] = useState<Preferences>({
+    focusAreas: [],
+    sessionDuration: 15,
+    preferredTypes: [],
+    complexity: "adaptive",
+    personalNotes: "",
+  });
 
   // Editing state
-  const [editingActivity, setEditingActivity] = useState<string | null>(null); // "week-day"
+  const [editingActivity, setEditingActivity] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Activity>>({});
   const [addingActivity, setAddingActivity] = useState(false);
   const [newActivity, setNewActivity] = useState<Partial<Activity>>({
     title: "", description: "", type: "solo_drawing", difficulty: "easy", duration_minutes: 15,
-    sensory_focus: [], emotional_goals: [],
+    materials: [], steps: [], sensory_focus: [], emotional_goals: [],
   });
 
   useEffect(() => { loadLearningPath(); }, [childId]);
@@ -122,12 +177,19 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
       }
 
       const { data, error } = await supabase.functions.invoke('generate-learning-path', {
-        body: { userId: userData.user.id, childId, childName, assessmentData }
+        body: {
+          userId: userData.user.id,
+          childId,
+          childName,
+          assessmentData,
+          preferences: preferences.focusAreas.length > 0 || preferences.personalNotes ? preferences : undefined,
+        }
       });
       if (error) throw error;
       if (data?.learningPath) {
         setPath(data.learningPath);
         setSelectedWeek(1);
+        setShowPreferences(false);
         toast.success("Программа терапии создана!");
       }
     } catch (error) {
@@ -144,19 +206,13 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
     const totalActivities = weeksData.reduce((sum: number, w: Week) => sum + (w.activities?.length || 0), 0);
     const completedActivities = weeksData.reduce((sum: number, w: Week) => sum + (w.activities?.filter((a: Activity) => a.completed).length || 0), 0);
     const percentage = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
-
     try {
       const { error } = await supabase.from("learning_paths").update({
-        path_data: updatedPathData,
-        completion_percentage: percentage,
-        last_activity: new Date().toISOString(),
-        ...extraFields,
+        path_data: updatedPathData, completion_percentage: percentage, last_activity: new Date().toISOString(), ...extraFields,
       }).eq("id", path.id);
       if (error) throw error;
       setPath({ ...path, path_data: updatedPathData, completion_percentage: percentage, ...extraFields });
-    } catch {
-      toast.error("Ошибка сохранения");
-    }
+    } catch { toast.error("Ошибка сохранения"); }
   };
 
   const updateProgress = async (weekNum: number, activityDay: number) => {
@@ -176,7 +232,6 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
     await savePath(path.path_data, { current_week: weekNum });
   };
 
-  // ─── Editing functions ───
   const startEditActivity = (weekNum: number, day: number, activity: Activity) => {
     setEditingActivity(`${weekNum}-${day}`);
     setEditForm({ ...activity });
@@ -200,7 +255,6 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
     const week = updatedPathData.weeks.find((w: Week) => w.week === weekNum);
     if (!week) return;
     week.activities = week.activities.filter((a: Activity) => a.day !== day);
-    // Re-number days
     week.activities.forEach((a: Activity, i: number) => { a.day = i + 1; });
     await savePath(updatedPathData);
     toast.success("Задание удалено");
@@ -219,24 +273,28 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
       difficulty: newActivity.difficulty || "easy",
       description: newActivity.description || "",
       duration_minutes: newActivity.duration_minutes || 15,
+      materials: newActivity.materials || [],
+      steps: newActivity.steps || [],
       sensory_focus: newActivity.sensory_focus || [],
       emotional_goals: newActivity.emotional_goals || [],
       completed: false,
     });
     await savePath(updatedPathData);
     setAddingActivity(false);
-    setNewActivity({ title: "", description: "", type: "solo_drawing", difficulty: "easy", duration_minutes: 15, sensory_focus: [], emotional_goals: [] });
+    setNewActivity({ title: "", description: "", type: "solo_drawing", difficulty: "easy", duration_minutes: 15, materials: [], steps: [], sensory_focus: [], emotional_goals: [] });
     toast.success("Задание добавлено");
   };
 
-  // ─── Week completion check ───
   const getWeekCompletion = (week: Week) => {
     if (!week.activities?.length) return 0;
-    const done = week.activities.filter(a => a.completed).length;
-    return Math.round((done / week.activities.length) * 100);
+    return Math.round((week.activities.filter(a => a.completed).length / week.activities.length) * 100);
   };
 
-  // ─── Render states ───
+  const togglePref = (arr: string[], item: string) =>
+    arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
+
+  // ─── Render ───
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center">
@@ -248,20 +306,135 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
     );
   }
 
+  // ─── No path: show preferences + generate ───
   if (!path) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-6">
-        <Button onClick={onBack} variant="ghost" className="mb-6"><ArrowLeft className="mr-2 h-4 w-4" />Назад</Button>
-        <Card>
-          <CardContent className="p-12 text-center">
-            <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">Программа для {childName || "ребёнка"} не найдена</h3>
-            <p className="text-muted-foreground mb-4">Создайте персональную программу терапии</p>
-            <Button onClick={generateLearningPath} disabled={generating}>
-              {generating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание...</> : <><BookOpen className="w-4 h-4 mr-2" />Создать программу</>}
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4 sm:p-6">
+        <div className="max-w-lg mx-auto">
+          <Button onClick={onBack} variant="ghost" className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" />Назад</Button>
+
+          <Card className="mb-4">
+            <CardContent className="p-8 text-center">
+              <Sparkles className="w-12 h-12 mx-auto mb-3 text-primary" />
+              <h3 className="text-xl font-semibold mb-1">Создать программу терапии</h3>
+              <p className="text-sm text-muted-foreground mb-4">для {childName || "ребёнка"}</p>
+            </CardContent>
+          </Card>
+
+          {/* Preferences panel */}
+          <Card className="mb-4">
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowPreferences(!showPreferences)}>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Settings2 className="w-4 h-4" />Настройки программы
+                </CardTitle>
+                {showPreferences ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </div>
+            </CardHeader>
+            {showPreferences && (
+              <CardContent className="pt-0 space-y-4">
+                {/* Focus areas */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Фокусные области</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FOCUS_OPTIONS.map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setPreferences({ ...preferences, focusAreas: togglePref(preferences.focusAreas, opt.id) })}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                          preferences.focusAreas.includes(opt.id)
+                            ? "bg-foreground text-white"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {opt.emoji} {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preferred activity types */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Типы активностей</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TYPE_OPTIONS.map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setPreferences({ ...preferences, preferredTypes: togglePref(preferences.preferredTypes, opt.id) })}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                          preferences.preferredTypes.includes(opt.id)
+                            ? "bg-foreground text-white"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {opt.emoji} {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Длительность занятия</p>
+                  <div className="flex gap-2">
+                    {[10, 15, 20, 30].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setPreferences({ ...preferences, sessionDuration: d })}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                          preferences.sessionDuration === d
+                            ? "bg-foreground text-white"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {d} мин
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Complexity */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Уровень сложности</p>
+                  <div className="flex gap-2">
+                    {[
+                      { id: "easy", label: "Лёгкий" },
+                      { id: "adaptive", label: "Адаптивный" },
+                      { id: "challenging", label: "С вызовом" },
+                    ].map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setPreferences({ ...preferences, complexity: c.id })}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                          preferences.complexity === c.id
+                            ? "bg-foreground text-white"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Заметки для ИИ</p>
+                  <Textarea
+                    placeholder="Особенности ребёнка, что нравится, чего избегать..."
+                    value={preferences.personalNotes}
+                    onChange={e => setPreferences({ ...preferences, personalNotes: e.target.value })}
+                    className="h-20 text-sm"
+                  />
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          <Button onClick={generateLearningPath} disabled={generating} className="w-full" size="lg">
+            {generating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание программы...</> : <><Sparkles className="w-4 h-4 mr-2" />Создать программу</>}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -272,7 +445,7 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
       <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-6">
         <Button onClick={onBack} variant="ghost" className="mb-6"><ArrowLeft className="mr-2 h-4 w-4" />Назад</Button>
         <Card><CardContent className="p-12 text-center">
-          <p className="text-muted-foreground">Программа пуста. Пройдите диагностику заново.</p>
+          <p className="text-muted-foreground">Программа пуста.</p>
           <Button onClick={onBack} className="mt-4">Вернуться</Button>
         </CardContent></Card>
       </div>
@@ -282,14 +455,14 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
   const currentWeek = weeks.find((w: Week) => w.week === selectedWeek) || weeks[0];
   const weekCompletion = getWeekCompletion(currentWeek);
   const isLastWeek = selectedWeek >= weeks.length;
-  const canGoNext = weekCompletion >= 80; // Allow next week when 80%+ done
+  const canGoNext = weekCompletion >= 80;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
         <Button onClick={onBack} variant="ghost" className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" />Назад</Button>
 
-        {/* Header with overall progress */}
+        {/* Header */}
         <Card className="mb-4">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -297,9 +470,8 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                 <CardTitle className="text-xl">Программа терапии</CardTitle>
                 <CardDescription>{childName ? `для ${childName} · ` : ''}Неделя {selectedWeek} из {weeks.length}</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={generateLearningPath} disabled={generating}>
-                <RefreshCw className={`w-4 h-4 mr-1 ${generating ? 'animate-spin' : ''}`} />
-                Пересоздать
+              <Button variant="outline" size="sm" onClick={() => { setShowPreferences(true); }} title="Пересоздать с настройками">
+                <RefreshCw className="w-4 h-4 mr-1" />Пересоздать
               </Button>
             </div>
           </CardHeader>
@@ -309,22 +481,50 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
           </CardContent>
         </Card>
 
-        {/* Week navigation tabs */}
+        {/* Preferences panel for regeneration */}
+        {showPreferences && (
+          <Card className="mb-4 border-primary/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2"><Settings2 className="w-4 h-4" />Настройки программы</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowPreferences(false)}><X className="w-4 h-4" /></Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              <div>
+                <p className="text-xs font-medium mb-1.5">Фокусные области</p>
+                <div className="flex flex-wrap gap-1">
+                  {FOCUS_OPTIONS.map(opt => (
+                    <button key={opt.id} onClick={() => setPreferences({ ...preferences, focusAreas: togglePref(preferences.focusAreas, opt.id) })}
+                      className={`text-[11px] px-2.5 py-1 rounded-full transition-all ${preferences.focusAreas.includes(opt.id) ? "bg-foreground text-white" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`}>
+                      {opt.emoji} {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium mb-1.5">Заметки</p>
+                <Textarea placeholder="Что изменить, на что обратить внимание..." value={preferences.personalNotes}
+                  onChange={e => setPreferences({ ...preferences, personalNotes: e.target.value })} className="h-16 text-xs" />
+              </div>
+              <Button onClick={generateLearningPath} disabled={generating} size="sm" className="w-full">
+                {generating ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Создание...</> : <><Sparkles className="w-3.5 h-3.5 mr-1" />Пересоздать программу</>}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Week tabs */}
         <div className="flex gap-1.5 mb-4 overflow-x-auto pb-2">
           {weeks.map((w: Week) => {
             const wc = getWeekCompletion(w);
             return (
-              <button
-                key={w.week}
-                onClick={() => goToWeek(w.week)}
+              <button key={w.week} onClick={() => goToWeek(w.week)}
                 className={`flex-shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                  w.week === selectedWeek
-                    ? 'bg-foreground text-white shadow-md'
-                    : wc === 100
-                    ? 'bg-primary/10 text-primary border border-primary/30'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                }`}
-              >
+                  w.week === selectedWeek ? 'bg-foreground text-white shadow-md'
+                  : wc === 100 ? 'bg-primary/10 text-primary border border-primary/30'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}>
                 <span className="block text-xs">Неделя {w.week}</span>
                 {wc > 0 && wc < 100 && <span className="block text-[10px] mt-0.5">{wc}%</span>}
                 {wc === 100 && <CheckCircle className="w-3 h-3 mx-auto mt-0.5" />}
@@ -333,7 +533,7 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
           })}
         </div>
 
-        {/* Current week content */}
+        {/* Current week */}
         {currentWeek && (
           <>
             <Card className="mb-4">
@@ -342,7 +542,6 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                   <CardTitle className="text-lg">{currentWeek.theme}</CardTitle>
                   <Badge variant="outline">Неделя {currentWeek.week}</Badge>
                 </div>
-                {/* Week progress bar */}
                 <div className="mt-2">
                   <Progress value={weekCompletion} className="h-2" />
                   <p className="text-[11px] text-muted-foreground mt-1">{weekCompletion}% выполнено</p>
@@ -357,7 +556,6 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                     </ul>
                   </div>
                 )}
-
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowAdaptation(showAdaptation === 'faster' ? null : 'faster')}>
                     <TrendingUp className="mr-1 h-3.5 w-3.5" />Быстрее
@@ -366,7 +564,6 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                     <TrendingDown className="mr-1 h-3.5 w-3.5" />Медленнее
                   </Button>
                 </div>
-
                 {showAdaptation && currentWeek.adaptation_triggers && (
                   <Card className="bg-muted"><CardContent className="p-3">
                     <p className="text-sm">{showAdaptation === 'faster' ? currentWeek.adaptation_triggers.if_faster : currentWeek.adaptation_triggers.if_slower}</p>
@@ -384,50 +581,26 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                 </Button>
               </div>
 
-              {/* Add activity form */}
+              {/* Add form */}
               {addingActivity && (
                 <Card className="border-dashed border-2 border-primary/30">
                   <CardContent className="p-4 space-y-3">
                     <h4 className="text-sm font-semibold">Новое задание</h4>
-                    <Input
-                      placeholder="Название задания"
-                      value={newActivity.title || ""}
-                      onChange={e => setNewActivity({ ...newActivity, title: e.target.value })}
-                    />
-                    <Input
-                      placeholder="Описание"
-                      value={newActivity.description || ""}
-                      onChange={e => setNewActivity({ ...newActivity, description: e.target.value })}
-                    />
+                    <Input placeholder="Название" value={newActivity.title || ""} onChange={e => setNewActivity({ ...newActivity, title: e.target.value })} />
+                    <Textarea placeholder="Описание и инструкция" value={newActivity.description || ""} onChange={e => setNewActivity({ ...newActivity, description: e.target.value })} className="h-16 text-sm" />
                     <div className="flex gap-2">
-                      <select
-                        className="flex-1 rounded-md border px-3 py-2 text-sm bg-background"
-                        value={newActivity.type}
-                        onChange={e => setNewActivity({ ...newActivity, type: e.target.value })}
-                      >
-                        <option value="solo_drawing">Свободный рисунок</option>
-                        <option value="tracing">Обводка</option>
-                        <option value="symmetry">Симметрия</option>
-                        <option value="collaborative">Совместное</option>
-                        <option value="sensory">Сенсорное</option>
+                      <select className="flex-1 rounded-md border px-3 py-2 text-sm bg-background" value={newActivity.type} onChange={e => setNewActivity({ ...newActivity, type: e.target.value })}>
+                        {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                       </select>
-                      <select
-                        className="w-28 rounded-md border px-3 py-2 text-sm bg-background"
-                        value={newActivity.difficulty}
-                        onChange={e => setNewActivity({ ...newActivity, difficulty: e.target.value })}
-                      >
+                      <select className="w-28 rounded-md border px-3 py-2 text-sm bg-background" value={newActivity.difficulty} onChange={e => setNewActivity({ ...newActivity, difficulty: e.target.value })}>
                         <option value="easy">Легко</option>
                         <option value="medium">Средне</option>
                         <option value="hard">Сложно</option>
                       </select>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => addActivity(currentWeek.week)}>
-                        <Save className="w-3.5 h-3.5 mr-1" />Добавить
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setAddingActivity(false)}>
-                        <X className="w-3.5 h-3.5 mr-1" />Отмена
-                      </Button>
+                      <Button size="sm" onClick={() => addActivity(currentWeek.week)}><Save className="w-3.5 h-3.5 mr-1" />Добавить</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setAddingActivity(false)}><X className="w-3.5 h-3.5 mr-1" />Отмена</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -435,50 +608,27 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
 
               {currentWeek.activities.map((activity) => {
                 const isEditing = editingActivity === `${currentWeek.week}-${activity.day}`;
+                const isExpanded = expandedActivity === `${currentWeek.week}-${activity.day}`;
 
                 if (isEditing) {
                   return (
                     <Card key={activity.day} className="border-primary">
                       <CardContent className="p-4 space-y-3">
-                        <Input
-                          value={editForm.title || ""}
-                          onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                          placeholder="Название"
-                        />
-                        <Input
-                          value={editForm.description || ""}
-                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                          placeholder="Описание"
-                        />
+                        <Input value={editForm.title || ""} onChange={e => setEditForm({ ...editForm, title: e.target.value })} placeholder="Название" />
+                        <Textarea value={editForm.description || ""} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="Описание" className="h-16 text-sm" />
                         <div className="flex gap-2">
-                          <select
-                            className="flex-1 rounded-md border px-3 py-2 text-sm bg-background"
-                            value={editForm.type || "solo_drawing"}
-                            onChange={e => setEditForm({ ...editForm, type: e.target.value })}
-                          >
-                            <option value="solo_drawing">Свободный рисунок</option>
-                            <option value="tracing">Обводка</option>
-                            <option value="symmetry">Симметрия</option>
-                            <option value="collaborative">Совместное</option>
-                            <option value="sensory">Сенсорное</option>
+                          <select className="flex-1 rounded-md border px-3 py-2 text-sm bg-background" value={editForm.type || "solo_drawing"} onChange={e => setEditForm({ ...editForm, type: e.target.value })}>
+                            {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                           </select>
-                          <select
-                            className="w-28 rounded-md border px-3 py-2 text-sm bg-background"
-                            value={editForm.difficulty || "easy"}
-                            onChange={e => setEditForm({ ...editForm, difficulty: e.target.value })}
-                          >
+                          <select className="w-28 rounded-md border px-3 py-2 text-sm bg-background" value={editForm.difficulty || "easy"} onChange={e => setEditForm({ ...editForm, difficulty: e.target.value })}>
                             <option value="easy">Легко</option>
                             <option value="medium">Средне</option>
                             <option value="hard">Сложно</option>
                           </select>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => saveEditActivity(currentWeek.week, activity.day)}>
-                            <Save className="w-3.5 h-3.5 mr-1" />Сохранить
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingActivity(null)}>
-                            <X className="w-3.5 h-3.5 mr-1" />Отмена
-                          </Button>
+                          <Button size="sm" onClick={() => saveEditActivity(currentWeek.week, activity.day)}><Save className="w-3.5 h-3.5 mr-1" />Сохранить</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingActivity(null)}><X className="w-3.5 h-3.5 mr-1" />Отмена</Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -502,16 +652,111 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
-                          <div className="flex flex-wrap gap-1">
-                            <Badge variant="secondary" className="text-[10px]">{activity.duration_minutes} мин</Badge>
-                            {activity.type && <Badge variant="outline" className="text-[10px]">{
-                              activity.type === 'solo_drawing' ? '🎨 Рисунок' :
-                              activity.type === 'tracing' ? '✏️ Обводка' :
-                              activity.type === 'symmetry' ? '🪞 Симметрия' :
-                              activity.type === 'collaborative' ? '👥 Совместное' :
-                              activity.type
-                            }</Badge>}
+                          
+                          {/* Quick meta row */}
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            <Badge variant="secondary" className="text-[10px]"><Clock className="w-2.5 h-2.5 mr-0.5" />{activity.duration_minutes} мин</Badge>
+                            {activity.type && <Badge variant="outline" className="text-[10px]">{TYPE_LABELS[activity.type] || activity.type}</Badge>}
+                            {activity.materials?.length ? <Badge variant="outline" className="text-[10px]">📦 {activity.materials.length} материалов</Badge> : null}
+                            {activity.steps?.length ? <Badge variant="outline" className="text-[10px]">📋 {activity.steps.length} шагов</Badge> : null}
                           </div>
+
+                          {/* Expand/collapse for details */}
+                          {(activity.materials?.length || activity.steps?.length || activity.therapeutic_rationale || activity.emotional_goals?.length || activity.success_indicators?.length) && (
+                            <button
+                              onClick={() => setExpandedActivity(isExpanded ? null : `${currentWeek.week}-${activity.day}`)}
+                              className="text-[11px] text-primary hover:underline flex items-center gap-0.5 mt-1"
+                            >
+                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {isExpanded ? "Свернуть" : "Подробнее"}
+                            </button>
+                          )}
+
+                          {/* Expanded details */}
+                          {isExpanded && (
+                            <div className="mt-3 space-y-2.5 bg-muted/30 rounded-xl p-3">
+                              {/* Materials */}
+                              {activity.materials?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">📦 Материалы</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {activity.materials.map((m, i) => (
+                                      <span key={i} className="text-[11px] bg-background px-2 py-0.5 rounded-full border">{m}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Steps */}
+                              {activity.steps?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">📋 Пошаговая инструкция</p>
+                                  <ol className="space-y-1">
+                                    {activity.steps.map((step, i) => (
+                                      <li key={i} className="flex gap-2 text-xs text-foreground/80">
+                                        <span className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
+                                        {step}
+                                      </li>
+                                    ))}
+                                  </ol>
+                                </div>
+                              )}
+
+                              {/* Therapeutic rationale */}
+                              {activity.therapeutic_rationale && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">💡 Терапевтическое обоснование</p>
+                                  <p className="text-xs text-foreground/70">{activity.therapeutic_rationale}</p>
+                                </div>
+                              )}
+
+                              {/* Emotional goals */}
+                              {activity.emotional_goals?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">🎯 Эмоциональные цели</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {activity.emotional_goals.map((g, i) => (
+                                      <span key={i} className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{g}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Sensory focus */}
+                              {activity.sensory_focus?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">🌈 Сенсорный фокус</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {activity.sensory_focus.map((s, i) => (
+                                      <span key={i} className="text-[11px] bg-secondary/50 px-2 py-0.5 rounded-full">{s}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Success indicators */}
+                              {activity.success_indicators?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">✅ Критерии успеха</p>
+                                  <ul className="space-y-0.5">
+                                    {activity.success_indicators.map((s, i) => (
+                                      <li key={i} className="text-xs text-foreground/70 flex items-start gap-1.5">
+                                        <span className="text-primary mt-0.5">•</span>{s}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Adaptation */}
+                              {activity.adaptation_notes && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">🔄 Адаптация</p>
+                                  <p className="text-xs text-foreground/70">{activity.adaptation_notes}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => startEditActivity(currentWeek.week, activity.day, activity)} className="p-1.5 rounded-lg hover:bg-muted transition">
@@ -536,30 +781,19 @@ export const LearningPath = ({ onBack, childId, childName }: LearningPathProps) 
 
             {/* Week navigation */}
             <div className="flex items-center justify-between mt-6">
-              <Button
-                variant="outline"
-                disabled={selectedWeek <= 1}
-                onClick={() => goToWeek(selectedWeek - 1)}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />Предыдущая неделя
+              <Button variant="outline" disabled={selectedWeek <= 1} onClick={() => goToWeek(selectedWeek - 1)}>
+                <ChevronLeft className="w-4 h-4 mr-1" />Предыдущая
               </Button>
-
               {weekCompletion === 100 && !isLastWeek && (
-                <div className="text-center">
-                  <p className="text-xs text-primary font-medium mb-1">🎉 Неделя завершена!</p>
-                </div>
+                <p className="text-xs text-primary font-medium">🎉 Неделя завершена!</p>
               )}
-
               {isLastWeek && weekCompletion === 100 ? (
-                <div className="text-center bg-primary/10 rounded-xl px-4 py-2">
+                <div className="bg-primary/10 rounded-xl px-4 py-2">
                   <p className="text-sm font-semibold text-primary">🏆 Программа завершена!</p>
                 </div>
               ) : (
-                <Button
-                  disabled={!canGoNext && selectedWeek >= (path.current_week || 1)}
-                  onClick={() => goToWeek(selectedWeek + 1)}
-                >
-                  Следующая неделя<ChevronRight className="w-4 h-4 ml-1" />
+                <Button disabled={!canGoNext && selectedWeek >= (path.current_week || 1)} onClick={() => goToWeek(selectedWeek + 1)}>
+                  Следующая<ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               )}
             </div>
