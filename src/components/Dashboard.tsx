@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Palette, Monitor, Flame, Menu, Users } from "lucide-react";
+import { Palette, Monitor, Flame, Settings } from "lucide-react";
 import { OnboardingData } from "./Onboarding";
 import { FloatingAssistant } from "./FloatingAssistant";
 import type { UserRole } from "@/hooks/useUserRole";
@@ -166,13 +166,12 @@ export const Dashboard = ({ childData, onNavigate, userRole, selectedChildId, on
             </div>
           </div>
 
-          {/* Menu Button */}
+          {/* Settings Button */}
           <button 
-            onClick={handleLogout}
-            className="w-10 h-10 flex flex-col items-end justify-center gap-1"
+            onClick={() => onNavigate("sensory-settings")}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/50 transition-colors"
           >
-            <div className="w-6 h-0.5 bg-[#4A90D9]"></div>
-            <div className="w-4 h-0.5 bg-[#4A90D9]"></div>
+            <Settings className="w-6 h-6 text-[#4A90D9]" />
           </button>
         </div>
       </header>
