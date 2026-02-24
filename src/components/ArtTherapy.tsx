@@ -121,7 +121,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
               <img src={cardEasel} alt="" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "232.27px", height: "289.01px", objectFit: "contain",
+                width: "45%", objectFit: "contain",
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
               }} />
             </div>
