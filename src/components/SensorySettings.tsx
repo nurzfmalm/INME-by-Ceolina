@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Volume2, VolumeX, Eye, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Volume2, VolumeX, Eye, Sparkles, LogOut } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -286,6 +286,23 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
             <div className="h-20 bg-secondary/20 rounded-lg animate-pulse" />
           </div>
         </Card>
+
+        {/* Logout */}
+        <Button
+          variant="outline"
+          className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+          onClick={async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              toast.error("Ошибка при выходе");
+            } else {
+              toast.success("Вы вышли из аккаунта");
+              window.location.reload();
+            }
+          }}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Выйти из аккаунта
+        </Button>
       </div>
     </div>
   );
