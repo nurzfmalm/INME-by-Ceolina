@@ -860,36 +860,128 @@ export const AdaptiveDiagnostic = ({
           </div>
         )}
 
-        {/* ═══ COMPLETE SCREEN ═══ */}
+        {/* ═══ COMPLETE SCREEN: Visual Report ═══ */}
         {phase === "complete" && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center space-y-5 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8 text-primary" />
+          <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 max-w-lg w-full space-y-5 animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Check className="w-7 h-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">Отчёт диагностики</h2>
+              <p className="text-xs text-muted-foreground mt-1">{displayName}{childAge ? `, ${childAge} лет` : ''}</p>
             </div>
-            <h2 className="text-xl font-bold text-foreground">Диагностика завершена!</h2>
-            <p className="text-sm text-muted-foreground">
-              Собраны данные анкеты, метрики пробных заданий и наблюдения специалиста.
-              На их основе будет создана персональная программа.
-            </p>
 
-            {/* Summary */}
-            <div className="text-left space-y-2 bg-muted/30 rounded-xl p-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Анкета</span>
-                <span className="font-medium">{Object.keys(answers).length}/{questions.length} ответов</span>
+            {/* Phase 1: Questionnaire Results */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                📋 Анкета
+                <span className="text-xs font-normal text-muted-foreground">({Object.keys(answers).length}/{questions.length})</span>
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {questions.map((q) => {
+                  const val = answers[q.id] || 0;
+                  const label = q.options.find(o => o.value === val)?.label || '—';
+                  return (
+                    <div key={q.id} className="bg-muted/30 rounded-xl p-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{q.category}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex gap-0.5">
+                          {[1,2,3,4].map(i => (
+                            <div key={i} className={`w-3 h-3 rounded-full ${i <= val ? 'bg-primary' : 'bg-muted'}`} />
+                          ))}
+                        </div>
+                        <span className="text-xs font-medium">{val}/4</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate">{label}</p>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Пробные задания</span>
-                <span className="font-medium">{Object.keys(trialMetrics).length}/{trialTasks.length} выполнено</span>
+            </div>
+
+            {/* Phase 2: Trial Metrics */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                🎨 Пробные задания
+                <span className="text-xs font-normal text-muted-foreground">({Object.keys(trialMetrics).length}/{trialTasks.length})</span>
+              </h3>
+              <div className="space-y-2">
+                {trialTasks.map((task) => {
+                  const m = trialMetrics[task.id];
+                  if (!m) return (
+                    <div key={task.id} className="bg-muted/20 rounded-xl p-3 text-xs text-muted-foreground">
+                      {task.emoji} {task.title} — не выполнено
+                    </div>
+                  );
+                  return (
+                    <div key={task.id} className="bg-muted/30 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">{task.emoji}</span>
+                        <span className="text-sm font-medium">{task.title}</span>
+                        <Check className="w-4 h-4 text-primary ml-auto" />
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">{m.strokeCount}</p>
+                          <p className="text-[10px] text-muted-foreground">штрихов</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">{m.colorsUsed?.length || 0}</p>
+                          <p className="text-[10px] text-muted-foreground">цветов</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">{m.totalTimeSec}с</p>
+                          <p className="text-[10px] text-muted-foreground">время</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">{m.avgStrokeLength}</p>
+                          <p className="text-[10px] text-muted-foreground">ср. длина</p>
+                        </div>
+                      </div>
+                      {m.colorsUsed?.length > 0 && (
+                        <div className="flex gap-1 mt-2">
+                          {m.colorsUsed.map((c: string) => (
+                            <div key={c} className="w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: c }} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Наблюдения</span>
-                <span className="font-medium">{Object.values(observations).filter(Boolean).length} пунктов</span>
+            </div>
+
+            {/* Phase 3: Observations */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                👁️ Наблюдения специалиста
+                <span className="text-xs font-normal text-muted-foreground">({Object.values(observations).filter(Boolean).length} пунктов)</span>
+              </h3>
+              <div className="bg-muted/30 rounded-xl p-3 space-y-2">
+                {observationChecklist.map((section) => {
+                  const checked = section.items.filter(item => observations[item.id]);
+                  if (checked.length === 0) return null;
+                  return (
+                    <div key={section.id}>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{section.category}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {checked.map(item => (
+                          <span key={item.id} className="text-[11px] bg-foreground/10 text-foreground px-2 py-0.5 rounded-full">
+                            {item.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {Object.values(observations).filter(Boolean).length === 0 && (
+                  <p className="text-xs text-muted-foreground">Наблюдения не отмечены</p>
+                )}
               </div>
               {specialistNotes && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Заметки</span>
-                  <span className="font-medium">✓</span>
+                <div className="bg-muted/20 rounded-xl p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Заметки</p>
+                  <p className="text-xs text-foreground">{specialistNotes}</p>
                 </div>
               )}
             </div>
@@ -899,7 +991,7 @@ export const AdaptiveDiagnostic = ({
               disabled={loading}
               className="w-full bg-primary text-primary-foreground rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
             >
-              {loading ? "Сохранение..." : "Создать программу"}
+              {loading ? "Сохранение..." : "Создать программу →"}
             </button>
           </div>
         )}
