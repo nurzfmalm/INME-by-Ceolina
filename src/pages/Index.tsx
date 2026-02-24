@@ -329,15 +329,17 @@ const Index = () => {
     return <PlanLoadingScreen onComplete={handlePlanLoadingComplete} />;
   }
 
+  // Show plan ready screen (standalone, not overlay)
+  if (showPlanReady) {
+    return <PlanReadyModal open={true} onStart={handlePlanReadyStart} />;
+  }
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <>
-        <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
@@ -387,20 +389,33 @@ const Index = () => {
               setSelectedChildName(children[0].name);
               setSelectedChildAge(children[0].age);
             }
-            
-            // Go straight to diagnostic
-            setCurrentSection("diagnostic");
           }}
         />
       );
     }
 
-    // Step 2: Diagnostic test
+    // Step 2: Diagnostic not yet completed — show diagnostic automatically
+    if (!diagnosticComplete) {
+      return (
+        <AdaptiveDiagnostic
+          onComplete={handleDiagnosticComplete}
+          onBack={() => {
+            // Can't skip diagnostic in initial flow — just go back to onboarding
+            setOnboardingComplete(false);
+          }}
+          childId={selectedChildId || undefined}
+          childName={selectedChildName}
+          childAge={selectedChildAge}
+        />
+      );
+    }
+
+    // Also handle explicit navigation to diagnostic for existing children
     if (currentSection === "diagnostic") {
       return (
         <AdaptiveDiagnostic
           onComplete={handleDiagnosticComplete}
-          onBack={() => setCurrentSection("children")}
+          onBack={() => setCurrentSection("dashboard")}
           childId={selectedChildId || undefined}
           childName={selectedChildName}
           childAge={selectedChildAge}
@@ -674,16 +689,13 @@ const Index = () => {
 
   // Parent/Specialist role - show full dashboard
   return (
-    <>
-      <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
-      <Dashboard
-        childData={safeChildData}
-        onNavigate={handleNavigate}
-        userRole={role}
-        selectedChildId={selectedChildId}
-        onChangeChild={() => setCurrentSection("children")}
-      />
-    </>
+    <Dashboard
+      childData={safeChildData}
+      onNavigate={handleNavigate}
+      userRole={role}
+      selectedChildId={selectedChildId}
+      onChangeChild={() => setCurrentSection("children")}
+    />
   );
 };
 
