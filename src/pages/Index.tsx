@@ -324,7 +324,7 @@ const Index = () => {
 
   const handlePlanReadyStart = () => {
     setShowPlanReady(false);
-    setCurrentSection("art-therapy");
+    setCurrentSection("dashboard");
   };
 
   const handleNavigate = (section: string) => {
@@ -342,10 +342,7 @@ const Index = () => {
     return <PlanLoadingScreen onComplete={handlePlanLoadingComplete} />;
   }
 
-  // Show plan ready screen (standalone, not overlay)
-  if (showPlanReady) {
-    return <PlanReadyModal open={true} onStart={handlePlanReadyStart} />;
-  }
+  // PlanReadyModal is now rendered as overlay below, not standalone
 
   // Show loading while checking authentication
   if (authLoading) {
@@ -529,10 +526,13 @@ const Index = () => {
     
     if (currentSection === "dashboard" || !childAllowedSections.includes(currentSection)) {
       return (
-        <ChildDashboard
-          childData={safeChildData}
-          onNavigate={handleNavigate}
-        />
+        <>
+          <ChildDashboard
+            childData={safeChildData}
+            onNavigate={handleNavigate}
+          />
+          <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
+        </>
       );
     }
     // Otherwise fall through to allowed sections below
@@ -702,13 +702,16 @@ const Index = () => {
 
   // Parent/Specialist role - show full dashboard
   return (
-    <Dashboard
-      childData={safeChildData}
-      onNavigate={handleNavigate}
-      userRole={role}
-      selectedChildId={selectedChildId}
-      onChangeChild={() => setCurrentSection("children")}
-    />
+    <>
+      <Dashboard
+        childData={safeChildData}
+        onNavigate={handleNavigate}
+        userRole={role}
+        selectedChildId={selectedChildId}
+        onChangeChild={() => setCurrentSection("children")}
+      />
+      <PlanReadyModal open={showPlanReady} onStart={handlePlanReadyStart} />
+    </>
   );
 };
 
