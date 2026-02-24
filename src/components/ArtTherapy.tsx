@@ -85,7 +85,7 @@ export const ArtTherapy = ({ onBack, childName, childId, taskId, taskPrompt }: A
               }} />
             </div>
             <div className="px-3.5 py-2.5 bg-white">
-              <span className="text-[13px] font-medium text-foreground/60">Зеркальное</span>
+              <span className="text-[13px] font-medium text-foreground/60">Симметрия</span>
             </div>
           </button>
 
