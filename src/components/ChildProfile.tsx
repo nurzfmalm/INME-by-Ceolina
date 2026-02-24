@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, CheckCircle2, Palette, BookOpen, Gamepad2, Bot } from "lucide-react";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,6 +112,134 @@ const DEFAULT_SCHEDULE: ScheduleSlot[] = [
   { day: "Суббота", shortDay: "Сб", time: "", active: false },
   { day: "Воскресенье", shortDay: "Вс", time: "", active: false },
 ];
+
+const DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+const ACTIVITY_CATEGORIES = [
+  { name: "Рисование", icon: Palette, time: "0 сек", active: false, color: "#F59E0B" },
+  { name: "Задания", icon: BookOpen, time: "0 сек", active: false, color: "#3B82F6" },
+  { name: "Игры", icon: Gamepad2, time: "0 сек", active: false, color: "#8B5CF6" },
+  { name: "Другое", icon: Bot, time: "1 мин", active: true, color: "#10B981" },
+];
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1; // Monday-based
+}
+
+const MONTH_NAMES = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+];
+
+const ScheduleCalendarCard = () => {
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+
+  const daysInMonth = useMemo(() => getDaysInMonth(currentYear, currentMonth), [currentYear, currentMonth]);
+  const firstDay = useMemo(() => getFirstDayOfMonth(currentYear, currentMonth), [currentYear, currentMonth]);
+
+  const isToday = (day: number) =>
+    day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+
+  const prevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+    else setCurrentMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+    else setCurrentMonth(m => m + 1);
+  };
+
+  const selectedDate = new Date(currentYear, currentMonth, selectedDay);
+  const dayLabel = `${selectedDay} ${MONTH_NAMES[currentMonth].toLowerCase().slice(0, -1)}я`;
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm">
+      <div className="flex gap-4">
+        {/* Calendar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-semibold text-gray-800 text-sm">
+              {MONTH_NAMES[currentMonth]} {currentYear}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={prevMonth} className="w-7 h-7 rounded-full bg-[#4A90D9] text-white flex items-center justify-center hover:bg-[#3A7BC8] transition-colors">
+                <ChevronLeft size={14} />
+              </button>
+              <button onClick={nextMonth} className="w-7 h-7 rounded-full bg-[#4A90D9] text-white flex items-center justify-center hover:bg-[#3A7BC8] transition-colors">
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-0 mb-1">
+            {DAYS_SHORT.map(d => (
+              <div key={d} className="text-center text-[10px] text-gray-400 font-medium py-1">{d}</div>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-0">
+            {Array.from({ length: firstDay }).map((_, i) => (
+              <div key={`empty-${i}`} className="text-center py-1">
+                <span className="text-[10px] text-gray-300">•</span>
+              </div>
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const selected = day === selectedDay;
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`text-center py-1 text-xs rounded-lg transition-colors ${
+                    selected
+                      ? "bg-[#FCD34D] text-gray-800 font-semibold"
+                      : isToday(day)
+                      ? "text-[#4A90D9] font-semibold"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Daily activities */}
+        <div className="w-[140px] flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-semibold text-gray-800 text-sm">{dayLabel}</span>
+          </div>
+          <div className="space-y-2.5">
+            {ACTIVITY_CATEGORIES.map((cat) => (
+              <div key={cat.name} className="flex items-center gap-2">
+                <cat.icon size={16} style={{ color: cat.color }} />
+                <span className="text-xs text-gray-700 flex-1 truncate">{cat.name}</span>
+                <div className="flex items-center gap-0.5">
+                  <CheckCircle2 size={12} className={cat.active ? "text-green-500" : "text-gray-300"} />
+                  <span className={`text-[10px] ${cat.active ? "text-green-500 font-medium" : "text-gray-400"}`}>
+                    {cat.time}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3 text-right">Цель дня не выполнена</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) => {
   const [loading, setLoading] = useState(true);
@@ -380,28 +508,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
             </div>
           </div>
 
-          {/* Schedule Card */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h3 className="font-semibold text-gray-800 mb-4">Расписание занятий:</h3>
-            <div className="flex gap-2 flex-wrap">
-              {profileData.schedule.map((slot) => (
-                <div
-                  key={slot.shortDay}
-                  className={`flex flex-col items-center rounded-xl px-3 py-2 min-w-[48px] ${
-                    slot.active
-                      ? "bg-[#4A90D9] text-white"
-                      : "bg-gray-100 text-gray-400"
-                  }`}
-                >
-                  <span className="text-xs font-medium">{slot.shortDay}</span>
-                  <span className="text-[10px] mt-0.5">{slot.time || "–:–"}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-right">
-              <button className="text-sm text-[#4A90D9] hover:underline">изменить</button>
-            </div>
-          </div>
+          {/* Schedule Card - Calendar + Daily Activities */}
+          <ScheduleCalendarCard />
         </div>
 
         {/* Divider */}
