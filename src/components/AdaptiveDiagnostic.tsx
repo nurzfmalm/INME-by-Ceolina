@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import classroomBg from "@/assets/classroom-background.png";
+import { Check, ChevronRight, ChevronLeft, Play, Pause, RotateCcw } from "lucide-react";
 
 interface AdaptiveDiagnosticProps {
   onComplete: (assessmentId: string) => void;
@@ -11,196 +12,493 @@ interface AdaptiveDiagnosticProps {
   childAge?: number | null;
 }
 
+// ─── Phase 1: Questionnaire (4 key questions) ───
+
 interface Question {
   id: string;
   category: string;
   subtitle: string;
   type: "single" | "multi";
-  options: string[];
-  allowCustom?: boolean;
+  options: { label: string; value: number }[];
 }
 
 const questions: Question[] = [
   {
-    id: "q1_social",
-    category: "Общение и социальное поведение",
+    id: "social",
+    category: "Социальное взаимодействие",
     subtitle: "Как ребёнок взаимодействует с другими?",
     type: "single",
     options: [
-      "Избегает контакта",
-      "Играет рядом но не вместе",
-      "Может играть вместе",
-      "Легко взаимодействует",
+      { label: "Избегает контакта", value: 1 },
+      { label: "Играет рядом, но не вместе", value: 2 },
+      { label: "Может играть вместе с поддержкой", value: 3 },
+      { label: "Легко взаимодействует", value: 4 },
     ],
   },
   {
-    id: "q2_engagement",
-    category: "Вовлечённость и внимание",
-    subtitle: "Как ребёнок обычно включается в задания?",
+    id: "attention",
+    category: "Внимание и вовлечённость",
+    subtitle: "Как ребёнок включается в задания?",
     type: "single",
     options: [
-      "Легко вовлекается",
-      "Нужно время, чтобы привыкнуть",
-      "Быстро теряет интерес",
-      "Зацикливается на одном",
+      { label: "Быстро теряет интерес (< 2 мин)", value: 1 },
+      { label: "Нужно время, чтобы привыкнуть", value: 2 },
+      { label: "Удерживает внимание 5-10 мин", value: 3 },
+      { label: "Легко вовлекается, работает долго", value: 4 },
     ],
   },
   {
-    id: "q3_selfregulation",
-    category: "Поведение и саморегуляция",
-    subtitle: "Как себя ведёт ребёнок?",
+    id: "regulation",
+    category: "Саморегуляция",
+    subtitle: "Как ребёнок реагирует на трудности?",
     type: "single",
     options: [
-      "Импульсивный (действует без ожидания)",
-      "Тревожный / избегает новое",
-      "Легко расстраивается при ошибке",
-      "Спокойно переносит трудности",
+      { label: "Сильно расстраивается, отказывается продолжать", value: 1 },
+      { label: "Тревожится, избегает новое", value: 2 },
+      { label: "Может попросить помощь", value: 3 },
+      { label: "Спокойно переносит трудности", value: 4 },
     ],
   },
   {
-    id: "q4_motor",
-    category: "Моторика",
-    subtitle: "Как ребёнок использует руки",
-    type: "multi",
-    options: [
-      "Движения неуверенные",
-      "Трудно обводить линии",
-      "Предпочитает нажимать, а не вести",
-      "Держит предметы уверенно",
-      "Моторика хорошая",
-    ],
-  },
-  {
-    id: "q5_sensory",
-    category: "Сенсорные особенности",
-    subtitle: "Есть ли у ребёнка сенсорные особенности?",
-    type: "multi",
-    options: [
-      "Чувствителен к звукам",
-      "Чувствителен к яркому свету",
-      "Избегает прикосновений",
-      "Любит тактильные ощущения",
-      "Сенсорных особенностей не замечено",
-    ],
-  },
-  {
-    id: "q6_interests",
-    category: "Интересы ребёнка",
-    subtitle: "Что нравится ребёнку?",
-    type: "multi",
-    options: [
-      "Животные",
-      "Машины",
-      "Космос",
-      "Персонажи",
-      "Природа",
-      "Водичкой",
-      "Цветы и узоры",
-    ],
-    allowCustom: true,
-  },
-  {
-    id: "q7_focus",
-    category: "Текущий запрос",
-    subtitle: "Над чем сейчас важнее работать?",
+    id: "motor",
+    category: "Моторные навыки",
+    subtitle: "Как ребёнок управляет инструментами?",
     type: "single",
     options: [
-      "Моторика",
-      "Внимание",
-      "Самовыражение и эмоции",
-      "Взаимодействие с другими",
+      { label: "Движения неуверенные, слабый захват", value: 1 },
+      { label: "Трудно обводить, предпочитает нажимать", value: 2 },
+      { label: "Держит уверенно, линии неровные", value: 3 },
+      { label: "Хорошая моторика, уверенные линии", value: 4 },
     ],
   },
 ];
 
-export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: AdaptiveDiagnosticProps) => {
+// ─── Phase 2: Trial Tasks ───
+
+type TrialTaskType = "free_draw" | "tracing" | "symmetry";
+
+interface TrialTask {
+  id: TrialTaskType;
+  title: string;
+  instruction: string;
+  durationSec: number;
+  emoji: string;
+}
+
+const trialTasks: TrialTask[] = [
+  {
+    id: "free_draw",
+    title: "Свободный рисунок",
+    instruction: "Попросите ребёнка нарисовать что угодно — всё что захочет!",
+    durationSec: 120,
+    emoji: "🎨",
+  },
+  {
+    id: "tracing",
+    title: "Обводка фигуры",
+    instruction: "Ребёнок обводит пунктирный круг по контуру",
+    durationSec: 90,
+    emoji: "⭕",
+  },
+  {
+    id: "symmetry",
+    title: "Зеркальный рисунок",
+    instruction: "Ребёнок повторяет узор на другой стороне линии",
+    durationSec: 90,
+    emoji: "🪞",
+  },
+];
+
+interface TrialMetrics {
+  strokeCount: number;
+  colorsUsed: Set<string>;
+  totalTime: number;
+  startTime: number;
+  lastStrokeTime: number;
+  pauseCount: number;
+  avgStrokeSpeed: number;
+  strokeLengths: number[];
+}
+
+// ─── Phase 3: Observation Checklist ───
+
+interface ObservationItem {
+  id: string;
+  category: string;
+  items: { id: string; label: string }[];
+}
+
+const observationChecklist: ObservationItem[] = [
+  {
+    id: "behavior",
+    category: "Поведение во время рисования",
+    items: [
+      { id: "focused", label: "Сосредоточен на задании" },
+      { id: "distracted", label: "Легко отвлекается" },
+      { id: "repetitive", label: "Повторяющиеся движения/паттерны" },
+      { id: "seeks_help", label: "Просит помощь" },
+      { id: "independent", label: "Работает самостоятельно" },
+    ],
+  },
+  {
+    id: "emotions",
+    category: "Эмоциональное состояние",
+    items: [
+      { id: "calm", label: "Спокойный" },
+      { id: "excited", label: "Возбуждённый / радостный" },
+      { id: "anxious", label: "Тревожный" },
+      { id: "frustrated", label: "Расстроенный / фрустрированный" },
+      { id: "flat", label: "Безразличный / «плоский» аффект" },
+    ],
+  },
+  {
+    id: "motor_obs",
+    category: "Моторика (наблюдение)",
+    items: [
+      { id: "grip_good", label: "Уверенный захват инструмента" },
+      { id: "pressure_heavy", label: "Сильное нажатие" },
+      { id: "pressure_light", label: "Слабое нажатие" },
+      { id: "tremor", label: "Тремор / дрожь руки" },
+      { id: "crosses_midline", label: "Пересекает среднюю линию тела" },
+    ],
+  },
+  {
+    id: "sensory",
+    category: "Сенсорные особенности",
+    items: [
+      { id: "sound_sensitive", label: "Реагирует на звуки" },
+      { id: "light_sensitive", label: "Реагирует на яркий свет" },
+      { id: "tactile_avoidant", label: "Избегает тактильного контакта" },
+      { id: "tactile_seeking", label: "Ищет тактильные ощущения" },
+      { id: "no_sensory", label: "Без выраженных особенностей" },
+    ],
+  },
+];
+
+// ─── Colors for trial drawing ───
+
+const TRIAL_COLORS = [
+  "#EF4444", "#F97316", "#EAB308", "#22C55E",
+  "#3B82F6", "#8B5CF6", "#EC4899", "#1F2937",
+];
+
+// ═══════════════════════════════════════════════════════════
+// Main Component
+// ═══════════════════════════════════════════════════════════
+
+export const AdaptiveDiagnostic = ({
+  onComplete,
+  onBack,
+  childId,
+  childName,
+  childAge,
+}: AdaptiveDiagnosticProps) => {
+  // Phase management: "questionnaire" | "trial_intro" | "trial_active" | "observation" | "complete"
+  const [phase, setPhase] = useState<string>("questionnaire");
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
-  const [showComplete, setShowComplete] = useState(false);
-  const [customInterest, setCustomInterest] = useState("");
 
-  const isComplete = showComplete;
-  const q = !isComplete ? questions[currentStep] : null;
+  // Phase 1: Questionnaire answers
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+
+  // Phase 2: Trial tasks
+  const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
+  const [trialMetrics, setTrialMetrics] = useState<Record<string, any>>({});
+  const [timer, setTimer] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Trial drawing state
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentColor, setCurrentColor] = useState(TRIAL_COLORS[0]);
+  const metricsRef = useRef<TrialMetrics>({
+    strokeCount: 0,
+    colorsUsed: new Set<string>(),
+    totalTime: 0,
+    startTime: 0,
+    lastStrokeTime: 0,
+    pauseCount: 0,
+    avgStrokeSpeed: 0,
+    strokeLengths: [],
+  });
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const currentStrokeLengthRef = useRef(0);
+
+  // Phase 3: Observation checklist
+  const [observations, setObservations] = useState<Record<string, boolean>>({});
+  const [specialistNotes, setSpecialistNotes] = useState("");
+
   const displayName = childName || "ребёнка";
+  const totalPhases = 3;
 
-  const handleSelect = (option: string) => {
-    if (!q) return;
-    if (q.type === "single") {
-      setAnswers({ ...answers, [q.id]: option });
+  // ─── Timer ───
+  useEffect(() => {
+    if (timerRunning) {
+      timerRef.current = setInterval(() => {
+        setTimer((t) => t + 1);
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerRunning]);
+
+  // ─── Canvas setup for trial tasks ───
+  const setupCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const rect = parent.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#FFFEF7";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const task = trialTasks[currentTrialIndex];
+
+    // Draw template for tracing task
+    if (task.id === "tracing") {
+      ctx.save();
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = "#CBD5E1";
+      ctx.lineWidth = 3;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const r = Math.min(canvas.width, canvas.height) * 0.35;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw template for symmetry task
+    if (task.id === "symmetry") {
+      ctx.save();
+      const cx = canvas.width / 2;
+      // Center line
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = "#94A3B8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, canvas.height);
+      ctx.stroke();
+      // Left pattern
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = "#CBD5E1";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, canvas.height * 0.2);
+      ctx.lineTo(cx - 100, canvas.height * 0.4);
+      ctx.lineTo(cx - 40, canvas.height * 0.6);
+      ctx.lineTo(cx - 100, canvas.height * 0.8);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }, [currentTrialIndex]);
+
+  useEffect(() => {
+    if (phase === "trial_active") {
+      // Small delay to ensure canvas is mounted
+      const t = setTimeout(setupCanvas, 100);
+      return () => clearTimeout(t);
+    }
+  }, [phase, currentTrialIndex, setupCanvas]);
+
+  // ─── Drawing handlers ───
+  const getPos = (e: React.TouchEvent | React.MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    if ("touches" in e) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top };
+  };
+
+  const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    const pos = getPos(e);
+    setIsDrawing(true);
+    lastPointRef.current = pos;
+    currentStrokeLengthRef.current = 0;
+
+    const m = metricsRef.current;
+    if (m.startTime === 0) {
+      m.startTime = Date.now();
+      setTimerRunning(true);
+    }
+    m.colorsUsed.add(currentColor);
+    m.strokeCount++;
+    m.lastStrokeTime = Date.now();
+
+    const ctx = canvasRef.current?.getContext("2d");
+    if (ctx) {
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 8;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+  };
+
+  const draw = (e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx || !lastPointRef.current) return;
+
+    const midX = (lastPointRef.current.x + pos.x) / 2;
+    const midY = (lastPointRef.current.y + pos.y) / 2;
+    ctx.quadraticCurveTo(lastPointRef.current.x, lastPointRef.current.y, midX, midY);
+    ctx.stroke();
+
+    // Track stroke length
+    const dx = pos.x - lastPointRef.current.x;
+    const dy = pos.y - lastPointRef.current.y;
+    currentStrokeLengthRef.current += Math.sqrt(dx * dx + dy * dy);
+
+    lastPointRef.current = pos;
+  };
+
+  const endDraw = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    lastPointRef.current = null;
+
+    const m = metricsRef.current;
+    if (currentStrokeLengthRef.current > 0) {
+      m.strokeLengths.push(currentStrokeLengthRef.current);
+    }
+  };
+
+  // ─── Trial task management ───
+  const finishCurrentTrial = () => {
+    setTimerRunning(false);
+    const m = metricsRef.current;
+    const elapsed = m.startTime > 0 ? (Date.now() - m.startTime) / 1000 : 0;
+
+    // Get canvas image
+    const imageData = canvasRef.current?.toDataURL("image/png") || "";
+
+    const taskMetrics = {
+      strokeCount: m.strokeCount,
+      colorsUsed: Array.from(m.colorsUsed),
+      totalTimeSec: Math.round(elapsed),
+      avgStrokeLength: m.strokeLengths.length > 0
+        ? Math.round(m.strokeLengths.reduce((a, b) => a + b, 0) / m.strokeLengths.length)
+        : 0,
+      imagePreview: imageData.substring(0, 200), // Store tiny preview ref
+    };
+
+    const taskId = trialTasks[currentTrialIndex].id;
+    setTrialMetrics((prev) => ({ ...prev, [taskId]: taskMetrics }));
+
+    // Reset metrics for next task
+    metricsRef.current = {
+      strokeCount: 0,
+      colorsUsed: new Set(),
+      totalTime: 0,
+      startTime: 0,
+      lastStrokeTime: 0,
+      pauseCount: 0,
+      avgStrokeSpeed: 0,
+      strokeLengths: [],
+    };
+    setTimer(0);
+
+    if (currentTrialIndex < trialTasks.length - 1) {
+      setCurrentTrialIndex(currentTrialIndex + 1);
     } else {
-      const prev: string[] = answers[q.id] || [];
-      const next = prev.includes(option)
-        ? prev.filter((o) => o !== option)
-        : [...prev, option];
-      setAnswers({ ...answers, [q.id]: next });
+      // Move to observation phase
+      setPhase("observation");
     }
   };
 
-  const isSelected = (option: string) => {
-    if (!q) return false;
-    const val = answers[q.id];
-    if (q.type === "single") return val === option;
-    return Array.isArray(val) && val.includes(option);
+  const resetCurrentTrial = () => {
+    metricsRef.current = {
+      strokeCount: 0,
+      colorsUsed: new Set(),
+      totalTime: 0,
+      startTime: 0,
+      lastStrokeTime: 0,
+      pauseCount: 0,
+      avgStrokeSpeed: 0,
+      strokeLengths: [],
+    };
+    setTimer(0);
+    setTimerRunning(false);
+    setupCanvas();
   };
 
-  const canProceed = () => {
-    if (!q) return true;
-    const val = answers[q.id];
-    if (!val) return false;
-    if (q.type === "multi") return Array.isArray(val) && val.length > 0;
-    return true;
+  // ─── Phase navigation ───
+  const handleQuestionSelect = (questionId: string, value: number) => {
+    setAnswers({ ...answers, [questionId]: value });
   };
 
-  const addCustomInterest = () => {
-    if (!customInterest.trim() || !q) return;
-    const prev: string[] = answers[q.id] || [];
-    if (!prev.includes(customInterest.trim())) {
-      setAnswers({ ...answers, [q.id]: [...prev, customInterest.trim()] });
-    }
-    setCustomInterest("");
+  const canProceedQuestion = () => {
+    const q = questions[currentStep];
+    return answers[q.id] !== undefined;
   };
 
-  const handleNext = () => {
-    if (!canProceed()) {
-      toast.error("Пожалуйста, ответьте на вопрос");
+  const nextQuestion = () => {
+    if (!canProceedQuestion()) {
+      toast.error("Пожалуйста, выберите ответ");
       return;
     }
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      setShowComplete(true);
+      setPhase("trial_intro");
     }
   };
 
-  const handleBack = () => {
-    if (showComplete) {
-      setShowComplete(false);
-      return;
-    }
+  const prevQuestion = () => {
     if (currentStep > 0) setCurrentStep(currentStep - 1);
     else onBack();
   };
 
+  // ─── Save all data ───
   const handleFinish = async () => {
     setLoading(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const assessmentPayload = {
+        phase1_questionnaire: answers,
+        phase2_trial_metrics: trialMetrics,
+        phase3_observations: observations,
+        phase3_notes: specialistNotes,
+        diagnostic_version: "hybrid_v1",
+        child_age: childAge,
+      };
 
+      const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
-        const insertData: any = {
+        const insertData: Record<string, unknown> = {
           user_id: userData.user.id,
-          assessment_data: answers,
+          assessment_data: assessmentPayload,
           completed: true,
-          current_step: questions.length,
-          total_steps: questions.length,
+          current_step: 3,
+          total_steps: 3,
           completed_at: new Date().toISOString(),
         };
         if (childId) insertData.child_id = childId;
 
         const { data, error } = await supabase
           .from("adaptive_assessments")
-          .insert(insertData)
+          .insert(insertData as any)
           .select()
           .single();
 
@@ -209,14 +507,20 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
         onComplete(data.id);
       } else {
         const assessmentId = `assessment-${Date.now()}`;
-        localStorage.setItem("starAssessment", JSON.stringify({ id: assessmentId, answers, completed_at: new Date().toISOString() }));
+        localStorage.setItem(
+          "starAssessment",
+          JSON.stringify({ id: assessmentId, ...assessmentPayload, completed_at: new Date().toISOString() })
+        );
         toast.success("Диагностика завершена!");
         onComplete(assessmentId);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Assessment error:", error);
       const fallbackId = `assessment-${Date.now()}`;
-      localStorage.setItem("starAssessment", JSON.stringify({ id: fallbackId, answers, completed_at: new Date().toISOString() }));
+      localStorage.setItem(
+        "starAssessment",
+        JSON.stringify({ id: fallbackId, answers, completed_at: new Date().toISOString() })
+      );
       toast.success("Диагностика завершена!");
       onComplete(fallbackId);
     } finally {
@@ -224,9 +528,31 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
     }
   };
 
+  const toggleObservation = (id: string) => {
+    setObservations((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // ─── Phase indicator ───
+  const currentPhaseIndex =
+    phase === "questionnaire" ? 0
+    : phase === "trial_intro" || phase === "trial_active" ? 1
+    : 2;
+
+  const phaseLabels = ["Анкета", "Пробные задания", "Наблюдение"];
+
+  const formatTime = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════
+
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 relative"
+      className="min-h-screen flex flex-col relative"
       style={{
         backgroundImage: `url(${classroomBg})`,
         backgroundSize: "cover",
@@ -235,113 +561,349 @@ export const AdaptiveDiagnostic = ({ onComplete, onBack, childId, childName }: A
     >
       {/* Back button */}
       <button
-        onClick={handleBack}
-        className="absolute top-4 left-4 z-10 bg-white/80 backdrop-blur rounded-full p-2 shadow-md hover:bg-white transition"
+        onClick={phase === "questionnaire" ? prevQuestion : () => {
+          if (phase === "trial_intro") setPhase("questionnaire");
+          else if (phase === "trial_active" && currentTrialIndex === 0) setPhase("trial_intro");
+          else if (phase === "trial_active") {
+            setCurrentTrialIndex(currentTrialIndex - 1);
+          }
+          else if (phase === "observation") setPhase("trial_intro");
+          else if (phase === "complete") setPhase("observation");
+        }}
+        className="absolute top-4 left-4 z-20 bg-white/80 backdrop-blur rounded-full p-2 shadow-md hover:bg-white transition"
         aria-label="Назад"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <ChevronLeft className="w-5 h-5" />
       </button>
 
-      {/* Complete screen */}
-      {isComplete ? (
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center space-y-5 animate-fade-in">
-          <h2 className="text-2xl font-bold text-foreground">Отлично!</h2>
-          <p className="text-muted-foreground">Давайте приступим</p>
-          <button
-            onClick={handleFinish}
-            disabled={loading}
-            className="w-full bg-primary text-primary-foreground rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
-          >
-            {loading ? "Сохранение..." : "Продолжить"}
-          </button>
-
-          {/* Dots */}
-          <div className="flex gap-1.5 justify-center pt-2">
-            {questions.map((_, i) => (
-              <span key={i} className="w-2 h-2 rounded-full bg-foreground/30" />
-            ))}
-            <span className="w-2 h-2 rounded-full bg-foreground" />
+      {/* Phase indicator */}
+      <div className="flex items-center justify-center gap-2 pt-4 pb-2 px-4 z-10">
+        {phaseLabels.map((label, i) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <div
+              className={`h-2 rounded-full transition-all ${
+                i === currentPhaseIndex
+                  ? "w-8 bg-foreground"
+                  : i < currentPhaseIndex
+                  ? "w-4 bg-foreground/50"
+                  : "w-4 bg-foreground/20"
+              }`}
+            />
+            <span className={`text-[10px] font-medium ${
+              i === currentPhaseIndex ? "text-foreground" : "text-foreground/40"
+            }`}>
+              {label}
+            </span>
           </div>
-        </div>
-      ) : q && (
-        <>
-          {/* Question card */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-5 animate-fade-in">
-            <div>
-              <h2 className="text-xl font-bold text-foreground leading-tight">{q.category}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{q.subtitle}</p>
+        ))}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        {/* ═══ PHASE 1: Questionnaire ═══ */}
+        {phase === "questionnaire" && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-5 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                {currentStep + 1}/{questions.length}
+              </span>
+              <span className="text-xs text-muted-foreground">Фаза 1 — Анкета</span>
             </div>
 
-            <div className="space-y-3">
-              {q.options.map((option) => (
-                <label
-                  key={option}
-                  className="flex items-center gap-3 cursor-pointer group"
-                  onClick={() => handleSelect(option)}
+            <div>
+              <h2 className="text-lg font-bold text-foreground leading-tight">
+                {questions[currentStep].category}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {questions[currentStep].subtitle}
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              {questions[currentStep].options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleQuestionSelect(questions[currentStep].id, option.value)}
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                    answers[questions[currentStep].id] === option.value
+                      ? "border-foreground bg-foreground/5"
+                      : "border-transparent bg-muted/50 hover:border-muted-foreground/20"
+                  }`}
                 >
                   <span
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                      isSelected(option)
+                      answers[questions[currentStep].id] === option.value
                         ? "border-foreground bg-foreground"
-                        : "border-muted-foreground/40 group-hover:border-muted-foreground"
+                        : "border-muted-foreground/40"
                     }`}
                   >
-                    {isSelected(option) && (
+                    {answers[questions[currentStep].id] === option.value && (
                       <span className="w-2 h-2 rounded-full bg-white" />
                     )}
                   </span>
-                  <span className="text-sm text-foreground">{option}</span>
-                </label>
+                  <span className="text-sm text-foreground">{option.label}</span>
+                </button>
               ))}
+            </div>
 
-              {/* Custom interest input */}
-              {q.allowCustom && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-primary text-sm cursor-pointer" onClick={() => {
-                    const input = document.getElementById("custom-interest-input");
-                    if (input) input.focus();
-                  }}>+ Добавить своё</span>
-                  <input
-                    id="custom-interest-input"
-                    type="text"
-                    value={customInterest}
-                    onChange={(e) => setCustomInterest(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addCustomInterest()}
-                    placeholder="Введите..."
-                    className="text-sm border-b border-muted-foreground/30 outline-none bg-transparent flex-1 py-1"
-                  />
+            <button
+              onClick={nextQuestion}
+              disabled={!canProceedQuestion()}
+              className="w-full bg-foreground text-white rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
+            >
+              {currentStep < questions.length - 1 ? "Далее" : "К пробным заданиям →"}
+            </button>
+          </div>
+        )}
+
+        {/* ═══ PHASE 2 INTRO: Trial Tasks Overview ═══ */}
+        {phase === "trial_intro" && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-5 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                Фаза 2
+              </span>
+            </div>
+            <h2 className="text-lg font-bold">Пробные задания</h2>
+            <p className="text-sm text-muted-foreground">
+              Ребёнок выполнит 3 коротких задания. Приложение автоматически соберёт данные
+              о моторике, внимании и предпочтениях.
+            </p>
+            <div className="space-y-3">
+              {trialTasks.map((task, i) => (
+                <div
+                  key={task.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl ${
+                    trialMetrics[task.id]
+                      ? "bg-primary/5 border border-primary/30"
+                      : "bg-muted/50"
+                  }`}
+                >
+                  <span className="text-2xl">{task.emoji}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{task.title}</p>
+                    <p className="text-xs text-muted-foreground">~{task.durationSec / 60} мин</p>
+                  </div>
+                  {trialMetrics[task.id] && (
+                    <Check className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                setCurrentTrialIndex(
+                  Object.keys(trialMetrics).length < trialTasks.length
+                    ? Object.keys(trialMetrics).length
+                    : 0
+                );
+                setPhase("trial_active");
+              }}
+              className="w-full bg-foreground text-white rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition"
+            >
+              {Object.keys(trialMetrics).length === 0
+                ? "Начать задания"
+                : Object.keys(trialMetrics).length >= trialTasks.length
+                ? "К наблюдению →"
+                : "Продолжить"}
+            </button>
+            {Object.keys(trialMetrics).length >= trialTasks.length && (
+              <button
+                onClick={() => setPhase("observation")}
+                className="w-full text-sm text-primary hover:underline"
+              >
+                Пропустить → Наблюдение
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ═══ PHASE 2 ACTIVE: Drawing Trial ═══ */}
+        {phase === "trial_active" && (
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden animate-fade-in flex flex-col" style={{ maxHeight: "85vh" }}>
+            {/* Header */}
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{trialTasks[currentTrialIndex].emoji}</span>
+                  <h3 className="font-bold text-sm">{trialTasks[currentTrialIndex].title}</h3>
+                  <span className="text-xs text-muted-foreground">
+                    ({currentTrialIndex + 1}/{trialTasks.length})
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {trialTasks[currentTrialIndex].instruction}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-bold tabular-nums">
+                  {formatTime(timer)}
+                </span>
+              </div>
+            </div>
+
+            {/* Color palette */}
+            <div className="flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto">
+              {TRIAL_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCurrentColor(c)}
+                  className={`w-7 h-7 rounded-full flex-shrink-0 transition-transform ${
+                    currentColor === c ? "ring-2 ring-foreground ring-offset-2 scale-110" : ""
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+              <button
+                onClick={resetCurrentTrial}
+                className="ml-auto p-1.5 rounded-lg hover:bg-muted transition"
+                title="Начать заново"
+              >
+                <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Canvas */}
+            <div className="flex-1 relative" style={{ minHeight: "300px" }}>
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 w-full h-full touch-none"
+                onMouseDown={startDraw}
+                onMouseMove={draw}
+                onMouseUp={endDraw}
+                onMouseLeave={endDraw}
+                onTouchStart={startDraw}
+                onTouchMove={draw}
+                onTouchEnd={endDraw}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="p-3 border-t flex justify-between items-center">
+              <div className="text-xs text-muted-foreground">
+                Штрихов: {metricsRef.current.strokeCount} | Цветов: {metricsRef.current.colorsUsed.size}
+              </div>
+              <button
+                onClick={finishCurrentTrial}
+                className="bg-foreground text-white rounded-full px-5 py-2 text-sm font-medium hover:opacity-90 transition flex items-center gap-1.5"
+              >
+                {currentTrialIndex < trialTasks.length - 1 ? (
+                  <>Дальше <ChevronRight className="w-4 h-4" /></>
+                ) : (
+                  <>Завершить <Check className="w-4 h-4" /></>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ PHASE 3: Observation Checklist ═══ */}
+        {phase === "observation" && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-5 animate-fade-in max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                Фаза 3
+              </span>
+            </div>
+            <h2 className="text-lg font-bold">Наблюдение специалиста</h2>
+            <p className="text-sm text-muted-foreground">
+              Отметьте всё, что наблюдали во время выполнения заданий ребёнком
+            </p>
+
+            {observationChecklist.map((section) => (
+              <div key={section.id} className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground/80">{section.category}</h3>
+                <div className="space-y-1.5">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleObservation(item.id)}
+                      className={`w-full text-left flex items-center gap-3 p-2.5 rounded-xl transition-all ${
+                        observations[item.id]
+                          ? "bg-foreground/5 border-2 border-foreground"
+                          : "bg-muted/30 border-2 border-transparent hover:bg-muted/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                          observations[item.id]
+                            ? "bg-foreground"
+                            : "border-2 border-muted-foreground/30"
+                        }`}
+                      >
+                        {observations[item.id] && <Check className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground/80">Заметки специалиста</h3>
+              <textarea
+                value={specialistNotes}
+                onChange={(e) => setSpecialistNotes(e.target.value)}
+                placeholder="Дополнительные наблюдения, особенности поведения..."
+                className="w-full p-3 rounded-xl border-2 border-muted/50 bg-muted/20 text-sm resize-none h-24 outline-none focus:border-foreground/30 transition"
+              />
+            </div>
+
+            <button
+              onClick={() => setPhase("complete")}
+              className="w-full bg-foreground text-white rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition"
+            >
+              Завершить диагностику
+            </button>
+          </div>
+        )}
+
+        {/* ═══ COMPLETE SCREEN ═══ */}
+        {phase === "complete" && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center space-y-5 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Check className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Диагностика завершена!</h2>
+            <p className="text-sm text-muted-foreground">
+              Собраны данные анкеты, метрики пробных заданий и наблюдения специалиста.
+              На их основе будет создана персональная программа.
+            </p>
+
+            {/* Summary */}
+            <div className="text-left space-y-2 bg-muted/30 rounded-xl p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Анкета</span>
+                <span className="font-medium">{Object.keys(answers).length}/{questions.length} ответов</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Пробные задания</span>
+                <span className="font-medium">{Object.keys(trialMetrics).length}/{trialTasks.length} выполнено</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Наблюдения</span>
+                <span className="font-medium">{Object.values(observations).filter(Boolean).length} пунктов</span>
+              </div>
+              {specialistNotes && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Заметки</span>
+                  <span className="font-medium">✓</span>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Pagination dots */}
-          <div className="flex gap-1.5 mt-6">
-            {questions.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => { if (i < currentStep) setCurrentStep(i); }}
-                className={`h-2.5 rounded-full transition-all ${
-                  i === currentStep
-                    ? "w-7 bg-foreground"
-                    : i < currentStep
-                    ? "w-2.5 bg-foreground/50 cursor-pointer"
-                    : "w-2.5 bg-foreground/20"
-                }`}
-              />
-            ))}
+            <button
+              onClick={handleFinish}
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground rounded-full py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
+            >
+              {loading ? "Сохранение..." : "Создать программу"}
+            </button>
           </div>
-
-          {/* Next button */}
-          <button
-            onClick={handleNext}
-            disabled={!canProceed()}
-            className="mt-4 bg-foreground text-white rounded-full px-8 py-3 font-medium shadow-lg hover:opacity-90 transition disabled:opacity-40"
-          >
-            Далее
-          </button>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };
