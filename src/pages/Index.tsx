@@ -364,8 +364,50 @@ const Index = () => {
     );
   }
 
-  // Specialist (parent) role - show children manager if no child selected or if explicitly requested
+  // Specialist (parent) role
   if (role === "parent") {
+    // Step 1: If no children / not onboarded — show Onboarding flow
+    if (!onboardingComplete || !childData) {
+      return (
+        <Onboarding
+          onComplete={async (data) => {
+            setChildData(data);
+            setOnboardingComplete(true);
+            
+            // Reload children to get the newly created child
+            const { data: children } = await supabase
+              .from("children")
+              .select("id, name, age")
+              .eq("user_id", user!.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+            
+            if (children && children.length > 0) {
+              setSelectedChildId(children[0].id);
+              setSelectedChildName(children[0].name);
+              setSelectedChildAge(children[0].age);
+            }
+            
+            // Go straight to diagnostic
+            setCurrentSection("diagnostic");
+          }}
+        />
+      );
+    }
+
+    // Step 2: Diagnostic test
+    if (currentSection === "diagnostic") {
+      return (
+        <AdaptiveDiagnostic
+          onComplete={handleDiagnosticComplete}
+          onBack={() => setCurrentSection("children")}
+          childId={selectedChildId || undefined}
+          childName={selectedChildName}
+          childAge={selectedChildAge}
+        />
+      );
+    }
+
     // Show children manager when explicitly navigating to "children" section
     if (currentSection === "children") {
       return (
@@ -404,7 +446,7 @@ const Index = () => {
       );
     }
 
-    // If no children exist, show children manager automatically
+    // If no child selected, show children manager
     if (!selectedChildId && !dataLoading) {
       return (
         <ChildrenManager
@@ -431,20 +473,6 @@ const Index = () => {
       );
     }
 
-    if (currentSection === "diagnostic") {
-      return (
-        <AdaptiveDiagnostic
-          onComplete={() => {
-            setCurrentSection("learning-path");
-          }}
-          onBack={() => setCurrentSection("children")}
-          childId={selectedChildId || undefined}
-          childName={selectedChildName}
-          childAge={selectedChildAge}
-        />
-      );
-    }
-
     if (currentSection === "parent-dashboard") {
       return (
         <ParentDashboard
@@ -453,17 +481,6 @@ const Index = () => {
         />
       );
     }
-  }
-
-  // For specialists without children
-  if (role === "parent" && (!onboardingComplete || !childData)) {
-    return (
-      <ChildrenManager
-        onBack={() => {}}
-        onSelectChild={handleChildSelect}
-        selectedChildId={null}
-      />
-    );
   }
 
   // Safe access to childData

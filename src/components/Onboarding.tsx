@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import classroomBg from "@/assets/classroom-background.png";
 
 interface OnboardingProps {
   onComplete: (data: OnboardingData) => void;
@@ -32,52 +33,46 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save to backend
-      console.log("Onboarding complete - saving data:", formData);
+      // Save to backend — create child record
       try {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
+          // Create a child in the children table
+          const { error: childError } = await supabase
+            .from("children")
+            .insert({
+              user_id: user.id,
+              name: formData.childName,
+              age: parseInt(formData.childAge) || null,
+              development_notes: formData.goals || null,
+            });
+
+          if (childError) {
+            console.error("Error creating child:", childError);
+            toast.error("Ошибка сохранения");
+          }
+
+          // Also update profile
           const { data: existingProfile } = await supabase
             .from("profiles")
             .select("id")
             .eq("id", user.id)
             .maybeSingle();
 
-          const dataToSave = {
-            id: user.id,
-            child_name: formData.childName,
-            child_age: parseInt(formData.childAge) || null,
-          };
-
-          let error;
           if (existingProfile) {
-            const result = await supabase
+            await supabase
               .from("profiles")
-              .update({
-                child_name: formData.childName,
-                child_age: parseInt(formData.childAge) || null,
-              })
+              .update({ child_name: formData.childName, child_age: parseInt(formData.childAge) || null })
               .eq("id", user.id);
-            error = result.error;
           } else {
-            const result = await supabase
+            await supabase
               .from("profiles")
-              .insert(dataToSave);
-            error = result.error;
+              .insert({ id: user.id, child_name: formData.childName, child_age: parseInt(formData.childAge) || null });
           }
-
-          if (error) {
-            console.error("Error saving profile:", error);
-            toast.error(`Ошибка сохранения: ${error.message}`);
-            localStorage.setItem('starUserData', JSON.stringify(formData));
-          } else {
-            toast.success("Данные сохранены!");
-            localStorage.setItem('starUserData', JSON.stringify(formData));
-          }
-        } else {
-          localStorage.setItem('starUserData', JSON.stringify(formData));
         }
+
+        localStorage.setItem('starUserData', JSON.stringify(formData));
       } catch (error) {
         console.error("Error saving profile:", error);
         localStorage.setItem('starUserData', JSON.stringify(formData));
@@ -93,43 +88,38 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
     (step === 1 && formData.childName && formData.childAge) ||
     step === 2;
 
-  // Progress dots component
   const ProgressDots = () => (
     <div className="flex justify-center gap-2 mt-6">
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className={`h-1.5 rounded-full transition-all ${
-            i === step ? "w-6 bg-[#7CB9E8]" : "w-1.5 bg-gray-300"
+          className={`h-2 rounded-full transition-all ${
+            i === step ? "w-6 bg-foreground" : "w-2 bg-foreground/25"
           }`}
         />
       ))}
     </div>
   );
 
+  const bgStyle = {
+    backgroundImage: `url(${classroomBg})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  };
+
   // Step 0: Welcome
   if (step === 0) {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm text-center">
-          {/* Title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-1">
-            Привет!
-          </h1>
-          <p className="text-[#7CB9E8] text-sm mb-8">
-            Давайте начнем
-          </p>
-
-          {/* Continue button */}
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={bgStyle}>
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Привет!</h1>
+          <p className="text-muted-foreground text-sm mb-8">Давайте начнем</p>
           <button
             onClick={nextStep}
-            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors"
+            className="w-full py-3 rounded-full bg-primary/40 text-primary-foreground font-medium hover:bg-primary/50 transition-colors"
           >
             Продолжить
           </button>
-
-          {/* Progress dots */}
           <ProgressDots />
         </div>
       </div>
@@ -139,100 +129,73 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
   // Step 1: Name and age
   if (step === 1) {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
-          {/* Title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
-            Расскажите о вас
-          </h1>
-          <p className="text-gray-400 text-sm mb-6 text-center">
-            Как обращаться к ребёнку
-          </p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={bgStyle}>
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl">
+          <h1 className="text-xl font-bold text-foreground mb-1 text-center">Расскажите о вас</h1>
+          <p className="text-muted-foreground text-sm mb-6 text-center">Как обращаться к ребенку</p>
 
-          {/* Form */}
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Имя</label>
-              <div className="border border-gray-200 rounded-lg">
-                <input
-                  type="text"
-                  value={formData.childName}
-                  onChange={(e) => updateField("childName", e.target.value)}
-                  className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
-                />
-              </div>
+              <label className="block text-sm text-muted-foreground mb-1">Имя</label>
+              <input
+                type="text"
+                value={formData.childName}
+                onChange={(e) => updateField("childName", e.target.value)}
+                className="w-full py-3 px-3 rounded-lg bg-muted/50 border-0 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
+              />
             </div>
-
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Возраст</label>
-              <div className="border border-gray-200 rounded-lg">
-                <input
-                  type="number"
-                  value={formData.childAge}
-                  onChange={(e) => updateField("childAge", e.target.value)}
-                  min={1}
-                  max={18}
-                  className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 bg-transparent"
-                />
-              </div>
+              <label className="block text-sm text-muted-foreground mb-1">Возраст</label>
+              <input
+                type="number"
+                value={formData.childAge}
+                onChange={(e) => updateField("childAge", e.target.value)}
+                min={1}
+                max={18}
+                className="w-full py-3 px-3 rounded-lg bg-muted/50 border-0 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
+              />
             </div>
           </div>
 
-          {/* Continue button */}
           <button
             onClick={nextStep}
             disabled={!canProceed}
-            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-full bg-primary/40 text-primary-foreground font-medium hover:bg-primary/50 transition-colors disabled:opacity-40"
           >
             Продолжить
           </button>
-
-          {/* Progress dots */}
           <ProgressDots />
         </div>
       </div>
     );
   }
 
-  // Step 2: Additional info (optional)
+  // Step 2: Goals
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-        {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm">
-          {/* Title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-1 text-center">
-            Подробнее
-          </h1>
-          <p className="text-gray-400 text-sm mb-6 text-center">
-            Поделитесь вашей историей
-          </p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={bgStyle}>
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl">
+          <h1 className="text-xl font-bold text-foreground mb-1 text-center">Подробнее</h1>
+          <p className="text-muted-foreground text-sm mb-6 text-center">Поделитесь вашей историей</p>
 
-          {/* Form */}
           <div className="mb-2">
-            <div className="border border-gray-200 rounded-lg">
-              <textarea
-                value={formData.goals}
-                onChange={(e) => updateField("goals", e.target.value)}
-                rows={4}
-                className="w-full py-3 px-3 border-0 focus:outline-none focus:ring-0 text-gray-800 resize-none bg-transparent"
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Например: "учимся ждать", "сложности выражать эмоции"
+            <textarea
+              value={formData.goals}
+              onChange={(e) => updateField("goals", e.target.value)}
+              rows={4}
+              className="w-full py-3 px-3 rounded-lg bg-muted/50 border-0 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Например: "учится ждать", "спокойно выражать эмоции"
             </p>
           </div>
 
-          {/* Continue button */}
           <button
             onClick={nextStep}
-            className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors mt-4"
+            className="w-full py-3 rounded-full bg-primary/40 text-primary-foreground font-medium hover:bg-primary/50 transition-colors mt-4"
           >
             Продолжить
           </button>
-
-          {/* Progress dots */}
           <ProgressDots />
         </div>
       </div>
@@ -241,26 +204,16 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
 
   // Step 3: Complete
   return (
-    <div className="min-h-screen bg-[#E8F4FC] flex flex-col items-center justify-center p-4">
-      {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm text-center">
-        {/* Title */}
-        <h1 className="text-xl font-semibold text-[#7CB9E8] mb-1">
-          Отлично!
-        </h1>
-        <p className="text-gray-400 text-sm mb-8">
-          Давайте приступим
-        </p>
-
-        {/* Start button */}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={bgStyle}>
+      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl text-center">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Отлично!</h1>
+        <p className="text-muted-foreground text-sm mb-8">Давайте приступим</p>
         <button
           onClick={nextStep}
-          className="w-full py-3 rounded-full bg-[#7CB9E8] text-white font-medium hover:bg-[#6BA8D7] transition-colors"
+          className="w-full py-3 rounded-full bg-primary/40 text-primary-foreground font-medium hover:bg-primary/50 transition-colors"
         >
           Продолжить
         </button>
-
-        {/* Progress dots */}
         <ProgressDots />
       </div>
     </div>
