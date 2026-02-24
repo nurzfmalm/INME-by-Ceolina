@@ -83,13 +83,9 @@ export const SensorySettings = ({ onBack }: SensorySettingsProps) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Не авторизован");
 
-      const { error } = await supabase.from("sensory_settings").upsert(
-        {
-          user_id: userData.user.id,
-          ...settings,
-        },
-        { onConflict: "user_id" }
-      );
+      const { error } = await supabase.from("sensory_settings")
+        .update(settings)
+        .eq("user_id", userData.user.id);
 
       if (error) throw error;
 
