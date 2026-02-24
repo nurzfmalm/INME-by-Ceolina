@@ -278,9 +278,9 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
         {/* Row 1: Parent Data & Settings */}
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           {/* Parent Data Card */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm relative overflow-hidden">
-            <div className="flex justify-between">
-              <div className="flex-1">
+          <div className="bg-white rounded-2xl shadow-sm relative overflow-hidden">
+            <div className="flex">
+              <div className="flex-1 p-5">
                 <h3 className="font-semibold text-gray-800 mb-4">Данные родителя</h3>
                 <div className="space-y-3">
                   <div>
@@ -303,8 +303,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
                   </div>
                 </div>
               </div>
-              <div className="w-28 h-28 ml-4 flex-shrink-0 self-start">
-                <img src={characterGlasses} alt="" className="w-full h-full object-contain" />
+              <div className="w-[200px] flex-shrink-0">
+                <img src={characterGlasses} alt="" className="w-full h-full object-cover" />
               </div>
             </div>
           </div>
@@ -348,9 +348,9 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
         {/* Row 2: Student Data & Schedule */}
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           {/* Student Data Card */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm relative overflow-hidden">
-            <div className="flex justify-between">
-              <div className="flex-1">
+          <div className="bg-white rounded-2xl shadow-sm relative overflow-hidden">
+            <div className="flex">
+              <div className="flex-1 p-5">
                 <h3 className="font-semibold text-gray-800 mb-4">Данные ученика</h3>
                 <div className="space-y-3">
                   <div>
@@ -374,8 +374,8 @@ export const ChildProfile = ({ childId, childName, onBack }: ChildProfileProps) 
                   </div>
                 </div>
               </div>
-              <div className="w-32 ml-4 flex-shrink-0 self-end">
-                <img src={characterKidWave} alt="" className="w-full h-auto object-contain" />
+              <div className="w-[200px] flex-shrink-0">
+                <img src={characterKidWave} alt="" className="w-full h-full object-cover" />
               </div>
             </div>
           </div>
