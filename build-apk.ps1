@@ -42,6 +42,8 @@ if (-not (Test-Path $UnsignedApk)) {
 
 # --- Step 4 ---
 Write-Host "`nStep 4: Aligning (zipalign)..." -ForegroundColor Cyan
+if (Test-Path $AlignedApk) { Remove-Item $AlignedApk -Force }
+if (Test-Path $SignedApk) { Remove-Item $SignedApk -Force }
 $zipalign = Join-Path $BuildTools.FullName "zipalign.exe"
 & $zipalign -v -p 4 $UnsignedApk $AlignedApk
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: zipalign failed!" -ForegroundColor Red; exit 1 }
